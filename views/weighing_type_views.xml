@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Search View -->
+    <record id="view_wt_weighing_type_search" model="ir.ui.view">
+        <field name="name">wt.weighing.type.search</field>
+        <field name="model">wt.weighing.type</field>
+        <field name="arch" type="xml">
+            <search string="Search Weighing Types">
+                <field name="code"/>
+                <field name="name"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- List View -->
+    <record id="view_wt_weighing_type_list" model="ir.ui.view">
+		<field name="name">wt.weighing.type.list</field>
+			<field name="model">wt.weighing.type</field>
+			<field name="arch" type="xml">
+			<list string="Divisions">
+                <field name="code"/>
+				<field name="name"/>				
+			</list>
+		</field>
+	</record>
+
+    <!-- Form View -->
+    <record id="view_wt_weighing_type_form" model="ir.ui.view">
+        <field name="name">wt.weighing.type.form</field>
+        <field name="model">wt.weighing.type</field>
+        <field name="arch" type="xml">
+            <form string="Weighing Type Form">
+                <sheet>
+                    <group>
+                        <field name="code" placeholder="Enter Weighing Type Code..."/>
+                        <field name="name" placeholder="Enter Weighing Type Name..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_wt_weighing_type" model="ir.actions.act_window">
+        <field name="name">Weighing Types</field>
+        <field name="res_model">wt.weighing.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_weighing_type_search"/>
+    </record>
+    
+</odoo>
