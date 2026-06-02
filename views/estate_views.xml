@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_estate_search" model="ir.ui.view">
+        <field name="name">wt.estate.search</field>
+        <field name="model">wt.estate</field>
+        <field name="arch" type="xml">
+            <search string="Estates">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="company_id"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_estate_list" model="ir.ui.view">
+        <field name="name">wt.estate.list</field>
+        <field name="model">wt.estate</field>
+        <field name="arch" type="xml">
+            <list string="Estates">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_estate_form" model="ir.ui.view">
+        <field name="name">wt.estate.form</field>
+        <field name="model">wt.estate</field>
+        <field name="arch" type="xml">
+            <form string="Estate">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_estate" model="ir.actions.act_window">
+        <field name="name">Estates</field>
+        <field name="res_model">wt.estate</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_estate_search"/>
+        <field name="context">{'search_default_group_company': 1}</field>
+    </record>
+</odoo>

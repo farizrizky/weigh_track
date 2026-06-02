@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Menu Item -->
-    <menuitem id="menu_wt_root" name="WeighTrack" sequence="10"/>
-    <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="5"/>
-    <menuitem id="menu_wt_weighing_type" name="Weighing Types" parent="menu_wt_configuration" action="action_wt_weighing_type" sequence="20"/>
-    <menuitem id="menu_wt_weighing_method" name="Weighing Methods" parent="menu_wt_configuration" action="action_wt_weighing_method" sequence="30"/>
+    <menuitem id="menu_wt_root" name="WeighTrack" sequence="10" groups="weightrack.group_admin"/>
+    <menuitem id="menu_wt_master_data" name="Master Data" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
+    <menuitem id="menu_wt_estate" name="Estates" parent="menu_wt_master_data" action="action_wt_estate" sequence="10" groups="weightrack.group_admin"/>
 </odoo>

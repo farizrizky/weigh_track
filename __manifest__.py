@@ -3,17 +3,14 @@
     "name": "WeighTrack",
     "version": "19.0.1.0.0",
     "category": "Operations/Inventory",
-    "summary": "Recording and Tracking Anything Weighed",
+    "summary": "Weighing management for estate operations",
     "author": "Fariz Rizky Tanjung",
     "license": "LGPL-3",
-    "depends": ["base", "mail"],
+    "depends": ["base"],
     "data": [
         "security/access_groups.xml",
         "security/ir.model.access.csv",
-
-        "views/weighing_type_views.xml",
-        "views/weighing_method_views.xml",
-
+        "views/estate_views.xml",
         "views/menu.xml",
     ],
     "application": True,

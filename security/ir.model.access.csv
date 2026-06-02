@@ -1,7 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-
-access_weightrack_wt_weighing_type_admin,access_wt_weighing_type,model_wt_weighing_type,group_admin,1,1,1,1
-
-access_weightrack_wt_weighing_method_admin,access_wt_weighing_method,model_wt_weighing_method,group_admin,1,1,1,1
-
-access_weightrack_wt_weighing_method_step_admin,access_wt_weighing_method_step,model_wt_weighing_method_step,group_admin,1,1,1,1
+access_wt_estate_admin,access.wt.estate.admin,model_wt_estate,group_admin,1,1,1,1
