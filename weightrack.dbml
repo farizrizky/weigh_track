@@ -1,0 +1,245 @@
+// WeighTrack DBML for dbdiagram.io / db.io
+// Source: custom-addons/weightrack/models/*.py
+// Notes:
+// - Odoo model table names use dot-to-underscore conversion.
+// - Only stored database fields are modeled here.
+// - Non-stored computed helper fields such as allowed_*_employee_ids are omitted.
+// - One2many fields are represented by the inverse Many2one relation.
+
+Project WeighTrack {
+  database_type: "PostgreSQL"
+  Note: "Generated from Odoo custom module models."
+}
+
+Enum wt_employee_role {
+  operator
+  clerk
+  foreman
+  tapper
+}
+
+Table res_users {
+  id integer [pk]
+  name varchar
+
+  Note: "Odoo core table stub, included only for audit field references."
+}
+
+Table res_company {
+  id integer [pk]
+  name varchar
+
+  Note: "Odoo core table stub."
+}
+
+Table hr_employee {
+  id integer [pk]
+  name varchar
+  company_id integer
+  job_id integer
+
+  Note: "Odoo HR table stub."
+}
+
+Table hr_job {
+  id integer [pk]
+  name varchar
+  company_id integer
+
+  Note: "Odoo HR job table stub."
+}
+
+Table stock_warehouse {
+  id integer [pk]
+  name varchar
+  company_id integer
+
+  Note: "Odoo stock warehouse table stub."
+}
+
+Table wt_estate {
+  id integer [pk, increment]
+  code varchar [not null, note: "Indexed in Odoo"]
+  name varchar [not null]
+  company_id integer [not null]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    code
+    company_id
+    (code, company_id) [unique, name: "code_company_uniq"]
+  }
+
+  Note: "Odoo model: wt.estate. Order: code, name."
+}
+
+Table wt_employee_role_mapping {
+  id integer [pk, increment]
+  name varchar [note: "Computed and stored from company, role, and job position"]
+  company_id integer [not null]
+  role wt_employee_role [not null]
+  job_id integer [note: "Required by Python constraint"]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id
+    role
+    job_id
+    (company_id, role, job_id) [unique, name: "company_role_job_uniq"]
+  }
+
+  Note: "Odoo model: wt.employee.role.mapping. Role source for Operator, Clerk, Foreman, and Tapper employee validation."
+}
+
+Table wt_division {
+  id integer [pk, increment]
+  code varchar [not null, note: "Indexed in Odoo"]
+  name varchar [not null]
+  estate_id integer [not null]
+  company_id integer [note: "Stored related field from estate_id.company_id"]
+  clerk_id integer
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    code
+    estate_id
+    company_id
+    clerk_id
+    (code, estate_id) [unique, name: "code_estate_uniq"]
+  }
+
+  Note: "Odoo model: wt.division. Clerk must be allowed by wt_employee_role_mapping role clerk."
+}
+
+Table wt_weighing_location {
+  id integer [pk, increment]
+  code varchar [not null, note: "Indexed in Odoo"]
+  name varchar [not null]
+  estate_id integer [not null]
+  company_id integer [note: "Stored related field from estate_id.company_id"]
+  warehouse_id integer [not null]
+  operator_id integer
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    code
+    estate_id
+    company_id
+    warehouse_id
+    operator_id
+    (code, estate_id) [unique, name: "code_estate_uniq"]
+  }
+
+  Note: "Odoo model: wt.weighing.location. Operator must be allowed by wt_employee_role_mapping role operator."
+}
+
+Table wt_weighing_location_division_rel {
+  weighing_location_id integer [not null]
+  division_id integer [not null]
+
+  indexes {
+    (weighing_location_id, division_id) [pk]
+    division_id
+  }
+
+  Note: "Explicit Many2many relation for allowed_division_ids. Python constraint requires division estate to match weighing location estate."
+}
+
+Table wt_foreman {
+  id integer [pk, increment]
+  name varchar [note: "Stored related field from employee_id.name"]
+  employee_id integer [not null]
+  division_id integer [not null]
+  company_id integer [note: "Stored related field from division_id.company_id"]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    employee_id
+    division_id
+    company_id
+    (employee_id, division_id) [unique, name: "employee_division_uniq"]
+  }
+
+  Note: "Odoo model: wt.foreman. Employee must be allowed by wt_employee_role_mapping role foreman."
+}
+
+Table wt_tapper {
+  id integer [pk, increment]
+  name varchar [note: "Stored related field from employee_id.name"]
+  employee_id integer [not null]
+  division_id integer [not null]
+  foreman_id integer
+  company_id integer [note: "Stored related field from division_id.company_id"]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    employee_id [unique, name: "employee_uniq"]
+    division_id
+    foreman_id
+    company_id
+  }
+
+  Note: "Odoo model: wt.tapper. Employee must be allowed by role tapper, and foreman must belong to the same division."
+}
+
+Ref: wt_estate.company_id > res_company.id
+
+Ref: wt_employee_role_mapping.company_id > res_company.id
+Ref: wt_employee_role_mapping.job_id > hr_job.id [delete: restrict]
+
+Ref: wt_division.estate_id > wt_estate.id [delete: restrict]
+Ref: wt_division.company_id > res_company.id
+Ref: wt_division.clerk_id > hr_employee.id [delete: restrict]
+
+Ref: wt_weighing_location.estate_id > wt_estate.id [delete: restrict]
+Ref: wt_weighing_location.company_id > res_company.id
+Ref: wt_weighing_location.warehouse_id > stock_warehouse.id [delete: restrict]
+Ref: wt_weighing_location.operator_id > hr_employee.id [delete: restrict]
+
+Ref: wt_weighing_location_division_rel.weighing_location_id > wt_weighing_location.id
+Ref: wt_weighing_location_division_rel.division_id > wt_division.id
+
+Ref: wt_foreman.employee_id > hr_employee.id [delete: restrict]
+Ref: wt_foreman.division_id > wt_division.id [delete: restrict]
+Ref: wt_foreman.company_id > res_company.id
+
+Ref: wt_tapper.employee_id > hr_employee.id [delete: restrict]
+Ref: wt_tapper.division_id > wt_division.id [delete: restrict]
+Ref: wt_tapper.foreman_id > wt_foreman.id [delete: restrict]
+Ref: wt_tapper.company_id > res_company.id
+
+Ref: hr_employee.company_id > res_company.id
+Ref: hr_employee.job_id > hr_job.id
+Ref: hr_job.company_id > res_company.id
+Ref: stock_warehouse.company_id > res_company.id
+
+Ref: wt_estate.create_uid > res_users.id
+Ref: wt_estate.write_uid > res_users.id
+Ref: wt_employee_role_mapping.create_uid > res_users.id
+Ref: wt_employee_role_mapping.write_uid > res_users.id
+Ref: wt_division.create_uid > res_users.id
+Ref: wt_division.write_uid > res_users.id
+Ref: wt_weighing_location.create_uid > res_users.id
+Ref: wt_weighing_location.write_uid > res_users.id
+Ref: wt_foreman.create_uid > res_users.id
+Ref: wt_foreman.write_uid > res_users.id
+Ref: wt_tapper.create_uid > res_users.id
+Ref: wt_tapper.write_uid > res_users.id
