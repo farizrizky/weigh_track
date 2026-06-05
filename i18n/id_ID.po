@@ -1,0 +1,316 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* weightrack
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-05 00:00+0000\n"
+"PO-Revision-Date: 2026-06-05 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: id_ID\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# -----------------------------------------------------------------------------
+# Common / Shared
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_estate__code
+#: model:ir.model.fields,field_description:weightrack.field_wt_division__code
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__code
+msgid "Code"
+msgstr "Kode"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_estate__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_division__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_foreman__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper__name
+msgid "Name"
+msgstr "Nama"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_estate__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role_mapping__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_division__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_foreman__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper__company_id
+msgid "Company"
+msgstr "Perusahaan"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_master_data
+msgid "Master Data"
+msgstr "Data Master"
+
+#. module: weightrack
+#: model:res.groups,name:weightrack.group_admin
+msgid "Administrator"
+msgstr "Administrator"
+
+# -----------------------------------------------------------------------------
+# Estate
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_estate
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_estate_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_division__estate_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__estate_id
+msgid "Estate"
+msgstr "Estate"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_estate_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_estate
+#: model:ir.ui.menu,name:weightrack.menu_wt_estate
+msgid "Estates"
+msgstr "Estate"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_estate_form
+msgid "Estate Name"
+msgstr "Nama Estate"
+
+# -----------------------------------------------------------------------------
+# Division
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_division
+#: model:ir.model.fields,field_description:weightrack.field_wt_foreman__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper__division_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_division_form
+msgid "Division"
+msgstr "Divisi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_division_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_division
+#: model:ir.ui.menu,name:weightrack.menu_wt_division
+msgid "Divisions"
+msgstr "Divisi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_division_form
+msgid "Division Name"
+msgstr "Nama Divisi"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__clerk
+#: model:ir.model.fields,field_description:weightrack.field_wt_division__clerk_id
+msgid "Clerk"
+msgstr "Kerani"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_division__allowed_clerk_employee_ids
+msgid "Allowed Clerk Employees"
+msgstr "Karyawan Kerani yang Diizinkan"
+
+# -----------------------------------------------------------------------------
+# Employee Role Mapping
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_employee_role_mapping
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_employee_role_mapping_form
+msgid "Employee Role Mapping"
+msgstr "Mapping Role Karyawan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_employee_role_mapping_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_employee_role_mapping
+#: model:ir.ui.menu,name:weightrack.menu_wt_employee_role_mapping
+msgid "Employee Role Mappings"
+msgstr "Mapping Role Karyawan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role_mapping__role
+msgid "Role"
+msgstr "Role"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role_mapping__job_id
+msgid "Job Position"
+msgstr "Jabatan"
+
+# -----------------------------------------------------------------------------
+# Weighing Location
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_weighing_location
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_form
+msgid "Weighing Location"
+msgstr "Lokasi Timbang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_weighing_location
+#: model:ir.ui.menu,name:weightrack.menu_wt_weighing_location
+msgid "Weighing Locations"
+msgstr "Lokasi Timbang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_form
+msgid "Weighing Location Name"
+msgstr "Nama Lokasi Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__warehouse_id
+msgid "Warehouse"
+msgstr "Gudang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__operator_id
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__operator
+msgid "Operator"
+msgstr "Operator"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__allowed_operator_employee_ids
+msgid "Allowed Operator Employees"
+msgstr "Karyawan Operator yang Diizinkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__allowed_division_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_form
+msgid "Allowed Divisions"
+msgstr "Divisi yang Diizinkan"
+
+# -----------------------------------------------------------------------------
+# Foreman
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_foreman
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__foreman
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_foreman_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_foreman__employee_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper__foreman_id
+msgid "Foreman"
+msgstr "Mandor"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_foreman_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_foreman
+#: model:ir.ui.menu,name:weightrack.menu_wt_foreman
+msgid "Foremen"
+msgstr "Mandor"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_foreman__allowed_foreman_employee_ids
+msgid "Allowed Foreman Employees"
+msgstr "Karyawan Mandor yang Diizinkan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_search
+msgid "Without Foreman"
+msgstr "Tanpa Mandor"
+
+# -----------------------------------------------------------------------------
+# Tapper
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_tapper
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__tapper
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper__employee_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_form
+msgid "Tapper"
+msgstr "Tapper"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_tapper
+#: model:ir.ui.menu,name:weightrack.menu_wt_tapper
+#: model:ir.model.fields,field_description:weightrack.field_wt_foreman__tapper_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_foreman_form
+msgid "Tappers"
+msgstr "Tapper"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper__allowed_tapper_employee_ids
+msgid "Allowed Tapper Employees"
+msgstr "Karyawan Tapper yang Diizinkan"
+
+# -----------------------------------------------------------------------------
+# Validation Messages
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: code:addons/weightrack/models/estate.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_estate_code_company_uniq
+msgid "Estate code must be unique per company."
+msgstr "Kode estate harus unik per perusahaan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/division.py:0
+msgid "Division code must be unique per estate."
+msgstr "Kode divisi harus unik per estate."
+
+#. module: weightrack
+#: code:addons/weightrack/models/employee_role_mapping.py:0
+msgid "Job position must be selected."
+msgstr "Jabatan harus dipilih."
+
+#. module: weightrack
+#: code:addons/weightrack/models/employee_role_mapping.py:0
+msgid "Job position must belong to the same company as the mapping."
+msgstr "Jabatan harus berada di perusahaan yang sama dengan mapping."
+
+#. module: weightrack
+#: model:ir.model.constraint,message:weightrack.constraint_wt_employee_role_mapping_company_role_job_uniq
+msgid "Employee role mapping must be unique per company, role, and job position."
+msgstr "Mapping role karyawan harus unik per perusahaan, role, dan jabatan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_location.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_weighing_location_code_estate_uniq
+msgid "Weighing location code must be unique per estate."
+msgstr "Kode lokasi timbang harus unik per estate."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_location.py:0
+msgid "Allowed divisions must belong to the same estate as the weighing location."
+msgstr "Divisi yang diizinkan harus berada di estate yang sama dengan lokasi timbang."
+
+#. module: weightrack
+#: code:addons/weightrack/models/foreman.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_foreman_employee_division_uniq
+msgid "Foreman employee must be unique per division."
+msgstr "Karyawan mandor harus unik per divisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/tapper.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_tapper_employee_uniq
+msgid "Tapper employee must be unique."
+msgstr "Karyawan tapper harus unik."
+
+#. module: weightrack
+#: code:addons/weightrack/models/tapper.py:0
+msgid "Tapper and foreman must belong to the same division."
+msgstr "Tapper dan mandor harus berada di divisi yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/employee_role_mapping.py:0
+msgid "%s employee must belong to the same company."
+msgstr "Karyawan %s harus berada di perusahaan yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/employee_role_mapping.py:0
+msgid "%s role mapping has not been configured for this company."
+msgstr "Mapping role %s belum dikonfigurasi untuk perusahaan ini."
+
+#. module: weightrack
+#: code:addons/weightrack/models/employee_role_mapping.py:0
+msgid "%s employee must use an allowed job position for this company."
+msgstr "Karyawan %s harus memakai jabatan yang diizinkan untuk perusahaan ini."

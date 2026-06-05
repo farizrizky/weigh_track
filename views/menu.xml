@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_wt_root" name="WeighTrack" sequence="10" groups="weightrack.group_admin"/>
-    <menuitem id="menu_wt_master_data" name="Master Data" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
-    <menuitem id="menu_wt_estate" name="Estates" parent="menu_wt_master_data" action="action_wt_estate" sequence="10" groups="weightrack.group_admin"/>
+    <menuitem id="menu_wt_root" name="WeighTrack" sequence="10" groups="weightrack.group_admin" web_icon="weightrack,static/description/icon.png"/>
+        <menuitem id="menu_wt_master_data" name="Master Data" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_estate" name="Estates" parent="menu_wt_master_data" action="action_wt_estate" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_division" name="Divisions" parent="menu_wt_master_data" action="action_wt_division" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_weighing_location" name="Weighing Locations" parent="menu_wt_master_data" action="action_wt_weighing_location" sequence="40" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_foreman" name="Foremen" parent="menu_wt_master_data" action="action_wt_foreman" sequence="50" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_tapper" name="Tappers" parent="menu_wt_master_data" action="action_wt_tapper" sequence="60" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_employee_role_mapping" name="Employee Role Mappings" parent="menu_wt_configuration" action="action_wt_employee_role_mapping" sequence="20" groups="weightrack.group_admin"/>
 </odoo>

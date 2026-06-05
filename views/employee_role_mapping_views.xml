@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_employee_role_mapping_search" model="ir.ui.view">
+        <field name="name">wt.employee.role.mapping.search</field>
+        <field name="model">wt.employee.role.mapping</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="company_id"/>
+                <field name="role"/>
+                <field name="job_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_employee_role_mapping_list" model="ir.ui.view">
+        <field name="name">wt.employee.role.mapping.list</field>
+        <field name="model">wt.employee.role.mapping</field>
+        <field name="arch" type="xml">
+            <list string="Employee Role Mappings">
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="role"/>
+                <field name="job_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_employee_role_mapping_form" model="ir.ui.view">
+        <field name="name">wt.employee.role.mapping.form</field>
+        <field name="model">wt.employee.role.mapping</field>
+        <field name="arch" type="xml">
+            <form string="Employee Role Mapping">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="role"/>
+                        <h1>
+                            <field name="role" placeholder="Role"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                        </group>
+                        <group>
+                            <field name="job_id" required="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_employee_role_mapping" model="ir.actions.act_window">
+        <field name="name">Employee Role Mappings</field>
+        <field name="res_model">wt.employee.role.mapping</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_employee_role_mapping_search"/>
+    </record>
+</odoo>

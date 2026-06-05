@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_foreman_search" model="ir.ui.view">
+        <field name="name">wt.foreman.search</field>
+        <field name="model">wt.foreman</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="division_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_foreman_list" model="ir.ui.view">
+        <field name="name">wt.foreman.list</field>
+        <field name="model">wt.foreman</field>
+        <field name="arch" type="xml">
+            <list string="Foremen">
+                <field name="employee_id"/>
+                <field name="division_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_foreman_form" model="ir.ui.view">
+        <field name="name">wt.foreman.form</field>
+        <field name="model">wt.foreman</field>
+        <field name="arch" type="xml">
+            <form string="Foreman">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="division_id"/>
+                        <h1>
+                            <field name="division_id" placeholder="Division"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="allowed_foreman_employee_ids" invisible="1"/>
+                            <field name="employee_id" domain="[('id', 'in', allowed_foreman_employee_ids)]"/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Tappers">
+                            <field name="tapper_ids" context="{'default_division_id': division_id}">
+                                <list create="false" delete="false">
+                                    <field name="employee_id"/>
+                                    <field name="division_id"/>
+                                    <field name="company_id" groups="base.group_multi_company"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_foreman" model="ir.actions.act_window">
+        <field name="name">Foremen</field>
+        <field name="res_model">wt.foreman</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_foreman_search"/>
+    </record>
+</odoo>

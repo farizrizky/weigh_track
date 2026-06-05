@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_tapper_search" model="ir.ui.view">
+        <field name="name">wt.tapper.search</field>
+        <field name="model">wt.tapper</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="foreman_id"/>
+                <field name="division_id"/>
+                <filter name="without_foreman" string="Without Foreman" domain="[('foreman_id', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_tapper_list" model="ir.ui.view">
+        <field name="name">wt.tapper.list</field>
+        <field name="model">wt.tapper</field>
+        <field name="arch" type="xml">
+            <list string="Tappers">
+                <field name="employee_id"/>
+                <field name="foreman_id"/>
+                <field name="division_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_tapper_form" model="ir.ui.view">
+        <field name="name">wt.tapper.form</field>
+        <field name="model">wt.tapper</field>
+        <field name="arch" type="xml">
+            <form string="Tapper">
+                <sheet>
+                    <field name="allowed_tapper_employee_ids" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="employee_id"/>
+                        <h1>
+                            <field name="employee_id" placeholder="Tapper" domain="[('id', 'in', allowed_tapper_employee_ids)]"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="division_id"/>
+                            <field name="foreman_id" domain="[('division_id', '=', division_id)]"/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_tapper" model="ir.actions.act_window">
+        <field name="name">Tappers</field>
+        <field name="res_model">wt.tapper</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_tapper_search"/>
+    </record>
+</odoo>

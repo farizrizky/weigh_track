@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_division_search" model="ir.ui.view">
+        <field name="name">wt.division.search</field>
+        <field name="model">wt.division</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="estate_id"/>
+                <field name="clerk_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_division_list" model="ir.ui.view">
+        <field name="name">wt.division.list</field>
+        <field name="model">wt.division</field>
+        <field name="arch" type="xml">
+            <list string="Divisions">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="estate_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="clerk_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_division_form" model="ir.ui.view">
+        <field name="name">wt.division.form</field>
+        <field name="model">wt.division</field>
+        <field name="arch" type="xml">
+            <form string="Division">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Division Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="estate_id"/>
+                            <field name="company_id"/>
+                        </group>
+                        <group>
+                            <field name="allowed_clerk_employee_ids" invisible="1"/>
+                            <field name="clerk_id" domain="[('id', 'in', allowed_clerk_employee_ids)]"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_division" model="ir.actions.act_window">
+        <field name="name">Divisions</field>
+        <field name="res_model">wt.division</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_division_search"/>
+    </record>
+</odoo>
