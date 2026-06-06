@@ -1,20 +1,55 @@
 # WeighTrack Model Reference
 
-Dokumen ini menjelaskan model WeighTrack yang sudah dibuat, field utama, relasi, dan aturan validasinya.
+Dokumen ini menjelaskan model WeighTrack, field utama, relasi, aturan validasi, akses, dan service teknis yang sedang aktif di module.
+
+## Scope Module
+
+Module teknis:
+
+```text
+weightrack
+```
+
+Dependency:
+
+```text
+base
+mail
+stock
+hr
+```
+
+Menu utama:
+
+```text
+WeighTrack
+├── Master Data
+│   ├── Estates
+│   ├── Divisions
+│   ├── Weighing Locations
+│   ├── Foremen
+│   └── Tappers
+├── Device
+└── Configuration
+    ├── API Configuration
+    ├── API Request Logs
+    └── Employee Role Mappings
+```
 
 ## Global Rules
 
-- Semua model master aktif memakai chatter Odoo:
+- Semua master operasional utama memakai chatter Odoo:
   - `mail.thread`
   - `mail.activity.mixin`
 - Field penting diberi `tracking=True`, sehingga perubahan tercatat di chatter.
-- Akses CRUD saat ini hanya diberikan ke group `weightrack.group_admin`.
-- Nama teknis model/field memakai bahasa Inggris.
+- Akses CRUD utama diberikan ke group `weightrack.group_admin`.
+- Nama teknis model dan field memakai bahasa Inggris.
 - Label bahasa Indonesia dikelola lewat file translasi `i18n/id_ID.po`.
 - Istilah UI penting:
   - `Foreman` / `Foremen` diterjemahkan menjadi `Mandor`.
   - `Clerk` diterjemahkan menjadi `Kerani`.
-- File translasi `i18n/id_ID.po` dirapikan dengan pemisah: Common / Shared, Estate, Division, Employee Role Mapping, Weighing Location, Foreman, Tapper, dan Validation Messages.
+- Device activation hanya dilakukan melalui custom API, bukan tombol manual di form device.
+- Endpoint pull dan push belum aktif.
 
 ## Estate
 
@@ -33,8 +68,9 @@ Field:
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `code` | `Char` | Ya | Ya | Kode estate. Diindeks untuk pencarian. |
-| `name` | `Char` | Ya | Ya | Nama estate. Ditampilkan besar di form. |
+| `name` | `Char` | Ya | Ya | Nama estate. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company pemilik estate. Default mengikuti company user aktif. |
+
 Urutan data:
 
 ```text
@@ -44,13 +80,14 @@ code, name
 Validasi:
 
 - `code` wajib unik per `company_id`.
-- Constraint database:
+
+Constraint database:
 
 ```text
 unique(code, company_id)
 ```
 
-- Constraint Python:
+Pesan validasi:
 
 ```text
 Estate code must be unique per company.
@@ -66,16 +103,16 @@ wt.employee.role.mapping
 
 Deskripsi:
 
-Employee Role Mapping adalah konfigurasi job position karyawan yang boleh dipakai untuk role operasional WeighTrack. Mapping ini dipakai sebagai sumber domain dan validasi untuk Clerk, Operator, Foreman, dan Tapper.
+Employee Role Mapping adalah konfigurasi job position karyawan yang boleh dipakai untuk role operasional WeighTrack. Mapping ini menjadi sumber domain dan validasi employee untuk Clerk, Operator, Foreman, Tapper, dan Device Assignment.
 
 Field:
 
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Computed name dari company, role, dan job position. |
-| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat mapping berlaku. Default mengikuti company user aktif. |
+| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat mapping berlaku. |
 | `role` | `Selection` | Ya | Ya | Role operasional: `operator`, `clerk`, `foreman`, `tapper`. |
-| `job_id` | `Many2one(hr.job)` | Ya | Ya | Job position yang diizinkan untuk role tersebut. Domain berdasarkan company mapping atau job position tanpa company. |
+| `job_id` | `Many2one(hr.job)` | Ya | Ya | Job position yang diizinkan untuk role tersebut. |
 
 Urutan data:
 
@@ -88,6 +125,8 @@ Validasi:
 - Kombinasi `company_id`, `role`, dan `job_id` wajib unik.
 - `job_id` wajib dipilih.
 - Jika `job_id` punya company, company job position harus sama dengan `company_id` mapping.
+- Helper `get_allowed_employees()` dipakai untuk domain employee.
+- Helper `get_employee_domain()` dipakai untuk onchange domain.
 - Helper `check_employee_allowed()` dipakai oleh model lain untuk memastikan employee:
   - berada di company yang sama dengan record operasional;
   - punya job position yang termasuk mapping role tersebut;
@@ -127,11 +166,12 @@ Field:
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `code` | `Char` | Ya | Ya | Kode divisi. Diindeks untuk pencarian. |
-| `name` | `Char` | Ya | Ya | Nama divisi. Ditampilkan besar di form. |
+| `name` | `Char` | Ya | Ya | Nama divisi. |
 | `estate_id` | `Many2one(wt.estate)` | Ya | Ya | Estate tempat divisi berada. `ondelete="restrict"`. |
-| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related field dari `estate_id.company_id`, `store=True`, readonly. |
-| `clerk_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee yang berperan sebagai Clerk/Kerani untuk divisi. Domain berdasarkan role mapping `clerk`. |
-| `allowed_clerk_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Clerk berdasarkan company dan role mapping. |
+| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
+| `clerk_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee Clerk/Kerani untuk divisi. Domain berdasarkan role mapping `clerk`. |
+| `allowed_clerk_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Clerk. |
+
 Urutan data:
 
 ```text
@@ -141,22 +181,18 @@ estate_id, code, name
 Validasi:
 
 - `code` wajib unik per `estate_id`.
-- Constraint database:
+- Clerk harus valid menurut role mapping `clerk` pada company division.
+
+Constraint database:
 
 ```text
 unique(code, estate_id)
 ```
 
-- Constraint Python:
+Pesan validasi:
 
 ```text
 Division code must be unique per estate.
-```
-
-- Clerk harus valid menurut role mapping `clerk` pada company division.
-- Constraint Python:
-
-```text
 %s employee must belong to the same company.
 %s role mapping has not been configured for this company.
 %s employee must use an allowed job position for this company.
@@ -184,13 +220,14 @@ Field:
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `code` | `Char` | Ya | Ya | Kode lokasi timbang. Diindeks untuk pencarian. |
-| `name` | `Char` | Ya | Ya | Nama lokasi timbang. Ditampilkan besar di form. |
+| `name` | `Char` | Ya | Ya | Nama lokasi timbang. |
 | `estate_id` | `Many2one(wt.estate)` | Ya | Ya | Estate lokasi timbang. `ondelete="restrict"`. |
-| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related field dari `estate_id.company_id`, `store=True`, readonly. |
+| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
 | `warehouse_id` | `Many2one(stock.warehouse)` | Ya | Ya | Warehouse Odoo yang terkait lokasi timbang. `ondelete="restrict"`. |
 | `operator_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee operator lokasi timbang. Domain berdasarkan role mapping `operator`. |
-| `allowed_operator_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Operator berdasarkan company dan role mapping. |
+| `allowed_operator_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Operator. |
 | `allowed_division_ids` | `Many2many(wt.division)` | Tidak | Ya | Daftar divisi yang diizinkan menimbang di lokasi ini. |
+
 Urutan data:
 
 ```text
@@ -200,29 +237,20 @@ estate_id, code, name
 Validasi:
 
 - `code` wajib unik per `estate_id`.
-- Constraint database:
+- Semua `allowed_division_ids` harus berasal dari estate yang sama dengan `estate_id`.
+- Operator harus valid menurut role mapping `operator` pada company lokasi timbang.
+
+Constraint database:
 
 ```text
 unique(code, estate_id)
 ```
 
-- Constraint Python:
+Pesan validasi:
 
 ```text
 Weighing location code must be unique per estate.
-```
-
-- Semua `allowed_division_ids` harus berasal dari estate yang sama dengan `estate_id` lokasi timbang.
-- Constraint Python:
-
-```text
 Allowed divisions must belong to the same estate as the weighing location.
-```
-
-- Operator harus valid menurut role mapping `operator` pada company lokasi timbang.
-- Constraint Python:
-
-```text
 %s employee must belong to the same company.
 %s role mapping has not been configured for this company.
 %s employee must use an allowed job position for this company.
@@ -230,16 +258,9 @@ Allowed divisions must belong to the same estate as the weighing location.
 
 Domain UI:
 
-- `warehouse_id` difilter berdasarkan company lokasi:
-
 ```text
-[('company_id', '=', company_id)]
-```
-
-- `allowed_division_ids` difilter berdasarkan estate lokasi:
-
-```text
-[('estate_id', '=', estate_id)]
+warehouse_id: [('company_id', '=', company_id)]
+allowed_division_ids: [('estate_id', '=', estate_id)]
 ```
 
 Relasi Many2many:
@@ -272,12 +293,13 @@ Field:
 
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
-| `name` | `Char` | Otomatis | Tidak | Related field dari `employee_id.name`, dipakai sebagai nama record. |
+| `name` | `Char` | Otomatis | Tidak | Related dari `employee_id.name`, dipakai sebagai nama record. |
 | `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Foreman/Mandor. Domain berdasarkan role mapping `foreman`. `ondelete="restrict"`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat foreman bertugas. `ondelete="restrict"`. |
-| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related field dari `division_id.company_id`, `store=True`, readonly. |
+| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `division_id.company_id`, `store=True`, readonly. |
 | `tapper_ids` | `One2many(wt.tapper)` | Tidak | Tidak | Daftar Tapper yang dibawahi Foreman. |
-| `allowed_foreman_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Foreman berdasarkan company dan role mapping. |
+| `allowed_foreman_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Foreman. |
+
 Urutan data:
 
 ```text
@@ -287,16 +309,16 @@ division_id, employee_id
 Validasi:
 
 - Kombinasi `employee_id` dan `division_id` wajib unik.
-- Constraint database:
+- Employee foreman harus valid menurut role mapping `foreman` pada company division.
+- Tapper bisa dikelola langsung dari form Foreman melalui line `Tappers`.
+
+Constraint database:
 
 ```text
 unique(employee_id, division_id)
 ```
 
-- Employee foreman harus valid menurut role mapping `foreman` pada company division.
-- Duplikat kombinasi `employee_id` dan `division_id` dicegah oleh SQL constraint dan Python constraint.
-- Tapper bisa dikelola langsung dari form Foreman melalui line `Tappers`.
-- Constraint Python:
+Pesan validasi:
 
 ```text
 Foreman employee must be unique per division.
@@ -321,12 +343,12 @@ Field:
 
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
-| `name` | `Char` | Otomatis | Tidak | Related field dari `employee_id.name`, dipakai sebagai nama record. |
+| `name` | `Char` | Otomatis | Tidak | Related dari `employee_id.name`, dipakai sebagai nama record. |
 | `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Tapper. Domain berdasarkan role mapping `tapper`. `ondelete="restrict"`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat Tapper berada. `ondelete="restrict"`. |
 | `foreman_id` | `Many2one(wt.foreman)` | Tidak | Ya | Foreman/Mandor yang membawahi Tapper. Difilter berdasarkan division. `ondelete="restrict"`. |
-| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related field dari `division_id.company_id`, `store=True`, readonly. |
-| `allowed_tapper_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Tapper berdasarkan company dan role mapping. |
+| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `division_id.company_id`, `store=True`, readonly. |
+| `allowed_tapper_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Tapper. |
 
 Urutan data:
 
@@ -339,13 +361,14 @@ Validasi:
 - Satu Tapper employee hanya boleh dibuat satu kali.
 - Employee Tapper harus valid menurut role mapping `tapper` pada company division.
 - Jika `foreman_id` diisi, Foreman harus berada pada division yang sama dengan Tapper.
-- Constraint database:
+
+Constraint database:
 
 ```text
 unique(employee_id)
 ```
 
-- Constraint Python:
+Pesan validasi:
 
 ```text
 Tapper employee must be unique.
@@ -362,6 +385,535 @@ Aturan bisnis:
 - Division Tapper dipilih langsung.
 - Company Tapper otomatis mengikuti Division.
 - Foreman Tapper harus berasal dari Division yang sama.
+
+## Device
+
+Model teknis:
+
+```text
+wt.device
+```
+
+Deskripsi:
+
+Device adalah record assignment perangkat operasional. Administrator membuat assignment terlebih dahulu, lalu token dikirim ke employee penanggung jawab device. Aktivasi device hanya dilakukan melalui API dengan kombinasi token dan `device_id` dari aplikasi lokal.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Tidak | Ya | Nama device. Dapat diedit oleh admin Odoo, termasuk setelah device aktif. |
+| `device_id` | `Char` | Tidak | Ya | ID device dari aplikasi lokal. Terisi saat activation API berhasil. Unik. |
+| `company_id` | `Many2one(res.company)` | Ya | Ya | Company assignment device. Default mengikuti company user aktif. |
+| `role` | `Selection` | Ya | Ya | Role device: `clerk`, `foreman`, `operator`. Dipilih sebelum employee agar domain employee mengikuti role. |
+| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee penanggung jawab device. Domain berdasarkan `company_id` dan `role`. |
+| `allowed_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk domain employee. |
+| `status` | `Selection` | Ya | Ya | State device: `inactive`, `active`, `blocked`, `revoked`. Ditampilkan sebagai statusbar. |
+| `token` | `Char` | Otomatis | Tidak | Token enrollment. Dibuat otomatis saat create jika belum diisi. Unik. |
+| `actived_at` | `Datetime` | Tidak | Ya | Waktu aktivasi pertama. Nama field saat ini masih `actived_at`. |
+| `last_pull` | `Datetime` | Tidak | Ya | Waktu pull terakhir. Belum digunakan karena pull API belum aktif. |
+| `last_push` | `Datetime` | Tidak | Ya | Waktu push terakhir. Belum digunakan karena push API belum aktif. |
+| `last_seen` | `Datetime` | Tidak | Ya | Waktu terakhir device terlihat oleh API. Terisi saat activation. |
+| `app_version` | `Char` | Tidak | Ya | Versi aplikasi lokal. Wajib dikirim saat activation. |
+| `device_type` | `Selection` | Tidak | Ya | Jenis device: `mobile`, `desktop`. Wajib dikirim saat activation. |
+| `blocked_at` | `Datetime` | Tidak | Ya | Waktu block. |
+| `blocked_by` | `Many2one(res.users)` | Tidak | Ya | User yang melakukan block. |
+| `blocked_reason` | `Text` | Tidak | Ya | Alasan block. Wajib diisi melalui wizard. |
+| `reactivated_at` | `Datetime` | Tidak | Ya | Waktu reactivate. |
+| `reactivated_by` | `Many2one(res.users)` | Tidak | Ya | User yang melakukan reactivate. |
+| `revoked_at` | `Datetime` | Tidak | Ya | Waktu revoke. |
+| `revoked_by` | `Many2one(res.users)` | Tidak | Ya | User yang melakukan revoke. |
+| `revoked_reason` | `Text` | Tidak | Ya | Alasan revoke. Wajib diisi melalui wizard. |
+
+Selection:
+
+```text
+role: clerk, foreman, operator
+status: inactive, active, blocked, revoked
+device_type: mobile, desktop
+```
+
+Urutan data:
+
+```text
+name, device_id
+```
+
+Constraint database:
+
+```text
+unique(device_id)
+unique(token)
+```
+
+Validasi dan aturan create/write:
+
+- Saat create, `status` default menjadi `inactive`.
+- Saat create, `token` otomatis dibuat dengan `secrets.token_urlsafe(32)` jika belum ada token.
+- Token dicek unik maksimal 10 kali percobaan.
+- Saat device berstatus `active`, `blocked`, atau `revoked`, hanya field `name` yang boleh diedit langsung dari UI.
+- Perubahan state dan log state boleh menembus lock hanya jika context berisi:
+
+```text
+allow_device_state_update=True
+```
+
+- Employee assignment harus valid menurut role mapping sesuai `company_id` dan `role`.
+
+Pesan validasi utama:
+
+```text
+Device ID must be unique.
+Device token must be unique.
+Unable to generate a unique device token.
+Only device name can be changed after the device has been activated.
+Only active devices can be blocked.
+Only blocked devices can be reactivated.
+Only active or blocked devices can be revoked.
+Reason is required.
+```
+
+Status flow:
+
+```text
+inactive -> active -> blocked -> active
+active -> revoked
+blocked -> revoked
+```
+
+Aturan tombol:
+
+- Tombol `Activate` tidak ada di form. Aktivasi hanya lewat API.
+- Tombol `Block` hanya tampil saat status `active`.
+- Tombol `Reactivate` hanya tampil saat status `blocked`.
+- Tombol `Revoke` hanya tampil saat status `active` atau `blocked`.
+- Tombol `Revoke` memakai konfirmasi Odoo `confirm`.
+- Block dan Revoke membuka wizard reason agar user wajib mengisi alasan.
+
+Alur assignment dan activation:
+
+1. Admin Odoo membuat record device berstatus `inactive`.
+2. Admin memilih `company_id`, `role`, dan `employee_id`.
+3. Token terbentuk otomatis saat save.
+4. Admin menginformasikan token ke employee penanggung jawab device.
+5. Employee menginstall aplikasi operasional. Aplikasi lokal membentuk `device_id`.
+6. Employee melakukan activation dengan `server_url`, `token`, `device_id`, `device_type`, dan `app_version`.
+7. Odoo memvalidasi token.
+8. Jika token milik device berstatus `inactive`, Odoo mengubah status menjadi `active`.
+9. Odoo mengisi `device_id`, `device_type`, `app_version`, `actived_at`, dan `last_seen`.
+10. Odoo mengirim response berisi data bootstrap device, company, employee, dan role.
+
+Catatan:
+
+- `name` tetap menjadi otoritas Odoo. Perubahan nama device di Odoo dapat dikirim ke aplikasi lokal saat proses pull nanti.
+- Kombinasi `device_id` dan `token` akan menjadi dasar authentication pull/push nanti, dengan syarat device masih berstatus `active`.
+
+## Device State Reason Wizard
+
+Model teknis:
+
+```text
+wt.device.state.reason.wizard
+```
+
+Jenis model:
+
+```text
+TransientModel
+```
+
+Deskripsi:
+
+Wizard ini digunakan untuk meminta alasan saat admin melakukan block atau revoke device.
+
+Field:
+
+| Field | Type | Required | Keterangan |
+| --- | --- | --- | --- |
+| `action` | `Selection` | Ya | Aksi: `block` atau `revoke`. |
+| `device_id` | `Many2one(wt.device)` | Ya | Device yang diproses. Readonly. |
+| `reason` | `Text` | Ya | Alasan block/revoke. |
+
+Method:
+
+```text
+action_confirm()
+```
+
+Alur:
+
+- Jika `action = block`, wizard memanggil `device_id.action_confirm_block(reason)`.
+- Jika `action = revoke`, wizard memanggil `device_id.action_confirm_revoke(reason)`.
+- Setelah selesai, wizard ditutup dengan `ir.actions.act_window_close`.
+
+## API Configuration
+
+Model teknis:
+
+```text
+wt.api.config
+```
+
+Deskripsi:
+
+API Configuration menentukan user internal yang akan menjadi bot user untuk proses API WeighTrack. Saat ini dipakai oleh device activation agar perubahan device tercatat atas nama bot user, bukan Public User.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari company dan bot user. |
+| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat konfigurasi berlaku. |
+| `bot_user_id` | `Many2one(res.users)` | Ya | Ya | User internal aktif yang dipakai untuk proses API. |
+
+Urutan data:
+
+```text
+company_id
+```
+
+Domain:
+
+```text
+bot_user_id: [('share', '=', False), ('active', '=', True)]
+```
+
+Constraint database:
+
+```text
+unique(company_id)
+```
+
+Validasi:
+
+- Satu company hanya boleh memiliki satu API Configuration.
+- Bot user wajib user internal.
+- Bot user wajib aktif.
+
+Pesan validasi:
+
+```text
+API configuration must be unique per company.
+Only one API configuration is allowed per company.
+Bot user must be an internal user.
+Bot user must be active.
+Device API bot user has not been configured for this company.
+```
+
+## API Request Log
+
+Model teknis:
+
+```text
+wt.api.request.log
+```
+
+Deskripsi:
+
+API Request Log adalah audit log untuk semua request custom API WeighTrack. Log dibuat oleh `controllers/api/api_handler.py`.
+
+Field:
+
+| Field | Type | Required | Readonly | Keterangan |
+| --- | --- | --- | --- | --- |
+| `request_id` | `Char` | Ya | Ya | UUID per request. Juga dikirim ke client. |
+| `endpoint` | `Char` | Ya | Ya | Nama endpoint internal, contoh `device.activate`. |
+| `method` | `Char` | Ya | Ya | HTTP method request. |
+| `status` | `Selection` | Ya | Ya | `success` atau `failed`. |
+| `http_status` | `Integer` | Tidak | Ya | HTTP status response. |
+| `error_code` | `Char` | Tidak | Ya | Kode error jika gagal. |
+| `error_message` | `Text` | Tidak | Ya | Pesan error jika gagal. |
+| `device_id` | `Char` | Tidak | Ya | `device_id` dari payload request. |
+| `device_record_id` | `Many2one(wt.device)` | Tidak | Ya | Record device terkait jika sudah teridentifikasi. |
+| `company_id` | `Many2one(res.company)` | Tidak | Ya | Company dari device terkait. |
+| `employee_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee dari device terkait. |
+| `role` | `Selection` | Tidak | Ya | Role device terkait. |
+| `request_ip` | `Char` | Tidak | Ya | IP client dari request. |
+| `user_agent` | `Char` | Tidak | Ya | Header User-Agent client. |
+| `duration_ms` | `Integer` | Tidak | Ya | Durasi proses request dalam milidetik. |
+| `requested_at` | `Datetime` | Ya | Ya | Waktu request diterima. |
+| `finished_at` | `Datetime` | Tidak | Ya | Waktu request selesai diproses. |
+| `payload_hash` | `Char` | Tidak | Ya | SHA-256 raw request body untuk fingerprint audit. |
+| `payload` | `Text` | Tidak | Ya | Payload request lengkap setelah sanitasi. |
+| `response` | `Text` | Tidak | Ya | Response lengkap setelah sanitasi. |
+
+Urutan data:
+
+```text
+requested_at desc, id desc
+```
+
+Selection:
+
+```text
+status: success, failed
+role: clerk, foreman, operator
+```
+
+Aturan akses:
+
+- Admin hanya bisa read.
+- Create/write/delete log tidak tersedia dari UI.
+- Log dibuat otomatis oleh API Handler memakai `sudo()`.
+
+Sanitasi:
+
+Key berikut disamarkan di `payload` dan `response`:
+
+```text
+token
+password
+secret
+api_key
+```
+
+Catatan audit:
+
+- `payload_hash` bukan enkripsi dan tidak bisa didekripsi.
+- Hash dipakai untuk membuktikan apakah raw request body sama dengan request tertentu.
+- Payload dan response disimpan lengkap untuk kebutuhan debug, dengan token/API key disanitasi.
+
+## API Services
+
+Service API adalah `AbstractModel`. Service ini tidak memiliki tabel database sendiri.
+
+### API Device Service
+
+Model teknis:
+
+```text
+wt.api.device.service
+```
+
+File:
+
+```text
+services/api_device_service.py
+```
+
+Tanggung jawab:
+
+- Memproses activation device.
+- Memvalidasi payload activation.
+- Mencari device berdasarkan token.
+- Memastikan token hanya bisa dipakai saat device masih `inactive`.
+- Memastikan `device_id` tidak dipakai device lain.
+- Mengambil bot user dari `wt.api.security.service`.
+- Menulis perubahan device sebagai bot user.
+- Menyiapkan payload data bisnis untuk response.
+
+Method utama:
+
+```text
+activate_device(payload)
+```
+
+Payload wajib:
+
+```text
+token
+device_id
+device_type
+app_version
+```
+
+Error codes:
+
+```text
+missing_token
+missing_device_id
+missing_device_type
+missing_app_version
+invalid_device_type
+invalid_token
+device_not_inactive
+device_id_already_used
+api_config_missing
+api_config_invalid
+```
+
+Response data yang disiapkan service:
+
+```text
+device
+company
+employee
+role
+```
+
+Device payload:
+
+```text
+id
+device_id
+name
+status
+device_type
+app_version
+last_seen
+```
+
+Company payload:
+
+```text
+id
+name
+```
+
+Employee payload:
+
+```text
+id
+barcode
+name
+job_position
+```
+
+### API Security Service
+
+Model teknis:
+
+```text
+wt.api.security.service
+```
+
+File:
+
+```text
+services/api_security_service.py
+```
+
+Tanggung jawab:
+
+- Menjadi pusat helper security API.
+- Mengambil bot user berdasarkan company.
+- Mengembalikan error standar jika config belum ada atau bot user tidak valid.
+
+Method utama:
+
+```text
+get_bot_user(company, device=False)
+```
+
+Aturan:
+
+- Config dicari pada `wt.api.config` berdasarkan `company_id`.
+- Bot user harus aktif.
+- Bot user tidak boleh portal/public/share user.
+
+### API Response Service
+
+Model teknis:
+
+```text
+wt.api.response.service
+```
+
+File:
+
+```text
+services/api_response_service.py
+```
+
+Tanggung jawab:
+
+- Membuat struktur result internal success/error.
+- Membungkus response HTTP final dengan `request_id`.
+- Tidak menyiapkan payload bisnis. Data bisnis disiapkan oleh service masing-masing.
+
+Method:
+
+```text
+success(data, http_status=200, device=False)
+error(code, message, http_status, device=False)
+body(request_id, result)
+```
+
+Format response success:
+
+```json
+{
+  "ok": true,
+  "request_id": "uuid",
+  "data": {}
+}
+```
+
+Format response error:
+
+```json
+{
+  "ok": false,
+  "request_id": "uuid",
+  "error": {
+    "code": "error_code",
+    "message": "Human readable message"
+  }
+}
+```
+
+## API Handler
+
+API Handler bukan model Odoo, tetapi class helper Python.
+
+File:
+
+```text
+controllers/api/api_handler.py
+```
+
+Tanggung jawab:
+
+- Membaca raw request body.
+- Membuat `request_id`.
+- Membuat `payload_hash`.
+- Parse JSON payload.
+- Memanggil service model dan method yang diberikan endpoint.
+- Membuat body response lewat `wt.api.response.service`.
+- Membuat record `wt.api.request.log`.
+- Mengembalikan HTTP JSON response.
+
+Error boundary:
+
+```text
+invalid_json
+invalid_payload
+internal_error
+```
+
+Sanitasi log dilakukan oleh:
+
+```text
+_sanitize_payload(value)
+```
+
+## API Controller
+
+Endpoint aktif:
+
+```text
+POST /weightrack/api/v1/device/activate
+```
+
+File:
+
+```text
+controllers/api/v1/device_api.py
+```
+
+Route:
+
+```python
+@http.route(
+    "/weightrack/api/v1/device/activate",
+    type="http",
+    auth="public",
+    methods=["POST"],
+    csrf=False,
+)
+```
+
+Controller hanya mendefinisikan endpoint. Logic request, response, audit, dan business flow dipisah ke handler dan service.
 
 ## Current Security
 
@@ -383,7 +935,80 @@ Access CSV:
 | --- | --- | --- | --- | --- |
 | `wt.estate` | Ya | Ya | Ya | Ya |
 | `wt.employee.role.mapping` | Ya | Ya | Ya | Ya |
+| `wt.api.config` | Ya | Ya | Ya | Ya |
+| `wt.api.request.log` | Ya | Tidak | Tidak | Tidak |
 | `wt.division` | Ya | Ya | Ya | Ya |
 | `wt.weighing.location` | Ya | Ya | Ya | Ya |
 | `wt.foreman` | Ya | Ya | Ya | Ya |
 | `wt.tapper` | Ya | Ya | Ya | Ya |
+| `wt.device` | Ya | Ya | Ya | Ya |
+| `wt.device.state.reason.wizard` | Ya | Ya | Ya | Ya |
+| `hr.employee` | Ya | Tidak | Tidak | Tidak |
+| `hr.job` | Ya | Tidak | Tidak | Tidak |
+| `stock.warehouse` | Ya | Tidak | Tidak | Tidak |
+
+## File Utama
+
+Models:
+
+```text
+models/estate.py
+models/employee_role_mapping.py
+models/division.py
+models/weighing_location.py
+models/foreman.py
+models/tapper.py
+models/device.py
+models/api_config.py
+models/api_request_log.py
+```
+
+Wizards:
+
+```text
+wizards/device_state_reason_wizard.py
+```
+
+Services:
+
+```text
+services/api_device_service.py
+services/api_security_service.py
+services/api_response_service.py
+```
+
+Controllers:
+
+```text
+controllers/api/api_handler.py
+controllers/api/v1/device_api.py
+```
+
+Views:
+
+```text
+views/estate_views.xml
+views/employee_role_mapping_views.xml
+views/division_views.xml
+views/weighing_location_views.xml
+views/foreman_views.xml
+views/tapper_views.xml
+views/device_views.xml
+views/device_state_reason_wizard_views.xml
+views/api_config_views.xml
+views/api_request_log_views.xml
+views/menu.xml
+```
+
+Security:
+
+```text
+security/access_groups.xml
+security/ir.model.access.csv
+```
+
+Translation:
+
+```text
+i18n/id_ID.po
+```

@@ -33,6 +33,8 @@ msgstr "Kode"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__name
 msgid "Name"
 msgstr "Nama"
 
@@ -43,6 +45,8 @@ msgstr "Nama"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -55,6 +59,11 @@ msgstr "Data Master"
 #: model:res.groups,name:weightrack.group_admin
 msgid "Administrator"
 msgstr "Administrator"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_configuration
+msgid "Configuration"
+msgstr "Konfigurasi"
 
 # -----------------------------------------------------------------------------
 # Estate
@@ -106,6 +115,7 @@ msgstr "Nama Divisi"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__clerk
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__clerk
 #: model:ir.model.fields,field_description:weightrack.field_wt_division__clerk_id
 msgid "Clerk"
 msgstr "Kerani"
@@ -114,6 +124,150 @@ msgstr "Kerani"
 #: model:ir.model.fields,field_description:weightrack.field_wt_division__allowed_clerk_employee_ids
 msgid "Allowed Clerk Employees"
 msgstr "Karyawan Kerani yang Diizinkan"
+
+# -----------------------------------------------------------------------------
+# API Configuration
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_config
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_config_form
+#: model:ir.ui.menu,name:weightrack.menu_wt_api_config
+msgid "API Configuration"
+msgstr "Konfigurasi API"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_config_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_api_config
+msgid "API Configurations"
+msgstr "Konfigurasi API"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__bot_user_id
+msgid "Bot User"
+msgstr "User Bot"
+
+#. module: weightrack
+#: model:ir.model.fields,help:weightrack.field_wt_api_config__bot_user_id
+msgid "Reserved internal user for future WeighTrack device pull and push processing."
+msgstr "User internal yang disiapkan untuk proses pull dan push device WeighTrack nanti."
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_request_log
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_form
+msgid "API Request Log"
+msgstr "Log Request API"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_api_request_log
+#: model:ir.ui.menu,name:weightrack.menu_wt_api_request_log
+msgid "API Request Logs"
+msgstr "Log Request API"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__request_id
+msgid "Request ID"
+msgstr "ID Request"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__endpoint
+msgid "Endpoint"
+msgstr "Endpoint"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__method
+msgid "Method"
+msgstr "Method"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__http_status
+msgid "HTTP Status"
+msgstr "Status HTTP"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__error_code
+msgid "Error Code"
+msgstr "Kode Error"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__error_message
+msgid "Error Message"
+msgstr "Pesan Error"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__request_ip
+msgid "Request IP"
+msgstr "IP Request"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__user_agent
+msgid "User Agent"
+msgstr "User Agent"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__duration_ms
+msgid "Duration (ms)"
+msgstr "Durasi (ms)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__requested_at
+msgid "Requested At"
+msgstr "Waktu Request"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__finished_at
+msgid "Finished At"
+msgstr "Waktu Selesai"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__payload_hash
+msgid "Payload Hash"
+msgstr "Hash Payload"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__payload
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_form
+msgid "Payload"
+msgstr "Payload"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__response
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_form
+msgid "Response"
+msgstr "Response"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_api_request_log__status__success
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_search
+msgid "Success"
+msgstr "Sukses"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_api_request_log__status__failed
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_search
+msgid "Failed"
+msgstr "Gagal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_form
+msgid "Request"
+msgstr "Request"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_form
+msgid "Device Context"
+msgstr "Konteks Perangkat"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_form
+msgid "Client"
+msgstr "Client"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_request_log_form
+msgid "Error"
+msgstr "Error"
 
 # -----------------------------------------------------------------------------
 # Employee Role Mapping
@@ -134,6 +288,7 @@ msgstr "Mapping Role Karyawan"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_employee_role_mapping__role
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__role
 msgid "Role"
 msgstr "Role"
 
@@ -172,6 +327,7 @@ msgstr "Gudang"
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__operator_id
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__operator
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__operator
 msgid "Operator"
 msgstr "Operator"
 
@@ -193,6 +349,7 @@ msgstr "Divisi yang Diizinkan"
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_foreman
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__foreman
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__foreman
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_foreman_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__employee_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__foreman_id
@@ -241,6 +398,217 @@ msgstr "Tapper"
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__allowed_tapper_employee_ids
 msgid "Allowed Tapper Employees"
 msgstr "Karyawan Tapper yang Diizinkan"
+
+# -----------------------------------------------------------------------------
+# Device
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_device
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+#: model:ir.ui.menu,name:weightrack.menu_wt_device
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_request_log__device_record_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_device_state_reason_wizard__device_id
+msgid "Device"
+msgstr "Perangkat"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_device
+msgid "Devices"
+msgstr "Perangkat"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+msgid "Device Name"
+msgstr "Nama Perangkat"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__device_id
+msgid "Device ID"
+msgstr "ID Perangkat"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__employee_id
+msgid "Employee"
+msgstr "Karyawan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__allowed_employee_ids
+msgid "Allowed Employees"
+msgstr "Karyawan yang Diizinkan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+msgid "Assignment"
+msgstr "Penugasan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__status
+msgid "Status"
+msgstr "Status"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__status__inactive
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_search
+msgid "Inactive"
+msgstr "Tidak Aktif"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__status__active
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_search
+msgid "Active"
+msgstr "Aktif"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__status__blocked
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_search
+msgid "Blocked"
+msgstr "Diblokir"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__status__revoked
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_search
+msgid "Revoked"
+msgstr "Dicabut"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device_state_reason_wizard__action__block
+msgid "Block"
+msgstr "Blokir"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+msgid "Reactivate"
+msgstr "Aktifkan Ulang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device_state_reason_wizard__action__revoke
+msgid "Revoke"
+msgstr "Cabut"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_device_state_reason_wizard
+msgid "Device State Reason Wizard"
+msgstr "Wizard Alasan Status Perangkat"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device_state_reason_wizard__action
+msgid "Action"
+msgstr "Aksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device_state_reason_wizard__reason
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
+msgid "Reason"
+msgstr "Alasan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
+msgid "Confirm"
+msgstr "Konfirmasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
+msgid "Cancel"
+msgstr "Batal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+msgid "Revoking this device cannot be undone. Are you sure you want to revoke it?"
+msgstr "Pencabutan perangkat ini tidak dapat dibatalkan. Apakah Anda yakin ingin mencabutnya?"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__token
+msgid "Token"
+msgstr "Token"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__device_type
+msgid "Device Type"
+msgstr "Tipe Perangkat"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__device_type__mobile
+msgid "Mobile"
+msgstr "Mobile"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_device__device_type__desktop
+msgid "Desktop"
+msgstr "Desktop"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__app_version
+msgid "App Version"
+msgstr "Versi Aplikasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+msgid "Activity"
+msgstr "Aktivitas"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__actived_at
+msgid "Actived At"
+msgstr "Waktu Aktivasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__last_seen
+msgid "Last Seen"
+msgstr "Terakhir Terlihat"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__last_pull
+msgid "Last Pull"
+msgstr "Pull Terakhir"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__last_push
+msgid "Last Push"
+msgstr "Push Terakhir"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__blocked_at
+msgid "Blocked At"
+msgstr "Waktu Diblokir"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__blocked_by
+msgid "Blocked By"
+msgstr "Diblokir Oleh"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__blocked_reason
+msgid "Blocked Reason"
+msgstr "Alasan Diblokir"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__reactivated_at
+msgid "Reactivated At"
+msgstr "Waktu Diaktifkan Ulang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__reactivated_by
+msgid "Reactivated By"
+msgstr "Diaktifkan Ulang Oleh"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__revoked_at
+msgid "Revoked At"
+msgstr "Waktu Dicabut"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__revoked_by
+msgid "Revoked By"
+msgstr "Dicabut Oleh"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_device__revoked_reason
+msgid "Revoked Reason"
+msgstr "Alasan Dicabut"
 
 # -----------------------------------------------------------------------------
 # Validation Messages
@@ -314,3 +682,127 @@ msgstr "Mapping role %s belum dikonfigurasi untuk perusahaan ini."
 #: code:addons/weightrack/models/employee_role_mapping.py:0
 msgid "%s employee must use an allowed job position for this company."
 msgstr "Karyawan %s harus memakai jabatan yang diizinkan untuk perusahaan ini."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_device_device_id_uniq
+msgid "Device ID must be unique."
+msgstr "ID perangkat harus unik."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_device_token_uniq
+msgid "Device token must be unique."
+msgstr "Token perangkat harus unik."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Unable to generate a unique device token."
+msgstr "Tidak dapat membuat token perangkat yang unik."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Only device name can be changed after the device has been activated."
+msgstr "Hanya nama perangkat yang dapat diubah setelah perangkat pernah diaktifkan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Only active devices can be blocked."
+msgstr "Hanya perangkat aktif yang dapat diblokir."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Only blocked devices can be reactivated."
+msgstr "Hanya perangkat yang diblokir yang dapat diaktifkan ulang."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Only active or blocked devices can be revoked."
+msgstr "Hanya perangkat aktif atau diblokir yang dapat dicabut."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Reason is required."
+msgstr "Alasan wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Block Device"
+msgstr "Blokir Perangkat"
+
+#. module: weightrack
+#: code:addons/weightrack/models/device.py:0
+msgid "Revoke Device"
+msgstr "Cabut Perangkat"
+
+#. module: weightrack
+#: code:addons/weightrack/models/api_config.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_api_config_company_uniq
+msgid "API configuration must be unique per company."
+msgstr "Konfigurasi API harus unik per perusahaan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/api_config.py:0
+msgid "Bot user must be an internal user."
+msgstr "User bot harus berupa user internal."
+
+#. module: weightrack
+#: code:addons/weightrack/models/api_config.py:0
+msgid "Bot user must be active."
+msgstr "User bot harus aktif."
+
+#. module: weightrack
+#: code:addons/weightrack/models/api_config.py:0
+#: code:addons/weightrack/services/api_security_service.py:0
+msgid "Device API bot user has not been configured for this company."
+msgstr "User bot API device belum dikonfigurasi untuk perusahaan ini."
+
+#. module: weightrack
+#: code:addons/weightrack/models/api_config.py:0
+msgid "Only one API configuration is allowed per company."
+msgstr "Hanya boleh ada satu konfigurasi API untuk setiap perusahaan."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_security_service.py:0
+msgid "Device API bot user must be an active internal user."
+msgstr "User bot API device harus berupa user internal yang aktif."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "Token is required."
+msgstr "Token wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "Device ID is required."
+msgstr "ID perangkat wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "Device type is required."
+msgstr "Tipe perangkat wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "App version is required."
+msgstr "Versi aplikasi wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "Device type must be mobile or desktop."
+msgstr "Tipe perangkat harus mobile atau desktop."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "Invalid device token."
+msgstr "Token perangkat tidak valid."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "Device token is not available for activation."
+msgstr "Token perangkat tidak tersedia untuk aktivasi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_device_service.py:0
+msgid "Device ID is already used by another device."
+msgstr "ID perangkat sudah dipakai oleh perangkat lain."

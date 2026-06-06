@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_api_request_log_search" model="ir.ui.view">
+        <field name="name">wt.api.request.log.search</field>
+        <field name="model">wt.api.request.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="request_id"/>
+                <field name="endpoint"/>
+                <field name="device_id"/>
+                <field name="device_record_id"/>
+                <field name="company_id"/>
+                <field name="employee_id"/>
+                <field name="status"/>
+                <field name="error_code"/>
+                <filter name="status_success" string="Success" domain="[('status', '=', 'success')]"/>
+                <filter name="status_failed" string="Failed" domain="[('status', '=', 'failed')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_api_request_log_list" model="ir.ui.view">
+        <field name="name">wt.api.request.log.list</field>
+        <field name="model">wt.api.request.log</field>
+        <field name="arch" type="xml">
+            <list string="API Request Logs" create="false" edit="false" delete="false">
+                <field name="requested_at"/>
+                <field name="endpoint"/>
+                <field name="status"/>
+                <field name="http_status"/>
+                <field name="device_id"/>
+                <field name="device_record_id"/>
+                <field name="company_id"/>
+                <field name="employee_id"/>
+                <field name="role"/>
+                <field name="duration_ms"/>
+                <field name="error_code" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_api_request_log_form" model="ir.ui.view">
+        <field name="name">wt.api.request.log.form</field>
+        <field name="model">wt.api.request.log</field>
+        <field name="arch" type="xml">
+            <form string="API Request Log" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="request_id"/>
+                        <h1>
+                            <field name="request_id"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Request">
+                            <field name="endpoint"/>
+                            <field name="method"/>
+                            <field name="status"/>
+                            <field name="http_status"/>
+                            <field name="duration_ms"/>
+                            <field name="requested_at"/>
+                            <field name="finished_at"/>
+                        </group>
+                        <group string="Device Context">
+                            <field name="device_id"/>
+                            <field name="device_record_id"/>
+                            <field name="company_id"/>
+                            <field name="employee_id"/>
+                            <field name="role"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Client">
+                            <field name="request_ip"/>
+                            <field name="user_agent"/>
+                            <field name="payload_hash"/>
+                        </group>
+                        <group string="Error">
+                            <field name="error_code"/>
+                            <field name="error_message"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Payload">
+                            <field name="payload"/>
+                        </page>
+                        <page string="Response">
+                            <field name="response"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_api_request_log" model="ir.actions.act_window">
+        <field name="name">API Request Logs</field>
+        <field name="res_model">wt.api.request.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_api_request_log_search"/>
+    </record>
+</odoo>

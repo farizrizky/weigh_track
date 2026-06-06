@@ -5,10 +5,11 @@
 // - Only stored database fields are modeled here.
 // - Non-stored computed helper fields such as allowed_*_employee_ids are omitted.
 // - One2many fields are represented by the inverse Many2one relation.
+// - Abstract service models are not represented because they do not create tables.
 
 Project WeighTrack {
   database_type: "PostgreSQL"
-  Note: "Generated from Odoo custom module models."
+  Note: "Generated from Odoo custom module models. Current API scope is device activation only; pull and push are planned but not exposed."
 }
 
 Enum wt_employee_role {
@@ -18,11 +19,41 @@ Enum wt_employee_role {
   tapper
 }
 
+Enum wt_device_role {
+  clerk
+  foreman
+  operator
+}
+
+Enum wt_device_status {
+  inactive
+  active
+  blocked
+  revoked
+}
+
+Enum wt_device_type {
+  mobile
+  desktop
+}
+
+Enum wt_api_request_status {
+  success
+  failed
+}
+
+Enum wt_device_state_reason_action {
+  block
+  revoke
+}
+
 Table res_users {
   id integer [pk]
   name varchar
+  active boolean
+  share boolean
 
-  Note: "Odoo core table stub, included only for audit field references."
+  Note: "Odoo core table stub, included only for audit and bot user references. Bot user must be active internal user: active=true, share=false."
 }
 
 Table res_company {
@@ -35,10 +66,11 @@ Table res_company {
 Table hr_employee {
   id integer [pk]
   name varchar
+  barcode varchar
   company_id integer
   job_id integer
 
-  Note: "Odoo HR table stub."
+  Note: "Odoo HR table stub. barcode is used in device activation response."
 }
 
 Table hr_job {
@@ -95,6 +127,62 @@ Table wt_employee_role_mapping {
   }
 
   Note: "Odoo model: wt.employee.role.mapping. Role source for Operator, Clerk, Foreman, and Tapper employee validation."
+}
+
+Table wt_api_config {
+  id integer [pk, increment]
+  name varchar [note: "Computed and stored from company and bot user"]
+  company_id integer [not null]
+  bot_user_id integer [not null]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id [unique, name: "company_uniq"]
+    bot_user_id
+  }
+
+  Note: "Odoo model: wt.api.config. One configuration per company for the internal bot user used by device activation now and pull/push processing later."
+}
+
+Table wt_api_request_log {
+  id integer [pk, increment]
+  request_id varchar [not null]
+  endpoint varchar [not null]
+  method varchar [not null]
+  status wt_api_request_status [not null]
+  http_status integer
+  error_code varchar
+  error_message text
+  device_id varchar
+  device_record_id integer
+  company_id integer
+  employee_id integer
+  role wt_device_role
+  request_ip varchar
+  user_agent varchar
+  duration_ms integer
+  requested_at timestamp [not null]
+  finished_at timestamp
+  payload_hash varchar [note: "SHA-256 fingerprint of raw request body"]
+  payload text [note: "Complete sanitized request payload"]
+  response text [note: "Complete sanitized response body"]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    request_id
+    endpoint
+    status
+    error_code
+    device_id
+  }
+
+  Note: "Odoo model: wt.api.request.log. Audit trail for custom API calls. Current active scope is device activation. Sensitive keys such as token, password, secret, and api_key are sanitized."
 }
 
 Table wt_division {
@@ -200,10 +288,74 @@ Table wt_tapper {
   Note: "Odoo model: wt.tapper. Employee must be allowed by role tapper, and foreman must belong to the same division."
 }
 
+Table wt_device {
+  id integer [pk, increment]
+  device_id varchar [note: "Indexed in Odoo"]
+  name varchar
+  company_id integer [not null]
+  role wt_device_role [not null]
+  employee_id integer [not null]
+  status wt_device_status [not null, default: "inactive"]
+  token varchar [note: "Generated automatically on create and indexed in Odoo"]
+  actived_at timestamp
+  last_pull timestamp
+  last_push timestamp
+  last_seen timestamp
+  app_version varchar
+  device_type wt_device_type [note: "Required by activation API"]
+  blocked_at timestamp
+  blocked_by integer
+  blocked_reason text
+  reactivated_at timestamp
+  reactivated_by integer
+  revoked_at timestamp
+  revoked_by integer
+  revoked_reason text
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    device_id [unique, name: "device_id_uniq"]
+    company_id
+    role
+    employee_id
+    status
+    token [unique, name: "token_uniq"]
+  }
+
+  Note: "Odoo model: wt.device. Assignment/enrollment record. Activation is only through API. Employee domain is driven by selected company and role. After active/blocked/revoked, only name is manually editable without special context."
+}
+
+Table wt_device_state_reason_wizard {
+  id integer [pk, increment]
+  action wt_device_state_reason_action [not null]
+  device_id integer [not null]
+  reason text [not null]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    device_id
+  }
+
+  Note: "Odoo TransientModel: wt.device.state.reason.wizard. Used to require a reason before block or revoke. Records are temporary in Odoo."
+}
+
 Ref: wt_estate.company_id > res_company.id
 
 Ref: wt_employee_role_mapping.company_id > res_company.id
 Ref: wt_employee_role_mapping.job_id > hr_job.id [delete: restrict]
+
+Ref: wt_api_config.company_id > res_company.id
+Ref: wt_api_config.bot_user_id > res_users.id [delete: restrict]
+
+Ref: wt_api_request_log.device_record_id > wt_device.id
+Ref: wt_api_request_log.company_id > res_company.id
+Ref: wt_api_request_log.employee_id > hr_employee.id
 
 Ref: wt_division.estate_id > wt_estate.id [delete: restrict]
 Ref: wt_division.company_id > res_company.id
@@ -226,6 +378,14 @@ Ref: wt_tapper.division_id > wt_division.id [delete: restrict]
 Ref: wt_tapper.foreman_id > wt_foreman.id [delete: restrict]
 Ref: wt_tapper.company_id > res_company.id
 
+Ref: wt_device.company_id > res_company.id
+Ref: wt_device.employee_id > hr_employee.id [delete: restrict]
+Ref: wt_device.blocked_by > res_users.id [delete: restrict]
+Ref: wt_device.reactivated_by > res_users.id [delete: restrict]
+Ref: wt_device.revoked_by > res_users.id [delete: restrict]
+
+Ref: wt_device_state_reason_wizard.device_id > wt_device.id
+
 Ref: hr_employee.company_id > res_company.id
 Ref: hr_employee.job_id > hr_job.id
 Ref: hr_job.company_id > res_company.id
@@ -235,6 +395,10 @@ Ref: wt_estate.create_uid > res_users.id
 Ref: wt_estate.write_uid > res_users.id
 Ref: wt_employee_role_mapping.create_uid > res_users.id
 Ref: wt_employee_role_mapping.write_uid > res_users.id
+Ref: wt_api_config.create_uid > res_users.id
+Ref: wt_api_config.write_uid > res_users.id
+Ref: wt_api_request_log.create_uid > res_users.id
+Ref: wt_api_request_log.write_uid > res_users.id
 Ref: wt_division.create_uid > res_users.id
 Ref: wt_division.write_uid > res_users.id
 Ref: wt_weighing_location.create_uid > res_users.id
@@ -243,3 +407,7 @@ Ref: wt_foreman.create_uid > res_users.id
 Ref: wt_foreman.write_uid > res_users.id
 Ref: wt_tapper.create_uid > res_users.id
 Ref: wt_tapper.write_uid > res_users.id
+Ref: wt_device.create_uid > res_users.id
+Ref: wt_device.write_uid > res_users.id
+Ref: wt_device_state_reason_wizard.create_uid > res_users.id
+Ref: wt_device_state_reason_wizard.write_uid > res_users.id

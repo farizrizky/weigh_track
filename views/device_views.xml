@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_device_search" model="ir.ui.view">
+        <field name="name">wt.device.search</field>
+        <field name="model">wt.device</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="device_id"/>
+                <field name="name"/>
+                <field name="role"/>
+                <field name="employee_id"/>
+                <field name="status"/>
+                <field name="last_seen"/>
+                <filter name="status_inactive" string="Inactive" domain="[('status', '=', 'inactive')]"/>
+                <filter name="status_active" string="Active" domain="[('status', '=', 'active')]"/>
+                <filter name="status_blocked" string="Blocked" domain="[('status', '=', 'blocked')]"/>
+                <filter name="status_revoked" string="Revoked" domain="[('status', '=', 'revoked')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_device_list" model="ir.ui.view">
+        <field name="name">wt.device.list</field>
+        <field name="model">wt.device</field>
+        <field name="arch" type="xml">
+            <list string="Devices">
+                <field name="device_id"/>
+                <field name="name"/>
+                <field name="role"/>
+                <field name="employee_id"/>
+                <field name="status"/>
+                <field name="last_seen"/>
+                <field name="app_version" optional="show"/>
+                <field name="device_type" optional="show"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_device_form" model="ir.ui.view">
+        <field name="name">wt.device.form</field>
+        <field name="model">wt.device</field>
+        <field name="arch" type="xml">
+            <form string="Device">
+                <header>
+                    <button name="action_block" type="object" string="Block" invisible="status != 'active'"/>
+                    <button name="action_reactivate" type="object" string="Reactivate" class="oe_highlight" invisible="status != 'blocked'"/>
+                    <button name="action_revoke" type="object" string="Revoke" invisible="status not in ('active', 'blocked')" confirm="Revoking this device cannot be undone. Are you sure you want to revoke it?"/>
+                    <field name="status" widget="statusbar" statusbar_visible="inactive,active,blocked,revoked"/>
+                </header>
+                <sheet>
+                    <field name="allowed_employee_ids" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Device Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Assignment">
+                            <field name="company_id" readonly="status != 'inactive'"/>
+                            <field name="role" readonly="status != 'inactive'"/>
+                            <field name="employee_id" domain="[('id', 'in', allowed_employee_ids)]" readonly="status != 'inactive'"/>
+                            <field name="token" readonly="1"/>
+                        </group>
+                        <group string="Device">
+                            <field name="device_id" readonly="1"/>
+                            <field name="device_type" readonly="1"/>
+                            <field name="app_version" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Activity">
+                            <group>
+                                <group>
+                                    <field name="actived_at" readonly="1"/>
+                                    <field name="last_seen" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="last_pull" readonly="1"/>
+                                    <field name="last_push" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Block">
+                            <group>
+                                <group>
+                                    <field name="blocked_at" readonly="1"/>
+                                    <field name="blocked_by" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="blocked_reason" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Reactivate">
+                            <group>
+                                <group>
+                                    <field name="reactivated_at" readonly="1"/>
+                                    <field name="reactivated_by" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Revoke">
+                            <group>
+                                <group>
+                                    <field name="revoked_at" readonly="1"/>
+                                    <field name="revoked_by" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="revoked_reason" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_device" model="ir.actions.act_window">
+        <field name="name">Devices</field>
+        <field name="res_model">wt.device</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_device_search"/>
+    </record>
+</odoo>

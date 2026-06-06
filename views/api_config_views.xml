@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_api_config_search" model="ir.ui.view">
+        <field name="name">wt.api.config.search</field>
+        <field name="model">wt.api.config</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="company_id"/>
+                <field name="bot_user_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_api_config_list" model="ir.ui.view">
+        <field name="name">wt.api.config.list</field>
+        <field name="model">wt.api.config</field>
+        <field name="arch" type="xml">
+            <list string="API Configurations">
+                <field name="company_id"/>
+                <field name="bot_user_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_api_config_form" model="ir.ui.view">
+        <field name="name">wt.api.config.form</field>
+        <field name="model">wt.api.config</field>
+        <field name="arch" type="xml">
+            <form string="API Configuration">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="company_id"/>
+                        <h1>
+                            <field name="company_id" placeholder="Company"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="bot_user_id" required="1" domain="[('share', '=', False), ('active', '=', True)]"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_api_config" model="ir.actions.act_window">
+        <field name="name">API Configurations</field>
+        <field name="res_model">wt.api.config</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_api_config_search"/>
+    </record>
+</odoo>

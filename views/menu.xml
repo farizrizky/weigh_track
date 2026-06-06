@@ -7,6 +7,9 @@
             <menuitem id="menu_wt_weighing_location" name="Weighing Locations" parent="menu_wt_master_data" action="action_wt_weighing_location" sequence="40" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_foreman" name="Foremen" parent="menu_wt_master_data" action="action_wt_foreman" sequence="50" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_tapper" name="Tappers" parent="menu_wt_master_data" action="action_wt_tapper" sequence="60" groups="weightrack.group_admin"/>
-        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_device" name="Device" parent="menu_wt_root" action="action_wt_device" sequence="11" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="12" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_api_config" name="API Configuration" parent="menu_wt_configuration" action="action_wt_api_config" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_api_request_log" name="API Request Logs" parent="menu_wt_configuration" action="action_wt_api_request_log" sequence="15" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_employee_role_mapping" name="Employee Role Mappings" parent="menu_wt_configuration" action="action_wt_employee_role_mapping" sequence="20" groups="weightrack.group_admin"/>
 </odoo>
