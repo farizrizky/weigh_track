@@ -3,7 +3,7 @@ import json
 import time
 import uuid
 
-from odoo import fields
+from odoo import _, fields
 from odoo.http import Response, request
 
 
@@ -22,7 +22,7 @@ class ApiHandler:
             if not isinstance(payload, dict):
                 result = self._response_service().error(
                     "invalid_payload",
-                    "JSON payload must be an object.",
+                    _("JSON payload must be an object."),
                     400,
                 )
             else:
@@ -31,7 +31,7 @@ class ApiHandler:
         except json.JSONDecodeError:
             result = self._response_service().error(
                 "invalid_json",
-                "Invalid JSON payload.",
+                _("Invalid JSON payload."),
                 400,
             )
         except Exception as error:  # pragma: no cover - defensive API boundary

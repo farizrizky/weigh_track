@@ -51,6 +51,11 @@ msgid "Company"
 msgstr "Perusahaan"
 
 #. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_root
+msgid "WeighTrack"
+msgstr "WeighTrack"
+
+#. module: weightrack
 #: model:ir.ui.menu,name:weightrack.menu_wt_master_data
 msgid "Master Data"
 msgstr "Data Master"
@@ -128,6 +133,21 @@ msgstr "Karyawan Kerani yang Diizinkan"
 # -----------------------------------------------------------------------------
 # API Configuration
 # -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_device_service
+msgid "API Device Service"
+msgstr "Service API Device"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_security_service
+msgid "API Security Service"
+msgstr "Service Security API"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_response_service
+msgid "API Response Service"
+msgstr "Service Response API"
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_api_config
@@ -613,6 +633,21 @@ msgstr "Alasan Dicabut"
 # -----------------------------------------------------------------------------
 # Validation Messages
 # -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: code:addons/weightrack/controllers/api/api_handler.py:0
+msgid "JSON payload must be an object."
+msgstr "Payload JSON harus berupa object."
+
+#. module: weightrack
+#: code:addons/weightrack/controllers/api/api_handler.py:0
+msgid "Invalid JSON payload."
+msgstr "Payload JSON tidak valid."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_response_service.py:0
+msgid "Unknown API error."
+msgstr "Error API tidak diketahui."
 
 #. module: weightrack
 #: code:addons/weightrack/models/estate.py:0

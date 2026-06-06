@@ -1,4 +1,4 @@
-from odoo import models
+from odoo import _, models
 
 
 class ApiResponseService(models.AbstractModel):
@@ -34,6 +34,6 @@ class ApiResponseService(models.AbstractModel):
         else:
             response_body["error"] = result.get("error") or {
                 "code": "unknown_error",
-                "message": "Unknown API error.",
+                "message": _("Unknown API error."),
             }
         return response_body
