@@ -9,7 +9,7 @@
 
 Project WeighTrack {
   database_type: "PostgreSQL"
-  Note: "Generated from Odoo custom module models. Current API scope is device activation only; pull and push are planned but not exposed."
+  Note: "Generated from Odoo custom module models. Current API scope includes device activation and pull master. Push is planned but not exposed."
 }
 
 Enum wt_employee_role {
@@ -83,6 +83,7 @@ Table hr_job {
 
 Table stock_warehouse {
   id integer [pk]
+  code varchar
   name varchar
   company_id integer
 
@@ -134,6 +135,8 @@ Table wt_api_config {
   name varchar [note: "Computed and stored from company and bot user"]
   company_id integer [not null]
   bot_user_id integer [not null]
+  pull_enabled boolean [default: true, note: "Controls whether device pull endpoints are open for this company"]
+  push_enabled boolean [default: true, note: "Controls whether device push endpoints are open for this company"]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -144,7 +147,7 @@ Table wt_api_config {
     bot_user_id
   }
 
-  Note: "Odoo model: wt.api.config. One configuration per company for the internal bot user used by device activation now and pull/push processing later."
+  Note: "Odoo model: wt.api.config. One configuration per company for the internal bot user used by device activation and pull master now, plus push later. pull_enabled and push_enabled can close each data flow independently."
 }
 
 Table wt_api_request_log {
@@ -182,7 +185,7 @@ Table wt_api_request_log {
     device_id
   }
 
-  Note: "Odoo model: wt.api.request.log. Audit trail for custom API calls. Current active scope is device activation. Sensitive keys such as token, password, secret, and api_key are sanitized."
+  Note: "Odoo model: wt.api.request.log. Audit trail for custom API calls. Current active scope is device activation and pull master. Sensitive keys such as token, password, secret, and api_key are sanitized."
 }
 
 Table wt_division {
@@ -325,7 +328,7 @@ Table wt_device {
     token [unique, name: "token_uniq"]
   }
 
-  Note: "Odoo model: wt.device. Assignment/enrollment record. Activation is only through API. Employee domain is driven by selected company and role. After active/blocked/revoked, only name is manually editable without special context."
+  Note: "Odoo model: wt.device. Assignment/enrollment record. Activation and pull master are exposed through custom API. last_pull and last_seen are updated when pull master succeeds. Employee domain is driven by selected company and role. After active/blocked/revoked, only name is manually editable without special context."
 }
 
 Table wt_device_state_reason_wizard {

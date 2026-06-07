@@ -49,7 +49,8 @@ WeighTrack
   - `Foreman` / `Foremen` diterjemahkan menjadi `Mandor`.
   - `Clerk` diterjemahkan menjadi `Kerani`.
 - Device activation hanya dilakukan melalui custom API, bukan tombol manual di form device.
-- Endpoint pull dan push belum aktif.
+- Endpoint pull master sudah aktif untuk mengambil data master offline.
+- Endpoint push belum aktif.
 
 ## Estate
 
@@ -411,7 +412,7 @@ Field:
 | `status` | `Selection` | Ya | Ya | State device: `inactive`, `active`, `blocked`, `revoked`. Ditampilkan sebagai statusbar. |
 | `token` | `Char` | Otomatis | Tidak | Token enrollment. Dibuat otomatis saat create jika belum diisi. Unik. |
 | `actived_at` | `Datetime` | Tidak | Ya | Waktu aktivasi pertama. Nama field saat ini masih `actived_at`. |
-| `last_pull` | `Datetime` | Tidak | Ya | Waktu pull terakhir. Belum digunakan karena pull API belum aktif. |
+| `last_pull` | `Datetime` | Tidak | Ya | Waktu pull terakhir. Diperbarui saat pull master berhasil. |
 | `last_push` | `Datetime` | Tidak | Ya | Waktu push terakhir. Belum digunakan karena push API belum aktif. |
 | `last_seen` | `Datetime` | Tidak | Ya | Waktu terakhir device terlihat oleh API. Terisi saat activation. |
 | `app_version` | `Char` | Tidak | Ya | Versi aplikasi lokal. Wajib dikirim saat activation. |
@@ -505,8 +506,8 @@ Alur assignment dan activation:
 
 Catatan:
 
-- `name` tetap menjadi otoritas Odoo. Perubahan nama device di Odoo dapat dikirim ke aplikasi lokal saat proses pull nanti.
-- Kombinasi `device_id` dan `token` akan menjadi dasar authentication pull/push nanti, dengan syarat device masih berstatus `active`.
+- `name` tetap menjadi otoritas Odoo. Perubahan nama device di Odoo dikirim ke aplikasi lokal saat pull master.
+- Kombinasi `device_id` dan `token` menjadi dasar authentication pull master dan akan dipakai juga untuk push, dengan syarat device masih berstatus `active`.
 
 ## Device State Reason Wizard
 
@@ -556,7 +557,7 @@ wt.api.config
 
 Deskripsi:
 
-API Configuration menentukan user internal yang akan menjadi bot user untuk proses API WeighTrack. Saat ini dipakai oleh device activation agar perubahan device tercatat atas nama bot user, bukan Public User.
+API Configuration menentukan user internal yang akan menjadi bot user untuk proses API WeighTrack. Saat ini dipakai oleh device activation dan pull master agar perubahan metadata device tercatat atas nama bot user, bukan Public User. Config ini juga menjadi tempat membuka atau menutup endpoint pull dan push per company.
 
 Field:
 
@@ -565,6 +566,8 @@ Field:
 | `name` | `Char` | Otomatis | Tidak | Computed name dari company dan bot user. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat konfigurasi berlaku. |
 | `bot_user_id` | `Many2one(res.users)` | Ya | Ya | User internal aktif yang dipakai untuk proses API. |
+| `pull_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint pull data untuk company ini ditutup. Default aktif. |
+| `push_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint push data untuk company ini ditutup. Default aktif. Endpoint push belum diekspos. |
 
 Urutan data:
 
@@ -589,6 +592,8 @@ Validasi:
 - Satu company hanya boleh memiliki satu API Configuration.
 - Bot user wajib user internal.
 - Bot user wajib aktif.
+- Pull master hanya berjalan jika `pull_enabled` aktif.
+- Push nanti hanya berjalan jika `push_enabled` aktif.
 
 Pesan validasi:
 
@@ -786,20 +791,155 @@ services/api_security_service.py
 Tanggung jawab:
 
 - Menjadi pusat helper security API.
+- Mengambil API Configuration berdasarkan company.
+- Mengautentikasi device aktif memakai kombinasi `device_id` dan `token`.
+- Membatasi role device untuk endpoint tertentu jika diperlukan.
+- Mengecek apakah pull data dibuka melalui `wt.api.config.pull_enabled`.
+- Mengecek apakah push data dibuka melalui `wt.api.config.push_enabled`.
 - Mengambil bot user berdasarkan company.
 - Mengembalikan error standar jika config belum ada atau bot user tidak valid.
 
 Method utama:
 
 ```text
+get_api_config(company, device=False)
+authenticate_device(payload, allowed_roles=False)
+check_pull_enabled(company, device=False)
+check_push_enabled(company, device=False)
 get_bot_user(company, device=False)
 ```
 
 Aturan:
 
 - Config dicari pada `wt.api.config` berdasarkan `company_id`.
+- `authenticate_device` membutuhkan `token` dan `device_id`.
+- Device harus berstatus `active`.
 - Bot user harus aktif.
 - Bot user tidak boleh portal/public/share user.
+- Pull ditolak jika `pull_enabled = False`.
+- Push ditolak jika `push_enabled = False`.
+
+Error codes:
+
+```text
+missing_token
+missing_device_id
+invalid_device_credentials
+device_not_active
+role_not_allowed
+pull_closed
+push_closed
+api_config_missing
+api_config_invalid
+```
+
+### API Pull Master Service
+
+Model teknis:
+
+```text
+wt.api.pull.master.service
+```
+
+File:
+
+```text
+services/api_pull_master_service.py
+```
+
+Tanggung jawab:
+
+- Memproses pull master untuk aplikasi offline penimbangan.
+- Mengautentikasi device melalui `wt.api.security.service`.
+- Memastikan role device termasuk `operator`, `clerk`, atau `foreman`.
+- Memastikan pull dibuka melalui `wt.api.config.pull_enabled`.
+- Mengambil bot user dari `wt.api.security.service`.
+- Menghitung scope data berdasarkan company, employee, dan role device.
+- Memperbarui `last_pull`, `last_seen`, dan `app_version` jika dikirim.
+- Menyiapkan payload response berisi `meta`, `scope`, dan `masters`.
+
+Method utama:
+
+```text
+pull_master(payload)
+```
+
+Payload wajib:
+
+```text
+token
+device_id
+```
+
+Payload opsional:
+
+```text
+app_version
+```
+
+Scope role:
+
+| Role | Scope |
+| --- | --- |
+| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, dan weighing location terkait division. |
+| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, clerk division, foreman, tapper, estate, dan warehouse. |
+
+Response data yang disiapkan service:
+
+```text
+meta
+scope
+masters
+```
+
+Meta payload:
+
+```text
+server_time
+role
+company_id
+employee_id
+device
+```
+
+Scope payload:
+
+```text
+role
+company_id
+employee_id
+estate_ids
+division_ids
+weighing_location_ids
+clerk_employee_ids
+foreman_ids
+operator_employee_ids
+tapper_ids
+```
+
+Master payload:
+
+```text
+company
+employee
+estates
+divisions
+weighing_locations
+clerks
+foremen
+operators
+tappers
+```
+
+Catatan payload:
+
+- `pull_type` tidak dipakai.
+- Payload device berada di `data.meta.device`.
+- Payload company dan employee berada di `data.masters.company` dan `data.masters.employee`.
+- Setiap data master minimal membawa `id` dan `name`.
+- Master yang memiliki `code`, seperti Estate, Division, dan Weighing Location, ikut membawa `code`.
+- Employee barcode dibawa untuk employee device, clerks, foremen, operators, dan tappers.
 
 ### API Response Service
 
@@ -893,19 +1033,33 @@ Endpoint aktif:
 
 ```text
 POST /weightrack/api/v1/device/activate
+POST /weightrack/api/v1/pull/master
 ```
 
 File:
 
 ```text
 controllers/api/v1/device_api.py
+controllers/api/v1/pull_api.py
 ```
 
-Route:
+Route activation:
 
 ```python
 @http.route(
     "/weightrack/api/v1/device/activate",
+    type="http",
+    auth="public",
+    methods=["POST"],
+    csrf=False,
+)
+```
+
+Route pull master:
+
+```python
+@http.route(
+    "/weightrack/api/v1/pull/master",
     type="http",
     auth="public",
     methods=["POST"],
@@ -973,6 +1127,7 @@ Services:
 
 ```text
 services/api_device_service.py
+services/api_pull_master_service.py
 services/api_security_service.py
 services/api_response_service.py
 ```
@@ -982,6 +1137,7 @@ Controllers:
 ```text
 controllers/api/api_handler.py
 controllers/api/v1/device_api.py
+controllers/api/v1/pull_api.py
 ```
 
 Views:

@@ -29,6 +29,18 @@ class ApiConfig(models.Model):
         tracking=True,
         help="Reserved internal user for future WeighTrack device pull and push processing.",
     )
+    pull_enabled = fields.Boolean(
+        string="Enable Pull Data",
+        default=True,
+        tracking=True,
+        help="Disable this to temporarily close device pull data endpoints for this company.",
+    )
+    push_enabled = fields.Boolean(
+        string="Enable Push Data",
+        default=True,
+        tracking=True,
+        help="Disable this to temporarily close device push data endpoints for this company.",
+    )
 
     _sql_constraints = [
         (

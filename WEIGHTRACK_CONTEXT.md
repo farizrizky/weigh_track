@@ -42,18 +42,19 @@ Scope aktif saat ini:
 - API configuration untuk bot user.
 - API request audit log.
 - Custom API device activation.
+- API pull master untuk data offline penimbangan.
 
 Scope yang belum aktif:
 
-- API pull data.
 - API push data.
 - Sinkronisasi data timbang operasional.
-- Authentication pull/push menggunakan kombinasi `device_id` dan `token`.
+- Push data timbang operasional.
 
-Custom API yang aktif saat ini hanya:
+Custom API yang aktif saat ini:
 
 ```text
 POST /weightrack/api/v1/device/activate
+POST /weightrack/api/v1/pull/master
 ```
 
 ## Important Conventions
@@ -109,6 +110,7 @@ Transient model:
 Abstract service model:
 
 - `wt.api.device.service`
+- `wt.api.pull.master.service`
 - `wt.api.security.service`
 - `wt.api.response.service`
 
@@ -331,8 +333,10 @@ Aturan:
 - `bot_user_id` wajib internal user.
 - `bot_user_id` wajib active.
 - Bot user dipakai agar perubahan melalui API tidak tercatat sebagai Public User.
+- `pull_enabled` mengatur apakah endpoint pull data boleh dipakai untuk company tersebut.
+- `push_enabled` mengatur apakah endpoint push data boleh dipakai untuk company tersebut.
 
-Saat ini config dipakai oleh activation device. Nanti pull/push juga akan memakai config ini.
+Saat ini config dipakai oleh activation device dan pull master. Push belum diekspos, tetapi helper security untuk mengecek `push_enabled` sudah disiapkan.
 
 ## API Request Log
 
@@ -387,6 +391,7 @@ Controller:
 
 ```text
 controllers/api/v1/device_api.py
+controllers/api/v1/pull_api.py
 ```
 
 Handler:
@@ -399,6 +404,7 @@ Services:
 
 ```text
 services/api_device_service.py
+services/api_pull_master_service.py
 services/api_security_service.py
 services/api_response_service.py
 ```
@@ -424,8 +430,9 @@ Service rule:
 
 - Service menyiapkan business payload masing-masing.
 - `api_device_service` menyiapkan payload activation.
+- `api_pull_master_service` menyiapkan payload pull master offline.
 - `api_response_service` hanya membungkus success/error/body.
-- `api_security_service` memusatkan helper security API seperti lookup bot user.
+- `api_security_service` memusatkan helper security API seperti autentikasi device, lookup config, lookup bot user, dan pengecekan pull/push enabled.
 
 ## API Response Convention
 
@@ -458,22 +465,56 @@ Prinsip:
 - Response service hanya membungkus format standar.
 - Response success selalu memakai attribute `data`.
 
-## Future Pull And Push
+## Pull Master
 
-Pull dan push belum diekspos.
+Pull master sudah diekspos melalui:
 
-Konsep yang sudah disepakati:
+```text
+POST /weightrack/api/v1/pull/master
+```
 
-- Setiap request pull/push membawa `device_id` dan `token`.
-- Odoo memvalidasi kombinasi `device_id` dan `token`.
+Prinsip pull master:
+
+- Request membawa `device_id` dan `token`.
+- Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`.
 - Device harus berstatus `active`.
+- Role device yang boleh pull adalah `operator`, `clerk`, dan `foreman`.
+- `wt.api.config.pull_enabled` harus aktif untuk company device.
 - Setelah valid, Odoo memakai company, employee, dan role dari assignment device.
-- Proses baca/tulis data bisnis diarahkan ke bot user dari `wt.api.config`.
+- Proses update metadata device diarahkan ke bot user dari `wt.api.config`.
 - Request tetap masuk sebagai `auth="public"` pada endpoint custom API.
-- Eksekusi bisnis di backend diarahkan ke internal bot user agar auditable.
-- Pull akan mengirim data yang dibutuhkan aplikasi lokal, termasuk perubahan `name` device dari Odoo.
+- Semua request pull tetap masuk ke `wt.api.request.log`.
+
+Payload response pull master:
+
+- Root data berisi `meta`, `scope`, dan `masters`.
+- `meta` berisi `server_time`, role, company, employee, dan payload device.
+- `scope` berisi batas kerja device dalam bentuk daftar ID.
+- `masters` berisi company, employee, estate, division, weighing location, clerk, foreman, operator, dan tapper.
+- `pull_type` tidak dipakai.
+- Company dan employee berada di `masters`, bukan root data.
+- Device berada di `meta.device`.
+
+Scope role pull:
+
+- `foreman`: foreman record milik employee device, division foreman, tapper di bawah foreman tersebut, estate, dan weighing location terkait division.
+- `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division.
+- `operator`: weighing location yang dipegang operator, allowed division dari location, clerk division, foreman, tapper, estate, dan warehouse.
+
+## Future Push
+
+Push belum diekspos.
+
+Konsep yang sudah disiapkan:
+
+- Request push membawa `device_id` dan `token`.
+- Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`.
+- Device harus berstatus `active`.
+- `wt.api.config.push_enabled` harus aktif untuk company device.
+- Setelah valid, Odoo memakai company, employee, dan role dari assignment device.
+- Eksekusi tulis data bisnis diarahkan ke internal bot user agar auditable.
 - Push akan dibuat hati-hati agar tidak melanggar user license; aktivitas database diarahkan ke bot user internal yang memang dikonfigurasi.
-- Semua request pull/push nanti tetap masuk ke `wt.api.request.log`.
+- Semua request push nanti tetap masuk ke `wt.api.request.log`.
 
 ## Localization Notes
 

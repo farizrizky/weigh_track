@@ -7,6 +7,8 @@
             <search>
                 <field name="company_id"/>
                 <field name="bot_user_id"/>
+                <field name="pull_enabled"/>
+                <field name="push_enabled"/>
             </search>
         </field>
     </record>
@@ -18,6 +20,8 @@
             <list string="API Configurations">
                 <field name="company_id"/>
                 <field name="bot_user_id"/>
+                <field name="pull_enabled"/>
+                <field name="push_enabled"/>
             </list>
         </field>
     </record>
@@ -37,6 +41,8 @@
                     <group>
                         <group>
                             <field name="bot_user_id" required="1" domain="[('share', '=', False), ('active', '=', True)]"/>
+                            <field name="pull_enabled"/>
+                            <field name="push_enabled"/>
                         </group>
                     </group>
                 </sheet>

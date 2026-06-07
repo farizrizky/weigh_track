@@ -150,6 +150,11 @@ msgid "API Response Service"
 msgstr "Service Response API"
 
 #. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_pull_master_service
+msgid "API Pull Master Service"
+msgstr "Service Pull Master API"
+
+#. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_api_config
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_config_form
 #: model:ir.ui.menu,name:weightrack.menu_wt_api_config
@@ -171,6 +176,26 @@ msgstr "User Bot"
 #: model:ir.model.fields,help:weightrack.field_wt_api_config__bot_user_id
 msgid "Reserved internal user for future WeighTrack device pull and push processing."
 msgstr "User internal yang disiapkan untuk proses pull dan push device WeighTrack nanti."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__pull_enabled
+msgid "Enable Pull Data"
+msgstr "Aktifkan Pull Data"
+
+#. module: weightrack
+#: model:ir.model.fields,help:weightrack.field_wt_api_config__pull_enabled
+msgid "Disable this to temporarily close device pull data endpoints for this company."
+msgstr "Nonaktifkan ini untuk menutup sementara endpoint pull data device untuk perusahaan ini."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__push_enabled
+msgid "Enable Push Data"
+msgstr "Aktifkan Push Data"
+
+#. module: weightrack
+#: model:ir.model.fields,help:weightrack.field_wt_api_config__push_enabled
+msgid "Disable this to temporarily close device push data endpoints for this company."
+msgstr "Nonaktifkan ini untuk menutup sementara endpoint push data device untuk perusahaan ini."
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_api_request_log
@@ -804,11 +829,13 @@ msgstr "User bot API device harus berupa user internal yang aktif."
 
 #. module: weightrack
 #: code:addons/weightrack/services/api_device_service.py:0
+#: code:addons/weightrack/services/api_security_service.py:0
 msgid "Token is required."
 msgstr "Token wajib diisi."
 
 #. module: weightrack
 #: code:addons/weightrack/services/api_device_service.py:0
+#: code:addons/weightrack/services/api_security_service.py:0
 msgid "Device ID is required."
 msgstr "ID perangkat wajib diisi."
 
@@ -841,3 +868,28 @@ msgstr "Token perangkat tidak tersedia untuk aktivasi."
 #: code:addons/weightrack/services/api_device_service.py:0
 msgid "Device ID is already used by another device."
 msgstr "ID perangkat sudah dipakai oleh perangkat lain."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_security_service.py:0
+msgid "Invalid device credentials."
+msgstr "Kredensial perangkat tidak valid."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_security_service.py:0
+msgid "Device must be active."
+msgstr "Perangkat harus aktif."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_security_service.py:0
+msgid "Device role is not allowed for this endpoint."
+msgstr "Role perangkat tidak diizinkan untuk endpoint ini."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_security_service.py:0
+msgid "Pull data is closed for this company."
+msgstr "Pull data ditutup untuk perusahaan ini."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_security_service.py:0
+msgid "Push data is closed for this company."
+msgstr "Push data ditutup untuk perusahaan ini."
