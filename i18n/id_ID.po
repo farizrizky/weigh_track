@@ -34,19 +34,19 @@ msgstr "Kode"
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__name
-#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_api__name
 msgid "Name"
 msgstr "Nama"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_estate__company_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role_mapping__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_division__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__company_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_api__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -120,7 +120,7 @@ msgstr "Nama Divisi"
 
 #. module: weightrack
 #: code:addons/weightrack/constants/roles.py:0
-#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__clerk
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role__role__clerk
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__clerk
 #: model:ir.model.fields,field_description:weightrack.field_wt_division__clerk_id
 msgid "Clerk"
@@ -132,7 +132,7 @@ msgid "Allowed Clerk Employees"
 msgstr "Karyawan Kerani yang Diizinkan"
 
 # -----------------------------------------------------------------------------
-# API Configuration
+# API
 # -----------------------------------------------------------------------------
 
 #. module: weightrack
@@ -156,45 +156,45 @@ msgid "API Pull Master Service"
 msgstr "Service Pull Master API"
 
 #. module: weightrack
-#: model:ir.model,name:weightrack.model_wt_api_config
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_config_form
-#: model:ir.ui.menu,name:weightrack.menu_wt_api_config
-msgid "API Configuration"
-msgstr "Konfigurasi API"
+#: model:ir.model,name:weightrack.model_wt_api
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_form
+#: model:ir.ui.menu,name:weightrack.menu_wt_api
+msgid "API"
+msgstr "API"
 
 #. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_config_list
-#: model:ir.actions.act_window,name:weightrack.action_wt_api_config
-msgid "API Configurations"
-msgstr "Konfigurasi API"
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_api
+msgid "APIs"
+msgstr "API"
 
 #. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__bot_user_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_api__bot_user_id
 msgid "Bot User"
 msgstr "User Bot"
 
 #. module: weightrack
-#: model:ir.model.fields,help:weightrack.field_wt_api_config__bot_user_id
+#: model:ir.model.fields,help:weightrack.field_wt_api__bot_user_id
 msgid "Reserved internal user for future WeighTrack device pull and push processing."
 msgstr "User internal yang disiapkan untuk proses pull dan push device WeighTrack nanti."
 
 #. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__pull_enabled
+#: model:ir.model.fields,field_description:weightrack.field_wt_api__pull_enabled
 msgid "Enable Pull Data"
 msgstr "Aktifkan Pull Data"
 
 #. module: weightrack
-#: model:ir.model.fields,help:weightrack.field_wt_api_config__pull_enabled
+#: model:ir.model.fields,help:weightrack.field_wt_api__pull_enabled
 msgid "Disable this to temporarily close device pull data endpoints for this company."
 msgstr "Nonaktifkan ini untuk menutup sementara endpoint pull data device untuk perusahaan ini."
 
 #. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_api_config__push_enabled
+#: model:ir.model.fields,field_description:weightrack.field_wt_api__push_enabled
 msgid "Enable Push Data"
 msgstr "Aktifkan Push Data"
 
 #. module: weightrack
-#: model:ir.model.fields,help:weightrack.field_wt_api_config__push_enabled
+#: model:ir.model.fields,help:weightrack.field_wt_api__push_enabled
 msgid "Disable this to temporarily close device push data endpoints for this company."
 msgstr "Nonaktifkan ini untuk menutup sementara endpoint push data device untuk perusahaan ini."
 
@@ -316,30 +316,30 @@ msgid "Error"
 msgstr "Error"
 
 # -----------------------------------------------------------------------------
-# Employee Role Mapping
+# Employee Role
 # -----------------------------------------------------------------------------
 
 #. module: weightrack
-#: model:ir.model,name:weightrack.model_wt_employee_role_mapping
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_employee_role_mapping_form
-msgid "Employee Role Mapping"
-msgstr "Mapping Role Karyawan"
+#: model:ir.model,name:weightrack.model_wt_employee_role
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_employee_role_form
+msgid "Employee Role"
+msgstr "Role Karyawan"
 
 #. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_employee_role_mapping_list
-#: model:ir.actions.act_window,name:weightrack.action_wt_employee_role_mapping
-#: model:ir.ui.menu,name:weightrack.menu_wt_employee_role_mapping
-msgid "Employee Role Mappings"
-msgstr "Mapping Role Karyawan"
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_employee_role_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_employee_role
+#: model:ir.ui.menu,name:weightrack.menu_wt_employee_role
+msgid "Employee Roles"
+msgstr "Role Karyawan"
 
 #. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role_mapping__role
+#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role__role
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__role
 msgid "Role"
 msgstr "Role"
 
 #. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role_mapping__job_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_employee_role__job_id
 msgid "Job Position"
 msgstr "Jabatan"
 
@@ -377,7 +377,7 @@ msgstr "Lump"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__operator_id
-#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__operator
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role__role__operator
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__operator
 #: code:addons/weightrack/constants/roles.py:0
 msgid "Operator"
@@ -400,7 +400,7 @@ msgstr "Divisi yang Diizinkan"
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_foreman
-#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__foreman
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role__role__foreman
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__foreman
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_foreman_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__employee_id
@@ -432,7 +432,7 @@ msgstr "Tanpa Mandor"
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_tapper
-#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__tapper
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role__role__tapper
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__employee_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_form
 #: code:addons/weightrack/constants/roles.py:0
@@ -695,19 +695,19 @@ msgid "Division code must be unique per estate."
 msgstr "Kode divisi harus unik per estate."
 
 #. module: weightrack
-#: code:addons/weightrack/models/employee_role_mapping.py:0
+#: code:addons/weightrack/models/employee_role.py:0
 msgid "Job position must be selected."
 msgstr "Jabatan harus dipilih."
 
 #. module: weightrack
-#: code:addons/weightrack/models/employee_role_mapping.py:0
-msgid "Job position must belong to the same company as the mapping."
-msgstr "Jabatan harus berada di perusahaan yang sama dengan mapping."
+#: code:addons/weightrack/models/employee_role.py:0
+msgid "Job position must belong to the same company as the employee role."
+msgstr "Jabatan harus berada di perusahaan yang sama dengan role karyawan."
 
 #. module: weightrack
-#: model:ir.model.constraint,message:weightrack.constraint_wt_employee_role_mapping_company_role_job_uniq
-msgid "Employee role mapping must be unique per company, role, and job position."
-msgstr "Mapping role karyawan harus unik per perusahaan, role, dan jabatan."
+#: model:ir.model.constraint,message:weightrack.constraint_wt_employee_role_company_role_job_uniq
+msgid "Employee role must be unique per company, role, and job position."
+msgstr "Role karyawan harus unik per perusahaan, role, dan jabatan."
 
 #. module: weightrack
 #: code:addons/weightrack/models/weighing_location.py:0
@@ -738,17 +738,17 @@ msgid "Tapper and foreman must belong to the same division."
 msgstr "Tapper dan mandor harus berada di divisi yang sama."
 
 #. module: weightrack
-#: code:addons/weightrack/models/employee_role_mapping.py:0
+#: code:addons/weightrack/models/employee_role.py:0
 msgid "%s employee must belong to the same company."
 msgstr "Karyawan %s harus berada di perusahaan yang sama."
 
 #. module: weightrack
-#: code:addons/weightrack/models/employee_role_mapping.py:0
-msgid "%s role mapping has not been configured for this company."
-msgstr "Mapping role %s belum dikonfigurasi untuk perusahaan ini."
+#: code:addons/weightrack/models/employee_role.py:0
+msgid "%s employee role has not been configured for this company."
+msgstr "Role karyawan %s belum dikonfigurasi untuk perusahaan ini."
 
 #. module: weightrack
-#: code:addons/weightrack/models/employee_role_mapping.py:0
+#: code:addons/weightrack/models/employee_role.py:0
 msgid "%s employee must use an allowed job position for this company."
 msgstr "Karyawan %s harus memakai jabatan yang diizinkan untuk perusahaan ini."
 
@@ -805,31 +805,31 @@ msgid "Revoke Device"
 msgstr "Cabut Perangkat"
 
 #. module: weightrack
-#: code:addons/weightrack/models/api_config.py:0
-#: model:ir.model.constraint,message:weightrack.constraint_wt_api_config_company_uniq
-msgid "API configuration must be unique per company."
-msgstr "Konfigurasi API harus unik per perusahaan."
+#: code:addons/weightrack/models/api.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_api_company_uniq
+msgid "API must be unique per company."
+msgstr "API harus unik per perusahaan."
 
 #. module: weightrack
-#: code:addons/weightrack/models/api_config.py:0
+#: code:addons/weightrack/models/api.py:0
 msgid "Bot user must be an internal user."
 msgstr "User bot harus berupa user internal."
 
 #. module: weightrack
-#: code:addons/weightrack/models/api_config.py:0
+#: code:addons/weightrack/models/api.py:0
 msgid "Bot user must be active."
 msgstr "User bot harus aktif."
 
 #. module: weightrack
-#: code:addons/weightrack/models/api_config.py:0
+#: code:addons/weightrack/models/api.py:0
 #: code:addons/weightrack/services/api_security_service.py:0
 msgid "Device API bot user has not been configured for this company."
 msgstr "User bot API device belum dikonfigurasi untuk perusahaan ini."
 
 #. module: weightrack
-#: code:addons/weightrack/models/api_config.py:0
-msgid "Only one API configuration is allowed per company."
-msgstr "Hanya boleh ada satu konfigurasi API untuk setiap perusahaan."
+#: code:addons/weightrack/models/api.py:0
+msgid "Only one API is allowed per company."
+msgstr "Hanya boleh ada satu API untuk setiap perusahaan."
 
 #. module: weightrack
 #: code:addons/weightrack/services/api_security_service.py:0

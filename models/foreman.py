@@ -75,7 +75,7 @@ class Foreman(models.Model):
     @api.constrains("employee_id", "division_id")
     def _check_employee_company(self):
         for foreman in self:
-            self.env["wt.employee.role.mapping"].check_employee_allowed(
+            self.env["wt.employee.role"].check_employee_allowed(
                 foreman.employee_id,
                 foreman.company_id,
                 Role.FOREMAN,
@@ -87,14 +87,14 @@ class Foreman(models.Model):
         return {
             "domain": {
                 "employee_id": self.env[
-                    "wt.employee.role.mapping"
+                    "wt.employee.role"
                 ].get_employee_domain(self.company_id, Role.FOREMAN)
             }
         }
 
     @api.depends("company_id")
     def _compute_allowed_foreman_employee_ids(self):
-        mapping_model = self.env["wt.employee.role.mapping"]
+        mapping_model = self.env["wt.employee.role"]
         for foreman in self:
             foreman.allowed_foreman_employee_ids = mapping_model.get_allowed_employees(
                 foreman.company_id,

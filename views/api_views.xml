@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_wt_api_config_search" model="ir.ui.view">
-        <field name="name">wt.api.config.search</field>
-        <field name="model">wt.api.config</field>
+    <record id="view_wt_api_search" model="ir.ui.view">
+        <field name="name">wt.api.search</field>
+        <field name="model">wt.api</field>
         <field name="arch" type="xml">
             <search>
                 <field name="company_id"/>
@@ -13,11 +13,11 @@
         </field>
     </record>
 
-    <record id="view_wt_api_config_list" model="ir.ui.view">
-        <field name="name">wt.api.config.list</field>
-        <field name="model">wt.api.config</field>
+    <record id="view_wt_api_list" model="ir.ui.view">
+        <field name="name">wt.api.list</field>
+        <field name="model">wt.api</field>
         <field name="arch" type="xml">
-            <list string="API Configurations">
+            <list string="APIs">
                 <field name="company_id"/>
                 <field name="bot_user_id"/>
                 <field name="pull_enabled"/>
@@ -26,11 +26,11 @@
         </field>
     </record>
 
-    <record id="view_wt_api_config_form" model="ir.ui.view">
-        <field name="name">wt.api.config.form</field>
-        <field name="model">wt.api.config</field>
+    <record id="view_wt_api_form" model="ir.ui.view">
+        <field name="name">wt.api.form</field>
+        <field name="model">wt.api</field>
         <field name="arch" type="xml">
-            <form string="API Configuration">
+            <form string="API">
                 <sheet>
                     <div class="oe_title">
                         <label for="company_id"/>
@@ -51,10 +51,10 @@
         </field>
     </record>
 
-    <record id="action_wt_api_config" model="ir.actions.act_window">
-        <field name="name">API Configurations</field>
-        <field name="res_model">wt.api.config</field>
+    <record id="action_wt_api" model="ir.actions.act_window">
+        <field name="name">APIs</field>
+        <field name="res_model">wt.api</field>
         <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="view_wt_api_config_search"/>
+        <field name="search_view_id" ref="view_wt_api_search"/>
     </record>
 </odoo>

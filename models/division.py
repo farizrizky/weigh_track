@@ -64,7 +64,7 @@ class Division(models.Model):
     @api.constrains("clerk_id", "estate_id")
     def _check_clerk_company(self):
         for division in self:
-            self.env["wt.employee.role.mapping"].check_employee_allowed(
+            self.env["wt.employee.role"].check_employee_allowed(
                 division.clerk_id,
                 division.company_id,
                 Role.CLERK,
@@ -76,14 +76,14 @@ class Division(models.Model):
         return {
             "domain": {
                 "clerk_id": self.env[
-                    "wt.employee.role.mapping"
+                    "wt.employee.role"
                 ].get_employee_domain(self.company_id, Role.CLERK)
             }
         }
 
     @api.depends("company_id")
     def _compute_allowed_clerk_employee_ids(self):
-        mapping_model = self.env["wt.employee.role.mapping"]
+        mapping_model = self.env["wt.employee.role"]
         for division in self:
             division.allowed_clerk_employee_ids = mapping_model.get_allowed_employees(
                 division.company_id,

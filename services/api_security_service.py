@@ -8,15 +8,15 @@ class ApiSecurityService(models.AbstractModel):
     def _response(self):
         return self.env["wt.api.response.service"].sudo()
 
-    def get_api_config(self, company, device=False):
+    def get_api(self, company, device=False):
         response = self._response()
-        config = self.env["wt.api.config"].sudo().search(
+        config = self.env["wt.api"].sudo().search(
             [("company_id", "=", company.id)],
             limit=1,
         )
         if not config:
             return response.error(
-                "api_config_missing",
+                "api_missing",
                 _("Device API bot user has not been configured for this company."),
                 500,
                 device=device,
@@ -64,7 +64,7 @@ class ApiSecurityService(models.AbstractModel):
         return {"ok": True, "device": device}
 
     def check_pull_enabled(self, company, device=False):
-        config_result = self.get_api_config(company, device=device)
+        config_result = self.get_api(company, device=device)
         if not config_result["ok"]:
             return config_result
 
@@ -79,7 +79,7 @@ class ApiSecurityService(models.AbstractModel):
         return {"ok": True, "config": config}
 
     def check_push_enabled(self, company, device=False):
-        config_result = self.get_api_config(company, device=device)
+        config_result = self.get_api(company, device=device)
         if not config_result["ok"]:
             return config_result
 
@@ -94,7 +94,7 @@ class ApiSecurityService(models.AbstractModel):
         return {"ok": True, "config": config}
 
     def get_bot_user(self, company, device=False):
-        config_result = self.get_api_config(company, device=device)
+        config_result = self.get_api(company, device=device)
         if not config_result["ok"]:
             return config_result
 
@@ -102,7 +102,7 @@ class ApiSecurityService(models.AbstractModel):
         config = config_result["config"]
         if not config.bot_user_id.active or config.bot_user_id.share:
             return response.error(
-                "api_config_invalid",
+                "api_invalid",
                 _("Device API bot user must be an active internal user."),
                 500,
                 device=device,

@@ -31,9 +31,9 @@ WeighTrack
 │   └── Tappers
 ├── Device
 └── Configuration
-    ├── API Configuration
+    ├── API
     ├── API Request Logs
-    └── Employee Role Mappings
+    └── Employee Roles
 ```
 
 ## Global Rules
@@ -94,24 +94,24 @@ Pesan validasi:
 Estate code must be unique per company.
 ```
 
-## Employee Role Mapping
+## Employee Role
 
 Model teknis:
 
 ```text
-wt.employee.role.mapping
+wt.employee.role
 ```
 
 Deskripsi:
 
-Employee Role Mapping adalah konfigurasi job position karyawan yang boleh dipakai untuk role operasional WeighTrack. Mapping ini menjadi sumber domain dan validasi employee untuk Clerk, Operator, Foreman, Tapper, dan Device Assignment.
+Employee Role adalah konfigurasi job position karyawan yang boleh dipakai untuk role operasional WeighTrack. Konfigurasi ini menjadi sumber domain dan validasi employee untuk Clerk, Operator, Foreman, Tapper, dan Device Assignment.
 
 Field:
 
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Computed name dari company, role, dan job position. |
-| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat mapping berlaku. |
+| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat employee role berlaku. |
 | `role` | `Selection` | Ya | Ya | Role operasional: `operator`, `clerk`, `foreman`, `tapper`. |
 | `job_id` | `Many2one(hr.job)` | Ya | Ya | Job position yang diizinkan untuk role tersebut. |
 
@@ -130,8 +130,8 @@ Validasi:
 - Helper `get_employee_domain()` dipakai untuk onchange domain.
 - Helper `check_employee_allowed()` dipakai oleh model lain untuk memastikan employee:
   - berada di company yang sama dengan record operasional;
-  - punya job position yang termasuk mapping role tersebut;
-  - memiliki konfigurasi mapping role untuk company terkait.
+  - punya job position yang termasuk employee role tersebut;
+  - memiliki konfigurasi employee role untuk company terkait.
 
 Constraint database:
 
@@ -143,10 +143,10 @@ Pesan validasi utama:
 
 ```text
 Job position must be selected.
-Job position must belong to the same company as the mapping.
-Employee role mapping must be unique per company, role, and job position.
+Job position must belong to the same company as the employee role.
+Employee role must be unique per company, role, and job position.
 %s employee must belong to the same company.
-%s role mapping has not been configured for this company.
+%s employee role has not been configured for this company.
 %s employee must use an allowed job position for this company.
 ```
 
@@ -170,7 +170,7 @@ Field:
 | `name` | `Char` | Ya | Ya | Nama divisi. |
 | `estate_id` | `Many2one(wt.estate)` | Ya | Ya | Estate tempat divisi berada. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
-| `clerk_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee Clerk/Kerani untuk divisi. Domain berdasarkan role mapping `clerk`. |
+| `clerk_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee Clerk/Kerani untuk divisi. Domain berdasarkan employee role `clerk`. |
 | `allowed_clerk_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Clerk. |
 
 Urutan data:
@@ -182,7 +182,7 @@ estate_id, code, name
 Validasi:
 
 - `code` wajib unik per `estate_id`.
-- Clerk harus valid menurut role mapping `clerk` pada company division.
+- Clerk harus valid menurut employee role `clerk` pada company division.
 
 Constraint database:
 
@@ -195,7 +195,7 @@ Pesan validasi:
 ```text
 Division code must be unique per estate.
 %s employee must belong to the same company.
-%s role mapping has not been configured for this company.
+%s employee role has not been configured for this company.
 %s employee must use an allowed job position for this company.
 ```
 
@@ -225,7 +225,7 @@ Field:
 | `estate_id` | `Many2one(wt.estate)` | Ya | Ya | Estate lokasi timbang. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
 | `warehouse_id` | `Many2one(stock.warehouse)` | Ya | Ya | Warehouse Odoo yang terkait lokasi timbang. `ondelete="restrict"`. |
-| `operator_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee operator lokasi timbang. Domain berdasarkan role mapping `operator`. |
+| `operator_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee operator lokasi timbang. Domain berdasarkan employee role `operator`. |
 | `allowed_operator_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Operator. |
 | `allowed_division_ids` | `Many2many(wt.division)` | Tidak | Ya | Daftar divisi yang diizinkan menimbang di lokasi ini. |
 
@@ -239,7 +239,7 @@ Validasi:
 
 - `code` wajib unik per `estate_id`.
 - Semua `allowed_division_ids` harus berasal dari estate yang sama dengan `estate_id`.
-- Operator harus valid menurut role mapping `operator` pada company lokasi timbang.
+- Operator harus valid menurut employee role `operator` pada company lokasi timbang.
 
 Constraint database:
 
@@ -253,7 +253,7 @@ Pesan validasi:
 Weighing location code must be unique per estate.
 Allowed divisions must belong to the same estate as the weighing location.
 %s employee must belong to the same company.
-%s role mapping has not been configured for this company.
+%s employee role has not been configured for this company.
 %s employee must use an allowed job position for this company.
 ```
 
@@ -295,7 +295,7 @@ Field:
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Related dari `employee_id.name`, dipakai sebagai nama record. |
-| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Foreman/Mandor. Domain berdasarkan role mapping `foreman`. `ondelete="restrict"`. |
+| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Foreman/Mandor. Domain berdasarkan employee role `foreman`. `ondelete="restrict"`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat foreman bertugas. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `division_id.company_id`, `store=True`, readonly. |
 | `tapper_ids` | `One2many(wt.tapper)` | Tidak | Tidak | Daftar Tapper yang dibawahi Foreman. |
@@ -310,7 +310,7 @@ division_id, employee_id
 Validasi:
 
 - Kombinasi `employee_id` dan `division_id` wajib unik.
-- Employee foreman harus valid menurut role mapping `foreman` pada company division.
+- Employee foreman harus valid menurut employee role `foreman` pada company division.
 - Tapper bisa dikelola langsung dari form Foreman melalui line `Tappers`.
 
 Constraint database:
@@ -324,7 +324,7 @@ Pesan validasi:
 ```text
 Foreman employee must be unique per division.
 %s employee must belong to the same company.
-%s role mapping has not been configured for this company.
+%s employee role has not been configured for this company.
 %s employee must use an allowed job position for this company.
 ```
 
@@ -345,7 +345,7 @@ Field:
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Related dari `employee_id.name`, dipakai sebagai nama record. |
-| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Tapper. Domain berdasarkan role mapping `tapper`. `ondelete="restrict"`. |
+| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Tapper. Domain berdasarkan employee role `tapper`. `ondelete="restrict"`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat Tapper berada. `ondelete="restrict"`. |
 | `foreman_id` | `Many2one(wt.foreman)` | Tidak | Ya | Foreman/Mandor yang membawahi Tapper. Difilter berdasarkan division. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `division_id.company_id`, `store=True`, readonly. |
@@ -360,7 +360,7 @@ division_id, foreman_id, employee_id
 Validasi:
 
 - Satu Tapper employee hanya boleh dibuat satu kali.
-- Employee Tapper harus valid menurut role mapping `tapper` pada company division.
+- Employee Tapper harus valid menurut employee role `tapper` pada company division.
 - Jika `foreman_id` diisi, Foreman harus berada pada division yang sama dengan Tapper.
 
 Constraint database:
@@ -375,7 +375,7 @@ Pesan validasi:
 Tapper employee must be unique.
 Tapper and foreman must belong to the same division.
 %s employee must belong to the same company.
-%s role mapping has not been configured for this company.
+%s employee role has not been configured for this company.
 %s employee must use an allowed job position for this company.
 ```
 
@@ -459,7 +459,7 @@ Validasi dan aturan create/write:
 allow_device_state_update=True
 ```
 
-- Employee assignment harus valid menurut role mapping sesuai `company_id` dan `role`.
+- Employee assignment harus valid menurut employee role sesuai `company_id` dan `role`.
 
 Pesan validasi utama:
 
@@ -547,17 +547,17 @@ Alur:
 - Jika `action = revoke`, wizard memanggil `device_id.action_confirm_revoke(reason)`.
 - Setelah selesai, wizard ditutup dengan `ir.actions.act_window_close`.
 
-## API Configuration
+## API
 
 Model teknis:
 
 ```text
-wt.api.config
+wt.api
 ```
 
 Deskripsi:
 
-API Configuration menentukan user internal yang akan menjadi bot user untuk proses API WeighTrack. Saat ini dipakai oleh device activation dan pull master agar perubahan metadata device tercatat atas nama bot user, bukan Public User. Config ini juga menjadi tempat membuka atau menutup endpoint pull dan push per company.
+API menentukan user internal yang akan menjadi bot user untuk proses API WeighTrack. Saat ini dipakai oleh device activation dan pull master agar perubahan metadata device tercatat atas nama bot user, bukan Public User. Record ini juga menjadi tempat membuka atau menutup endpoint pull dan push per company.
 
 Field:
 
@@ -589,7 +589,7 @@ unique(company_id)
 
 Validasi:
 
-- Satu company hanya boleh memiliki satu API Configuration.
+- Satu company hanya boleh memiliki satu API.
 - Bot user wajib user internal.
 - Bot user wajib aktif.
 - Pull master hanya berjalan jika `pull_enabled` aktif.
@@ -598,8 +598,8 @@ Validasi:
 Pesan validasi:
 
 ```text
-API configuration must be unique per company.
-Only one API configuration is allowed per company.
+API must be unique per company.
+Only one API is allowed per company.
 Bot user must be an internal user.
 Bot user must be active.
 Device API bot user has not been configured for this company.
@@ -733,8 +733,8 @@ invalid_device_type
 invalid_token
 device_not_inactive
 device_id_already_used
-api_config_missing
-api_config_invalid
+api_missing
+api_invalid
 ```
 
 Response data yang disiapkan service:
@@ -791,18 +791,18 @@ services/api_security_service.py
 Tanggung jawab:
 
 - Menjadi pusat helper security API.
-- Mengambil API Configuration berdasarkan company.
+- Mengambil API berdasarkan company.
 - Mengautentikasi device aktif memakai kombinasi `device_id` dan `token`.
 - Membatasi role device untuk endpoint tertentu jika diperlukan.
-- Mengecek apakah pull data dibuka melalui `wt.api.config.pull_enabled`.
-- Mengecek apakah push data dibuka melalui `wt.api.config.push_enabled`.
+- Mengecek apakah pull data dibuka melalui `wt.api.pull_enabled`.
+- Mengecek apakah push data dibuka melalui `wt.api.push_enabled`.
 - Mengambil bot user berdasarkan company.
 - Mengembalikan error standar jika config belum ada atau bot user tidak valid.
 
 Method utama:
 
 ```text
-get_api_config(company, device=False)
+get_api(company, device=False)
 authenticate_device(payload, allowed_roles=False)
 check_pull_enabled(company, device=False)
 check_push_enabled(company, device=False)
@@ -811,7 +811,7 @@ get_bot_user(company, device=False)
 
 Aturan:
 
-- Config dicari pada `wt.api.config` berdasarkan `company_id`.
+- Config dicari pada `wt.api` berdasarkan `company_id`.
 - `authenticate_device` membutuhkan `token` dan `device_id`.
 - Device harus berstatus `active`.
 - Bot user harus aktif.
@@ -829,8 +829,8 @@ device_not_active
 role_not_allowed
 pull_closed
 push_closed
-api_config_missing
-api_config_invalid
+api_missing
+api_invalid
 ```
 
 ### API Pull Master Service
@@ -852,7 +852,7 @@ Tanggung jawab:
 - Memproses pull master untuk aplikasi offline penimbangan.
 - Mengautentikasi device melalui `wt.api.security.service`.
 - Memastikan role device termasuk `operator`, `clerk`, atau `foreman`.
-- Memastikan pull dibuka melalui `wt.api.config.pull_enabled`.
+- Memastikan pull dibuka melalui `wt.api.pull_enabled`.
 - Mengambil bot user dari `wt.api.security.service`.
 - Menghitung scope data berdasarkan company, employee, dan role device.
 - Memperbarui `last_pull`, `last_seen`, dan `app_version` jika dikirim.
@@ -1088,8 +1088,8 @@ Access CSV:
 | Model | Read | Write | Create | Delete |
 | --- | --- | --- | --- | --- |
 | `wt.estate` | Ya | Ya | Ya | Ya |
-| `wt.employee.role.mapping` | Ya | Ya | Ya | Ya |
-| `wt.api.config` | Ya | Ya | Ya | Ya |
+| `wt.employee.role` | Ya | Ya | Ya | Ya |
+| `wt.api` | Ya | Ya | Ya | Ya |
 | `wt.api.request.log` | Ya | Tidak | Tidak | Tidak |
 | `wt.division` | Ya | Ya | Ya | Ya |
 | `wt.weighing.location` | Ya | Ya | Ya | Ya |
@@ -1107,13 +1107,13 @@ Models:
 
 ```text
 models/estate.py
-models/employee_role_mapping.py
+models/employee_role.py
 models/division.py
 models/weighing_location.py
 models/foreman.py
 models/tapper.py
 models/device.py
-models/api_config.py
+models/api.py
 models/api_request_log.py
 ```
 
@@ -1144,14 +1144,14 @@ Views:
 
 ```text
 views/estate_views.xml
-views/employee_role_mapping_views.xml
+views/employee_role_views.xml
 views/division_views.xml
 views/weighing_location_views.xml
 views/foreman_views.xml
 views/tapper_views.xml
 views/device_views.xml
 views/device_state_reason_wizard_views.xml
-views/api_config_views.xml
+views/api_views.xml
 views/api_request_log_views.xml
 views/menu.xml
 ```

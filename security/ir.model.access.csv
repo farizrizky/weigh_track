@@ -1,7 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_wt_estate_admin,access.wt.estate.admin,model_wt_estate,group_admin,1,1,1,1
-access_wt_employee_role_mapping_admin,access.wt.employee.role.mapping.admin,model_wt_employee_role_mapping,group_admin,1,1,1,1
-access_wt_api_config_admin,access.wt.api.config.admin,model_wt_api_config,group_admin,1,1,1,1
+access_wt_employee_role_admin,access.wt.employee.role.admin,model_wt_employee_role,group_admin,1,1,1,1
+access_wt_api_admin,access.wt.api.admin,model_wt_api,group_admin,1,1,1,1
 access_wt_api_request_log_admin,access.wt.api.request.log.admin,model_wt_api_request_log,group_admin,1,0,0,0
 access_wt_division_admin,access.wt.division.admin,model_wt_division,group_admin,1,1,1,1
 access_wt_weighing_location_admin,access.wt.weighing.location.admin,model_wt_weighing_location,group_admin,1,1,1,1

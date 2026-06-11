@@ -2,9 +2,9 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
 
-class ApiConfig(models.Model):
-    _name = "wt.api.config"
-    _description = "API Configuration"
+class Api(models.Model):
+    _name = "wt.api"
+    _description = "API"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "company_id"
 
@@ -46,7 +46,7 @@ class ApiConfig(models.Model):
         (
             "company_uniq",
             "unique(company_id)",
-            "API configuration must be unique per company.",
+            "API must be unique per company.",
         ),
     ]
 
@@ -80,7 +80,7 @@ class ApiConfig(models.Model):
             )
             if duplicate:
                 raise ValidationError(
-                    _("Only one API configuration is allowed per company.")
+                    _("Only one API is allowed per company.")
                 )
 
     @api.model

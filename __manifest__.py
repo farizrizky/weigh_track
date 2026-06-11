@@ -10,9 +10,9 @@
     "data": [
         "security/access_groups.xml",
         "security/ir.model.access.csv",
-        "views/api_config_views.xml",
+        "views/api_views.xml",
         "views/api_request_log_views.xml",
-        "views/employee_role_mapping_views.xml",
+        "views/employee_role_views.xml",
         "views/estate_views.xml",
         "views/division_views.xml",
         "views/weighing_location_views.xml",

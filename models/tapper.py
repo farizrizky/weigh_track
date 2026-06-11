@@ -78,7 +78,7 @@ class Tapper(models.Model):
     @api.constrains("employee_id", "division_id")
     def _check_employee_company(self):
         for tapper in self:
-            self.env["wt.employee.role.mapping"].check_employee_allowed(
+            self.env["wt.employee.role"].check_employee_allowed(
                 tapper.employee_id,
                 tapper.company_id,
                 Role.TAPPER,
@@ -107,7 +107,7 @@ class Tapper(models.Model):
         return {
             "domain": {
                 "employee_id": self.env[
-                    "wt.employee.role.mapping"
+                    "wt.employee.role"
                 ].get_employee_domain(self.company_id, Role.TAPPER),
                 "foreman_id": foreman_domain,
             }
@@ -115,7 +115,7 @@ class Tapper(models.Model):
 
     @api.depends("company_id")
     def _compute_allowed_tapper_employee_ids(self):
-        mapping_model = self.env["wt.employee.role.mapping"]
+        mapping_model = self.env["wt.employee.role"]
         for tapper in self:
             tapper.allowed_tapper_employee_ids = mapping_model.get_allowed_employees(
                 tapper.company_id,

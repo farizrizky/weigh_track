@@ -254,7 +254,7 @@ class Device(models.Model):
 
     @api.depends("company_id", "role")
     def _compute_allowed_employee_ids(self):
-        mapping_model = self.env["wt.employee.role.mapping"]
+        mapping_model = self.env["wt.employee.role"]
         for device in self:
             if not device.company_id or not device.role:
                 device.allowed_employee_ids = False
@@ -271,7 +271,7 @@ class Device(models.Model):
 
         employee_domain = [("id", "=", False)]
         if self.company_id and self.role:
-            employee_domain = self.env["wt.employee.role.mapping"].get_employee_domain(
+            employee_domain = self.env["wt.employee.role"].get_employee_domain(
                 self.company_id,
                 self.role,
             )
@@ -286,7 +286,7 @@ class Device(models.Model):
     def _check_employee_allowed(self):
         role_labels = dict(self.ROLE_SELECTION)
         for device in self:
-            self.env["wt.employee.role.mapping"].check_employee_allowed(
+            self.env["wt.employee.role"].check_employee_allowed(
                 device.employee_id,
                 device.company_id,
                 device.role,

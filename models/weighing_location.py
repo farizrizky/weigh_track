@@ -94,7 +94,7 @@ class WeighingLocation(models.Model):
     @api.constrains("operator_id", "estate_id")
     def _check_operator_company(self):
         for location in self:
-            self.env["wt.employee.role.mapping"].check_employee_allowed(
+            self.env["wt.employee.role"].check_employee_allowed(
                 location.operator_id,
                 location.company_id,
                 Role.OPERATOR,
@@ -106,14 +106,14 @@ class WeighingLocation(models.Model):
         return {
             "domain": {
                 "operator_id": self.env[
-                    "wt.employee.role.mapping"
+                    "wt.employee.role"
                 ].get_employee_domain(self.company_id, Role.OPERATOR)
             }
         }
 
     @api.depends("company_id")
     def _compute_allowed_operator_employee_ids(self):
-        mapping_model = self.env["wt.employee.role.mapping"]
+        mapping_model = self.env["wt.employee.role"]
         for location in self:
             location.allowed_operator_employee_ids = mapping_model.get_allowed_employees(
                 location.company_id,

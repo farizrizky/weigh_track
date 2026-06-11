@@ -20,9 +20,9 @@ Endpoint push belum diekspos. Struktur security dan konfigurasi enable/disable p
 - Endpoint API memakai `auth="public"`, tetapi proses bisnis tidak dijalankan sebagai Public User.
 - Aktivasi device memakai token enrollment dari record `wt.device`.
 - Pull master memakai kombinasi `device_id` dan `token` dari device yang sudah aktif.
-- Write saat aktivasi dijalankan atas nama bot user dari `wt.api.config`.
-- Write metadata device saat pull, seperti `last_pull`, `last_seen`, dan `app_version`, dijalankan atas nama bot user dari `wt.api.config`.
-- Pull dan push dapat dibuka atau ditutup per company melalui `wt.api.config`.
+- Write saat aktivasi dijalankan atas nama bot user dari `wt.api`.
+- Write metadata device saat pull, seperti `last_pull`, `last_seen`, dan `app_version`, dijalankan atas nama bot user dari `wt.api`.
+- Pull dan push dapat dibuka atau ditutup per company melalui `wt.api`.
 - Semua request dicatat di `wt.api.request.log`.
 - Token mentah tidak disimpan di log. Payload disimpan lengkap tetapi disanitasi.
 - Response yang dikirim ke client juga disimpan lengkap di log.
@@ -39,7 +39,7 @@ services/api_pull_master_service.py   -> proses pull master dan payload data off
 services/api_security_service.py      -> validasi security API, autentikasi device, lookup bot user, dan cek pull/push enabled
 services/api_response_service.py      -> wrapper response success/error/body
 models/api_request_log.py             -> audit log API
-models/api_config.py                  -> konfigurasi bot user dan enable/disable pull/push per company
+models/api.py                  -> konfigurasi bot user dan enable/disable pull/push per company
 ```
 
 Pembagian tanggung jawab:
@@ -83,9 +83,9 @@ Pembagian tanggung jawab:
 WeighTrack > Configuration > API Request Logs
 ```
 
-## API Configuration
+## API
 
-Konfigurasi API disimpan di `wt.api.config` dan berlaku per company.
+Konfigurasi API disimpan di `wt.api` dan berlaku per company.
 
 Field penting:
 
@@ -137,7 +137,7 @@ Content-Type: application/json
 - Token harus ditemukan pada `wt.device`.
 - Device harus berstatus `inactive`.
 - `device_id` tidak boleh dipakai oleh device lain.
-- Company device harus memiliki konfigurasi bot user di `wt.api.config`.
+- Company device harus memiliki konfigurasi bot user di `wt.api`.
 - Bot user harus user internal aktif, bukan portal/public user.
 
 ### Success Behavior
@@ -242,9 +242,9 @@ Content-Type: application/json
 - Kombinasi `device_id` dan `token` harus cocok dengan record `wt.device`.
 - Device harus berstatus `active`.
 - Role device harus `operator`, `clerk`, atau `foreman`.
-- Company device harus memiliki konfigurasi bot user di `wt.api.config`.
+- Company device harus memiliki konfigurasi bot user di `wt.api`.
 - Bot user harus user internal aktif, bukan portal/public user.
-- `wt.api.config.pull_enabled` harus aktif untuk company device.
+- `wt.api.pull_enabled` harus aktif untuk company device.
 
 ### Success Behavior
 
@@ -428,12 +428,12 @@ Jika pull master berhasil, Odoo akan:
 | 401 | `invalid_device_credentials` | Kombinasi `device_id` dan `token` tidak valid untuk pull/push. |
 | 403 | `device_not_active` | Device ditemukan tetapi tidak berstatus `active`. |
 | 403 | `role_not_allowed` | Role device tidak diperbolehkan untuk endpoint tersebut. |
-| 403 | `pull_closed` | Pull data ditutup melalui `wt.api.config.pull_enabled = False`. |
-| 403 | `push_closed` | Push data ditutup melalui `wt.api.config.push_enabled = False`. |
+| 403 | `pull_closed` | Pull data ditutup melalui `wt.api.pull_enabled = False`. |
+| 403 | `push_closed` | Push data ditutup melalui `wt.api.push_enabled = False`. |
 | 409 | `device_not_inactive` | Device ditemukan tetapi tidak berstatus `inactive`. |
 | 409 | `device_id_already_used` | `device_id` sudah dipakai device lain. |
-| 500 | `api_config_missing` | Bot user API belum dikonfigurasi untuk company device. |
-| 500 | `api_config_invalid` | Bot user API tidak aktif atau bukan internal user. |
+| 500 | `api_missing` | Bot user API belum dikonfigurasi untuk company device. |
+| 500 | `api_invalid` | Bot user API tidak aktif atau bukan internal user. |
 | 500 | `internal_error` | Error tidak terduga di API boundary. |
 
 ### Error Response Example
@@ -524,9 +524,9 @@ Konsep yang sudah disiapkan untuk push:
 - request push membawa `device_id` dan `token`;
 - Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`;
 - device harus berstatus `active`;
-- `wt.api.config.push_enabled` harus aktif untuk company device;
+- `wt.api.push_enabled` harus aktif untuk company device;
 - scope data mengikuti company, employee, dan role dari assignment device;
-- eksekusi tulis data bisnis diarahkan ke bot user dari `wt.api.config`;
+- eksekusi tulis data bisnis diarahkan ke bot user dari `wt.api`;
 - payload push disiapkan oleh service push sendiri;
 - `wt.api.response.service` hanya membungkus response standar;
 - setiap request tetap dicatat ke `wt.api.request.log`.

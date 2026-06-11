@@ -39,7 +39,7 @@ Scope aktif saat ini:
 
 - Master data estate operation.
 - Assignment dan lifecycle device.
-- API configuration untuk bot user.
+- API untuk bot user.
 - API request audit log.
 - Custom API device activation.
 - API pull master untuk data offline penimbangan.
@@ -69,7 +69,7 @@ POST /weightrack/api/v1/pull/master
 - Field `name` pada form dibuat sebagai title besar menggunakan `oe_title`.
 - Akses module dibatasi dengan group `weightrack.group_admin`.
 - Jangan buat role aplikasi baru dulu. Untuk saat ini role aplikasi hanya `Administrator`.
-- Role employee operasional diatur lewat `wt.employee.role.mapping` berdasarkan company, role, dan job position.
+- Role employee operasional diatur lewat `wt.employee.role` berdasarkan company, role, dan job position.
 - File service API ditempatkan di folder `services/`, setara dengan `models/`.
 - Folder `models/` dipakai untuk model database/master data.
 - Folder `services/` dipakai untuk business logic/service layer jangka panjang.
@@ -94,8 +94,8 @@ sudo chmod -R u+rwX,go+rX /opt/odoo/custom-addons/weightrack
 Model database:
 
 - `wt.estate`
-- `wt.employee.role.mapping`
-- `wt.api.config`
+- `wt.employee.role`
+- `wt.api`
 - `wt.api.request.log`
 - `wt.division`
 - `wt.weighing.location`
@@ -126,9 +126,9 @@ WeighTrack
 |   `-- Tappers
 |-- Device
 `-- Configuration
-    |-- API Configuration
+    |-- API
     |-- API Request Logs
-    `-- Employee Role Mappings
+    `-- Employee Roles
 ```
 
 ## Rename History
@@ -154,12 +154,12 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 - `Division` tidak perlu menampilkan atau mengatur relasi balik ke `Weighing Location`.
 - `warehouse_id` memakai model Odoo bawaan `stock.warehouse`.
 - Employee operasional memakai model Odoo bawaan `hr.employee`.
-- `wt.employee.role.mapping` menentukan job position yang boleh dipilih untuk role:
+- `wt.employee.role` menentukan job position yang boleh dipilih untuk role:
   - `operator`
   - `clerk`
   - `foreman`
   - `tapper`
-- Role mapping menjadi sumber domain employee dan validasi company/job position.
+- Employee Role menjadi sumber domain employee dan validasi company/job position.
 
 ## Device Concept
 
@@ -256,7 +256,7 @@ app_version
 5. Odoo mencari `wt.device` berdasarkan token.
 6. Odoo memastikan device masih berstatus `inactive`.
 7. Odoo memastikan `device_id` belum dipakai device lain.
-8. Odoo mengambil bot user dari `wt.api.config` berdasarkan company device.
+8. Odoo mengambil bot user dari `wt.api` berdasarkan company device.
 9. Odoo menulis perubahan device dengan bot user, bukan Public User.
 10. Odoo mengubah device menjadi `active`.
 11. Odoo mengisi `device_id`, `device_type`, `app_version`, `actived_at`, dan `last_seen`.
@@ -323,20 +323,20 @@ Field log state:
 
 Field runtime/log state tidak diedit manual dari form admin.
 
-## API Configuration
+## API
 
-`wt.api.config` menentukan internal bot user untuk custom API.
+`wt.api` menentukan internal bot user untuk custom API.
 
 Aturan:
 
-- Satu company hanya boleh punya satu API Configuration.
+- Satu company hanya boleh punya satu API.
 - `bot_user_id` wajib internal user.
 - `bot_user_id` wajib active.
 - Bot user dipakai agar perubahan melalui API tidak tercatat sebagai Public User.
 - `pull_enabled` mengatur apakah endpoint pull data boleh dipakai untuk company tersebut.
 - `push_enabled` mengatur apakah endpoint push data boleh dipakai untuk company tersebut.
 
-Saat ini config dipakai oleh activation device dan pull master. Push belum diekspos, tetapi helper security untuk mengecek `push_enabled` sudah disiapkan.
+Saat ini record API dipakai oleh activation device dan pull master. Push belum diekspos, tetapi helper security untuk mengecek `push_enabled` sudah disiapkan.
 
 ## API Request Log
 
@@ -479,9 +479,9 @@ Prinsip pull master:
 - Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`.
 - Device harus berstatus `active`.
 - Role device yang boleh pull adalah `operator`, `clerk`, dan `foreman`.
-- `wt.api.config.pull_enabled` harus aktif untuk company device.
+- `wt.api.pull_enabled` harus aktif untuk company device.
 - Setelah valid, Odoo memakai company, employee, dan role dari assignment device.
-- Proses update metadata device diarahkan ke bot user dari `wt.api.config`.
+- Proses update metadata device diarahkan ke bot user dari `wt.api`.
 - Request tetap masuk sebagai `auth="public"` pada endpoint custom API.
 - Semua request pull tetap masuk ke `wt.api.request.log`.
 
@@ -510,7 +510,7 @@ Konsep yang sudah disiapkan:
 - Request push membawa `device_id` dan `token`.
 - Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`.
 - Device harus berstatus `active`.
-- `wt.api.config.push_enabled` harus aktif untuk company device.
+- `wt.api.push_enabled` harus aktif untuk company device.
 - Setelah valid, Odoo memakai company, employee, dan role dari assignment device.
 - Eksekusi tulis data bisnis diarahkan ke internal bot user agar auditable.
 - Push akan dibuat hati-hati agar tidak melanggar user license; aktivitas database diarahkan ke bot user internal yang memang dikonfigurasi.
@@ -536,7 +536,7 @@ Istilah utama:
 - `Name` -> `Nama`
 - `Company` -> `Perusahaan`
 - `Master Data` -> `Data Master`
-- `Employee Role Mapping(s)` -> `Mapping Role Karyawan`
+- `Employee Role` / `Employee Roles` -> `Role Karyawan`
 - `Job Position` -> `Jabatan`
 - `Division` / `Divisions` -> `Divisi`
 - `Weighing Location` / `Weighing Locations` -> `Lokasi Timbang`
@@ -546,7 +546,7 @@ Istilah utama:
 - `Operator` -> `Operator`
 - `Tapper` / `Tappers` -> `Tapper`
 - `Device` -> `Device`
-- `API Configuration` -> `Konfigurasi API`
+- `API` -> `API`
 - `API Request Logs` -> `Log Request API`
 - `Bot User` -> `User Bot`
 - `Payload` -> `Payload`

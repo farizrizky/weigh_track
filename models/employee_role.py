@@ -4,9 +4,9 @@ from odoo.exceptions import ValidationError
 from ..constants.roles import Role
 
 
-class EmployeeRoleMapping(models.Model):
-    _name = "wt.employee.role.mapping"
-    _description = "Employee Role Mapping"
+class EmployeeRole(models.Model):
+    _name = "wt.employee.role"
+    _description = "Employee Role"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "company_id, role"
 
@@ -40,15 +40,15 @@ class EmployeeRoleMapping(models.Model):
         (
             "company_role_job_uniq",
             "unique(company_id, role, job_id)",
-            "Employee role mapping must be unique per company, role, and job position.",
+            "Employee role must be unique per company, role, and job position.",
         ),
     ]
 
     def init(self):
         self.env.cr.execute(
             """
-            ALTER TABLE wt_employee_role_mapping
-            DROP CONSTRAINT IF EXISTS wt_employee_role_mapping_company_role_uniq
+            ALTER TABLE wt_employee_role
+            DROP CONSTRAINT IF EXISTS wt_employee_role_company_role_uniq
             """
         )
         self.env.cr.execute(
@@ -57,7 +57,7 @@ class EmployeeRoleMapping(models.Model):
             DECLARE
                 mapping_job RECORD;
             BEGIN
-                IF to_regclass('wt_employee_role_mapping_hr_job_rel') IS NOT NULL THEN
+                IF to_regclass('wt_employee_role_hr_job_rel') IS NOT NULL THEN
                     FOR mapping_job IN
                         SELECT
                             mapping.id AS mapping_id,
@@ -70,24 +70,24 @@ class EmployeeRoleMapping(models.Model):
                                 PARTITION BY mapping.id
                                 ORDER BY relation.job_id
                             ) AS sequence
-                        FROM wt_employee_role_mapping AS mapping
-                        JOIN wt_employee_role_mapping_hr_job_rel AS relation
+                        FROM wt_employee_role AS mapping
+                        JOIN wt_employee_role_hr_job_rel AS relation
                             ON relation.mapping_id = mapping.id
                         WHERE mapping.job_id IS NULL
                     LOOP
                         IF mapping_job.sequence = 1 THEN
-                            UPDATE wt_employee_role_mapping
+                            UPDATE wt_employee_role
                             SET job_id = mapping_job.job_id
                             WHERE id = mapping_job.mapping_id
                                 AND job_id IS NULL;
                         ELSIF NOT EXISTS (
                             SELECT 1
-                            FROM wt_employee_role_mapping
+                            FROM wt_employee_role
                             WHERE company_id = mapping_job.company_id
                                 AND role = mapping_job.role
                                 AND job_id = mapping_job.job_id
                         ) THEN
-                            INSERT INTO wt_employee_role_mapping (
+                            INSERT INTO wt_employee_role (
                                 company_id,
                                 role,
                                 job_id,
@@ -137,7 +137,7 @@ class EmployeeRoleMapping(models.Model):
         for mapping in self:
             if mapping.job_id.company_id and mapping.job_id.company_id != mapping.company_id:
                 raise ValidationError(
-                    _("Job position must belong to the same company as the mapping.")
+                    _("Job position must belong to the same company as the employee role.")
                 )
 
     @api.model
@@ -179,7 +179,7 @@ class EmployeeRoleMapping(models.Model):
         mappings = self._get_mappings(company, role)
         if not mappings:
             raise ValidationError(
-                _("%s role mapping has not been configured for this company.") % label
+                _("%s employee role has not been configured for this company.") % label
             )
 
         if employee.job_id not in mappings.mapped("job_id"):

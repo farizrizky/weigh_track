@@ -109,7 +109,7 @@ Table wt_estate {
   Note: "Odoo model: wt.estate. Order: code, name."
 }
 
-Table wt_employee_role_mapping {
+Table wt_employee_role {
   id integer [pk, increment]
   name varchar [note: "Computed and stored from company, role, and job position"]
   company_id integer [not null]
@@ -127,10 +127,10 @@ Table wt_employee_role_mapping {
     (company_id, role, job_id) [unique, name: "company_role_job_uniq"]
   }
 
-  Note: "Odoo model: wt.employee.role.mapping. Role source for Operator, Clerk, Foreman, and Tapper employee validation."
+  Note: "Odoo model: wt.employee.role. Role source for Operator, Clerk, Foreman, and Tapper employee validation."
 }
 
-Table wt_api_config {
+Table wt_api {
   id integer [pk, increment]
   name varchar [note: "Computed and stored from company and bot user"]
   company_id integer [not null]
@@ -147,7 +147,7 @@ Table wt_api_config {
     bot_user_id
   }
 
-  Note: "Odoo model: wt.api.config. One configuration per company for the internal bot user used by device activation and pull master now, plus push later. pull_enabled and push_enabled can close each data flow independently."
+  Note: "Odoo model: wt.api. One configuration per company for the internal bot user used by device activation and pull master now, plus push later. pull_enabled and push_enabled can close each data flow independently."
 }
 
 Table wt_api_request_log {
@@ -208,7 +208,7 @@ Table wt_division {
     (code, estate_id) [unique, name: "code_estate_uniq"]
   }
 
-  Note: "Odoo model: wt.division. Clerk must be allowed by wt_employee_role_mapping role clerk."
+  Note: "Odoo model: wt.division. Clerk must be allowed by wt_employee_role role clerk."
 }
 
 Table wt_weighing_location {
@@ -233,7 +233,7 @@ Table wt_weighing_location {
     (code, estate_id) [unique, name: "code_estate_uniq"]
   }
 
-  Note: "Odoo model: wt.weighing.location. Operator must be allowed by wt_employee_role_mapping role operator."
+  Note: "Odoo model: wt.weighing.location. Operator must be allowed by wt_employee_role role operator."
 }
 
 Table wt_weighing_location_division_rel {
@@ -266,7 +266,7 @@ Table wt_foreman {
     (employee_id, division_id) [unique, name: "employee_division_uniq"]
   }
 
-  Note: "Odoo model: wt.foreman. Employee must be allowed by wt_employee_role_mapping role foreman."
+  Note: "Odoo model: wt.foreman. Employee must be allowed by wt_employee_role role foreman."
 }
 
 Table wt_tapper {
@@ -350,11 +350,11 @@ Table wt_device_state_reason_wizard {
 
 Ref: wt_estate.company_id > res_company.id
 
-Ref: wt_employee_role_mapping.company_id > res_company.id
-Ref: wt_employee_role_mapping.job_id > hr_job.id [delete: restrict]
+Ref: wt_employee_role.company_id > res_company.id
+Ref: wt_employee_role.job_id > hr_job.id [delete: restrict]
 
-Ref: wt_api_config.company_id > res_company.id
-Ref: wt_api_config.bot_user_id > res_users.id [delete: restrict]
+Ref: wt_api.company_id > res_company.id
+Ref: wt_api.bot_user_id > res_users.id [delete: restrict]
 
 Ref: wt_api_request_log.device_record_id > wt_device.id
 Ref: wt_api_request_log.company_id > res_company.id
@@ -396,10 +396,10 @@ Ref: stock_warehouse.company_id > res_company.id
 
 Ref: wt_estate.create_uid > res_users.id
 Ref: wt_estate.write_uid > res_users.id
-Ref: wt_employee_role_mapping.create_uid > res_users.id
-Ref: wt_employee_role_mapping.write_uid > res_users.id
-Ref: wt_api_config.create_uid > res_users.id
-Ref: wt_api_config.write_uid > res_users.id
+Ref: wt_employee_role.create_uid > res_users.id
+Ref: wt_employee_role.write_uid > res_users.id
+Ref: wt_api.create_uid > res_users.id
+Ref: wt_api.write_uid > res_users.id
 Ref: wt_api_request_log.create_uid > res_users.id
 Ref: wt_api_request_log.write_uid > res_users.id
 Ref: wt_division.create_uid > res_users.id
