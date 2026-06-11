@@ -371,7 +371,7 @@ msgid "Warehouse"
 msgstr "Gudang"
 
 #. module: weightrack
-#: code:addons/weightrack/constants/product_model.py:0
+#: code:addons/weightrack/constants/product_type.py:0
 msgid "Lump"
 msgstr "Lump"
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-class ProductModel:
+class ProductType:
     LUMP = "lump"
 
     LUMP_LABEL = "Lump"
