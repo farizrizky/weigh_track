@@ -1,5 +1,7 @@
 from odoo import fields, models
 
+from ..constants.roles import Role
+
 
 class ApiRequestLog(models.Model):
     _name = "wt.api.request.log"
@@ -67,11 +69,7 @@ class ApiRequestLog(models.Model):
         readonly=True,
     )
     role = fields.Selection(
-        [
-            ("clerk", "Clerk"),
-            ("foreman", "Foreman"),
-            ("operator", "Operator"),
-        ],
+        Role.DEVICE_SELECTION,
         string="Role",
         readonly=True,
     )

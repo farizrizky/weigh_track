@@ -119,6 +119,7 @@ msgid "Division Name"
 msgstr "Nama Divisi"
 
 #. module: weightrack
+#: code:addons/weightrack/constants/roles.py:0
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__clerk
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__clerk
 #: model:ir.model.fields,field_description:weightrack.field_wt_division__clerk_id
@@ -370,9 +371,15 @@ msgid "Warehouse"
 msgstr "Gudang"
 
 #. module: weightrack
+#: code:addons/weightrack/constants/product_model.py:0
+msgid "Lump"
+msgstr "Lump"
+
+#. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__operator_id
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__operator
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__operator
+#: code:addons/weightrack/constants/roles.py:0
 msgid "Operator"
 msgstr "Operator"
 
@@ -398,6 +405,7 @@ msgstr "Divisi yang Diizinkan"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_foreman_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__employee_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__foreman_id
+#: code:addons/weightrack/constants/roles.py:0
 msgid "Foreman"
 msgstr "Mandor"
 
@@ -427,6 +435,7 @@ msgstr "Tanpa Mandor"
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role_mapping__role__tapper
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__employee_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_form
+#: code:addons/weightrack/constants/roles.py:0
 msgid "Tapper"
 msgstr "Tapper"
 

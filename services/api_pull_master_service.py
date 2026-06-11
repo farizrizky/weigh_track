@@ -1,11 +1,13 @@
 from odoo import fields, models
 
+from ..constants.roles import Role
+
 
 class ApiPullMasterService(models.AbstractModel):
     _name = "wt.api.pull.master.service"
     _description = "API Pull Master Service"
 
-    PULL_ROLES = {"operator", "clerk", "foreman"}
+    PULL_ROLES = set(Role.DEVICE_VALUES)
 
     def _response(self):
         return self.env["wt.api.response.service"].sudo()
@@ -60,11 +62,11 @@ class ApiPullMasterService(models.AbstractModel):
         )
 
     def _scope_for_device(self, device):
-        if device.role == "foreman":
+        if device.role == Role.FOREMAN:
             return self._foreman_scope(device)
-        if device.role == "clerk":
+        if device.role == Role.CLERK:
             return self._clerk_scope(device)
-        if device.role == "operator":
+        if device.role == Role.OPERATOR:
             return self._operator_scope(device)
         return {
             "estates": self.env["wt.estate"].browse(),
@@ -169,7 +171,7 @@ class ApiPullMasterService(models.AbstractModel):
         estates = divisions.mapped("estate_id") | locations.mapped("estate_id")
         clerks = divisions.mapped("clerk_id")
         operators = locations.mapped("operator_id")
-        if device.role == "operator":
+        if device.role == Role.OPERATOR:
             operators |= device.employee_id
         return {
             "estates": estates,

@@ -3,6 +3,8 @@ import secrets
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+from ..constants.roles import Role
+
 
 class Device(models.Model):
     _name = "wt.device"
@@ -10,11 +12,7 @@ class Device(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "name, device_id"
 
-    ROLE_SELECTION = [
-        ("clerk", "Clerk"),
-        ("foreman", "Foreman"),
-        ("operator", "Operator"),
-    ]
+    ROLE_SELECTION = Role.DEVICE_SELECTION
 
     STATUS_SELECTION = [
         ("inactive", "Inactive"),

@@ -1,6 +1,8 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+from ..constants.roles import Role
+
 
 class Foreman(models.Model):
     _name = "wt.foreman"
@@ -76,7 +78,7 @@ class Foreman(models.Model):
             self.env["wt.employee.role.mapping"].check_employee_allowed(
                 foreman.employee_id,
                 foreman.company_id,
-                "foreman",
+                Role.FOREMAN,
                 _("Foreman"),
             )
 
@@ -86,7 +88,7 @@ class Foreman(models.Model):
             "domain": {
                 "employee_id": self.env[
                     "wt.employee.role.mapping"
-                ].get_employee_domain(self.company_id, "foreman")
+                ].get_employee_domain(self.company_id, Role.FOREMAN)
             }
         }
 
@@ -96,5 +98,5 @@ class Foreman(models.Model):
         for foreman in self:
             foreman.allowed_foreman_employee_ids = mapping_model.get_allowed_employees(
                 foreman.company_id,
-                "foreman",
+                Role.FOREMAN,
             )

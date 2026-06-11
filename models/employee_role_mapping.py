@@ -1,6 +1,8 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+from ..constants.roles import Role
+
 
 class EmployeeRoleMapping(models.Model):
     _name = "wt.employee.role.mapping"
@@ -8,12 +10,7 @@ class EmployeeRoleMapping(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "company_id, role"
 
-    ROLE_SELECTION = [
-        ("operator", "Operator"),
-        ("clerk", "Clerk"),
-        ("foreman", "Foreman"),
-        ("tapper", "Tapper"),
-    ]
+    ROLE_SELECTION = Role.SELECTION
 
     name = fields.Char(compute="_compute_name", store=True)
     company_id = fields.Many2one(

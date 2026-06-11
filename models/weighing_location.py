@@ -1,6 +1,8 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+from ..constants.roles import Role
+
 
 class WeighingLocation(models.Model):
     _name = "wt.weighing.location"
@@ -95,7 +97,7 @@ class WeighingLocation(models.Model):
             self.env["wt.employee.role.mapping"].check_employee_allowed(
                 location.operator_id,
                 location.company_id,
-                "operator",
+                Role.OPERATOR,
                 _("Operator"),
             )
 
@@ -105,7 +107,7 @@ class WeighingLocation(models.Model):
             "domain": {
                 "operator_id": self.env[
                     "wt.employee.role.mapping"
-                ].get_employee_domain(self.company_id, "operator")
+                ].get_employee_domain(self.company_id, Role.OPERATOR)
             }
         }
 
@@ -115,5 +117,5 @@ class WeighingLocation(models.Model):
         for location in self:
             location.allowed_operator_employee_ids = mapping_model.get_allowed_employees(
                 location.company_id,
-                "operator",
+                Role.OPERATOR,
             )
