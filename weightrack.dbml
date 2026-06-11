@@ -47,6 +47,10 @@ Enum wt_device_state_reason_action {
   revoke
 }
 
+Enum wt_product_type {
+  lump
+}
+
 Table res_users {
   id integer [pk]
   name varchar
@@ -90,6 +94,32 @@ Table stock_warehouse {
   Note: "Odoo stock warehouse table stub."
 }
 
+Table stock_location {
+  id integer [pk]
+  name varchar
+  company_id integer
+
+  Note: "Odoo stock location table stub."
+}
+
+Table stock_picking_type {
+  id integer [pk]
+  name varchar
+  code varchar
+  warehouse_id integer
+  company_id integer
+
+  Note: "Odoo stock operation type table stub."
+}
+
+Table product_product {
+  id integer [pk]
+  display_name varchar
+  company_id integer
+
+  Note: "Odoo product variant table stub. Company can be empty for global products."
+}
+
 Table wt_estate {
   id integer [pk, increment]
   code varchar [not null, note: "Indexed in Odoo"]
@@ -128,6 +158,56 @@ Table wt_employee_role {
   }
 
   Note: "Odoo model: wt.employee.role. Role source for Operator, Clerk, Foreman, and Tapper employee validation."
+}
+
+Table wt_product {
+  id integer [pk, increment]
+  name varchar [note: "Computed and stored from company, product type, and product"]
+  company_id integer [not null]
+  product_type wt_product_type [not null]
+  product_id integer [not null]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id
+    product_type
+    product_id
+    (company_id, product_type) [unique, name: "company_product_type_uniq"]
+  }
+
+  Note: "Odoo model: wt.product. Company-level mapping from weighing product type to Odoo product.product. Product must belong to the same company or be global."
+}
+
+Table wt_receipt_rule {
+  id integer [pk, increment]
+  name varchar [note: "Computed and stored from weighing location, division, and product"]
+  company_id integer [not null]
+  weighing_location_id integer [not null]
+  division_id integer [not null]
+  product_id integer [not null]
+  warehouse_id integer [not null]
+  location_id integer [not null]
+  operation_type_id integer [not null]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id
+    weighing_location_id
+    division_id
+    product_id
+    warehouse_id
+    location_id
+    operation_type_id
+    (weighing_location_id, division_id, product_id) [unique, name: "receipt_rule_uniq"]
+  }
+
+  Note: "Odoo model: wt.receipt.rule. Defines which product can be weighed by which division at a weighing location and the stock warehouse/location/operation type destination."
 }
 
 Table wt_api {
@@ -217,7 +297,6 @@ Table wt_weighing_location {
   name varchar [not null]
   estate_id integer [not null]
   company_id integer [note: "Stored related field from estate_id.company_id"]
-  warehouse_id integer [not null]
   operator_id integer
   create_uid integer
   create_date timestamp
@@ -228,7 +307,6 @@ Table wt_weighing_location {
     code
     estate_id
     company_id
-    warehouse_id
     operator_id
     (code, estate_id) [unique, name: "code_estate_uniq"]
   }
@@ -353,6 +431,17 @@ Ref: wt_estate.company_id > res_company.id
 Ref: wt_employee_role.company_id > res_company.id
 Ref: wt_employee_role.job_id > hr_job.id [delete: restrict]
 
+Ref: wt_product.company_id > res_company.id
+Ref: wt_product.product_id > product_product.id [delete: restrict]
+
+Ref: wt_receipt_rule.company_id > res_company.id
+Ref: wt_receipt_rule.weighing_location_id > wt_weighing_location.id [delete: restrict]
+Ref: wt_receipt_rule.division_id > wt_division.id [delete: restrict]
+Ref: wt_receipt_rule.product_id > product_product.id [delete: restrict]
+Ref: wt_receipt_rule.warehouse_id > stock_warehouse.id [delete: restrict]
+Ref: wt_receipt_rule.location_id > stock_location.id [delete: restrict]
+Ref: wt_receipt_rule.operation_type_id > stock_picking_type.id [delete: restrict]
+
 Ref: wt_api.company_id > res_company.id
 Ref: wt_api.bot_user_id > res_users.id [delete: restrict]
 
@@ -366,7 +455,6 @@ Ref: wt_division.clerk_id > hr_employee.id [delete: restrict]
 
 Ref: wt_weighing_location.estate_id > wt_estate.id [delete: restrict]
 Ref: wt_weighing_location.company_id > res_company.id
-Ref: wt_weighing_location.warehouse_id > stock_warehouse.id [delete: restrict]
 Ref: wt_weighing_location.operator_id > hr_employee.id [delete: restrict]
 
 Ref: wt_weighing_location_division_rel.weighing_location_id > wt_weighing_location.id
@@ -393,11 +481,19 @@ Ref: hr_employee.company_id > res_company.id
 Ref: hr_employee.job_id > hr_job.id
 Ref: hr_job.company_id > res_company.id
 Ref: stock_warehouse.company_id > res_company.id
+Ref: stock_location.company_id > res_company.id
+Ref: stock_picking_type.company_id > res_company.id
+Ref: stock_picking_type.warehouse_id > stock_warehouse.id
+Ref: product_product.company_id > res_company.id
 
 Ref: wt_estate.create_uid > res_users.id
 Ref: wt_estate.write_uid > res_users.id
 Ref: wt_employee_role.create_uid > res_users.id
 Ref: wt_employee_role.write_uid > res_users.id
+Ref: wt_product.create_uid > res_users.id
+Ref: wt_product.write_uid > res_users.id
+Ref: wt_receipt_rule.create_uid > res_users.id
+Ref: wt_receipt_rule.write_uid > res_users.id
 Ref: wt_api.create_uid > res_users.id
 Ref: wt_api.write_uid > res_users.id
 Ref: wt_api_request_log.create_uid > res_users.id

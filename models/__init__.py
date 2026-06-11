@@ -2,6 +2,8 @@ from . import estate
 from . import employee_role
 from . import api
 from . import api_request_log
+from . import product
+from . import receipt_rule
 from . import division
 from . import weighing_location
 from . import foreman

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_receipt_rule_search" model="ir.ui.view">
+        <field name="name">wt.receipt.rule.search</field>
+        <field name="model">wt.receipt.rule</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="company_id"/>
+                <field name="weighing_location_id"/>
+                <field name="division_id"/>
+                <field name="product_id"/>
+                <field name="warehouse_id"/>
+                <field name="location_id"/>
+                <field name="operation_type_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_receipt_rule_list" model="ir.ui.view">
+        <field name="name">wt.receipt.rule.list</field>
+        <field name="model">wt.receipt.rule</field>
+        <field name="arch" type="xml">
+            <list string="Receipt Rule">
+                <field name="company_id"/>
+                <field name="weighing_location_id"/>
+                <field name="division_id"/>
+                <field name="product_id"/>
+                <field name="warehouse_id"/>
+                <field name="location_id"/>
+                <field name="operation_type_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_receipt_rule_form" model="ir.ui.view">
+        <field name="name">wt.receipt.rule.form</field>
+        <field name="model">wt.receipt.rule</field>
+        <field name="arch" type="xml">
+            <form string="Receipt Rule">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="weighing_location_id"/>
+                        <h1>
+                            <field name="weighing_location_id"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Scope">
+                            <field name="company_id"/>
+                            <field name="allowed_division_ids" invisible="1"/>
+                            <field name="allowed_product_ids" invisible="1"/>
+                            <field name="division_id" domain="[('id', 'in', allowed_division_ids)]"/>
+                            <field name="product_id" domain="[('id', 'in', allowed_product_ids)]"/>
+                        </group>
+                        <group string="Stock Destination">
+                            <field name="warehouse_id"/>
+                            <field name="location_id"/>
+                            <field name="operation_type_id" domain="[('warehouse_id', '=', warehouse_id)]"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_receipt_rule" model="ir.actions.act_window">
+        <field name="name">Receipt Rule</field>
+        <field name="res_model">wt.receipt.rule</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_receipt_rule_search"/>
+    </record>
+</odoo>

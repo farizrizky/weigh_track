@@ -31,6 +31,7 @@ base
 mail
 stock
 hr
+product
 ```
 
 ## Current Scope
@@ -38,6 +39,7 @@ hr
 Scope aktif saat ini:
 
 - Master data estate operation.
+- Konfigurasi mapping produk timbang.
 - Assignment dan lifecycle device.
 - API untuk bot user.
 - API request audit log.
@@ -95,6 +97,8 @@ Model database:
 
 - `wt.estate`
 - `wt.employee.role`
+- `wt.product`
+- `wt.receipt.rule`
 - `wt.api`
 - `wt.api.request.log`
 - `wt.division`
@@ -128,7 +132,9 @@ WeighTrack
 `-- Configuration
     |-- API
     |-- API Request Logs
-    `-- Employee Roles
+    |-- Employee Roles
+    |-- Product
+    `-- Receipt Rule
 ```
 
 ## Rename History
@@ -148,11 +154,17 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 ## Data Design Notes
 
 - `Division` wajib terhubung ke `Estate`.
-- `Weighing Location` wajib terhubung ke `Estate` dan `Warehouse`.
+- `Weighing Location` wajib terhubung ke `Estate`.
 - `company_id` pada `Division`, `Weighing Location`, `Foreman`, dan `Tapper` mengikuti parent operasional.
 - Pengaturan divisi yang boleh menimbang hanya dilakukan dari `Weighing Location` melalui `allowed_division_ids`.
 - `Division` tidak perlu menampilkan atau mengatur relasi balik ke `Weighing Location`.
-- `warehouse_id` memakai model Odoo bawaan `stock.warehouse`.
+- `wt.product` memetakan `company_id` + `product_type` ke produk Odoo `product.product` yang dipakai untuk proses timbang.
+- Satu company hanya boleh memiliki satu mapping untuk setiap `product_type`.
+- `wt.receipt.rule` menegaskan produk yang boleh ditimbang pada kombinasi Weighing Location dan Division tertentu, sekaligus menentukan Warehouse, Location, dan Operation Type untuk proses receipt stok.
+- Pilihan Product pada `wt.receipt.rule` dibatasi dari product yang sudah dikonfigurasi di `wt.product` untuk company Weighing Location.
+- Division pada `wt.receipt.rule` wajib termasuk `allowed_division_ids` pada Weighing Location.
+- Kombinasi Company, Weighing Location, Division, dan Product pada `wt.receipt.rule` tidak boleh berulang. Validasi duplicate menampilkan nilai company, lokasi timbang, divisi, dan produk yang sudah ada.
+- Pengaturan Warehouse tidak berada di Weighing Location; Warehouse, Location, dan Operation Type ditentukan pada Receipt Rule.
 - Employee operasional memakai model Odoo bawaan `hr.employee`.
 - `wt.employee.role` menentukan job position yang boleh dipilih untuk role:
   - `operator`
@@ -490,7 +502,9 @@ Payload response pull master:
 - Root data berisi `meta`, `scope`, dan `masters`.
 - `meta` berisi `server_time`, role, company, employee, dan payload device.
 - `scope` berisi batas kerja device dalam bentuk daftar ID.
-- `masters` berisi company, employee, estate, division, weighing location, clerk, foreman, operator, dan tapper.
+- `masters` berisi company, employee, estate, division, weighing location, receipt rule, product, clerk, foreman, operator, dan tapper.
+- Pull master tidak mengirim warehouse, location, dan operation type; nilai tersebut tetap menjadi konfigurasi backend pada Receipt Rule.
+- Product payload pada pull master hanya membawa `id`, `name`, dan `company_id`; `default_code` tidak dikirim.
 - `pull_type` tidak dipakai.
 - Company dan employee berada di `masters`, bukan root data.
 - Device berada di `meta.device`.
@@ -499,7 +513,7 @@ Scope role pull:
 
 - `foreman`: foreman record milik employee device, division foreman, tapper di bawah foreman tersebut, estate, dan weighing location terkait division.
 - `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division.
-- `operator`: weighing location yang dipegang operator, allowed division dari location, clerk division, foreman, tapper, estate, dan warehouse.
+- `operator`: weighing location yang dipegang operator, allowed division dari location, receipt rule, product, clerk division, foreman, tapper, dan estate.
 
 ## Future Push
 
@@ -537,6 +551,11 @@ Istilah utama:
 - `Company` -> `Perusahaan`
 - `Master Data` -> `Data Master`
 - `Employee Role` / `Employee Roles` -> `Role Karyawan`
+- `Product` -> `Produk`
+- `Product Type` -> `Tipe Produk`
+- `Receipt Rule` -> `Aturan Penerimaan`
+- `Location` -> `Lokasi`
+- `Operation Type` -> `Tipe Operasi`
 - `Job Position` -> `Jabatan`
 - `Division` / `Divisions` -> `Divisi`
 - `Weighing Location` / `Weighing Locations` -> `Lokasi Timbang`

@@ -8,7 +8,6 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="estate_id"/>
-                <field name="warehouse_id"/>
                 <field name="operator_id"/>
                 <field name="allowed_division_ids"/>
             </search>
@@ -23,7 +22,6 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="estate_id"/>
-                <field name="warehouse_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="operator_id"/>
                 <field name="allowed_division_ids" widget="many2many_tags" optional="show"/>
@@ -50,7 +48,6 @@
                             <field name="company_id"/>
                         </group>
                         <group>
-                            <field name="warehouse_id"/>
                             <field name="allowed_operator_employee_ids" invisible="1"/>
                             <field name="operator_id" domain="[('id', 'in', allowed_operator_employee_ids)]"/>
                         </group>

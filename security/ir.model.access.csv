@@ -1,6 +1,8 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_wt_estate_admin,access.wt.estate.admin,model_wt_estate,group_admin,1,1,1,1
 access_wt_employee_role_admin,access.wt.employee.role.admin,model_wt_employee_role,group_admin,1,1,1,1
+access_wt_product_admin,access.wt.product.admin,model_wt_product,group_admin,1,1,1,1
+access_wt_receipt_rule_admin,access.wt.receipt.rule.admin,model_wt_receipt_rule,group_admin,1,1,1,1
 access_wt_api_admin,access.wt.api.admin,model_wt_api,group_admin,1,1,1,1
 access_wt_api_request_log_admin,access.wt.api.request.log.admin,model_wt_api_request_log,group_admin,1,0,0,0
 access_wt_division_admin,access.wt.division.admin,model_wt_division,group_admin,1,1,1,1
@@ -11,4 +13,8 @@ access_wt_device_admin,access.wt.device.admin,model_wt_device,group_admin,1,1,1,
 access_wt_device_state_reason_wizard_admin,access.wt.device.state.reason.wizard.admin,model_wt_device_state_reason_wizard,group_admin,1,1,1,1
 access_hr_employee_weightrack_admin,access.hr.employee.weightrack.admin,hr.model_hr_employee,group_admin,1,0,0,0
 access_hr_job_weightrack_admin,access.hr.job.weightrack.admin,hr.model_hr_job,group_admin,1,0,0,0
+access_product_product_weightrack_admin,access.product.product.weightrack.admin,product.model_product_product,group_admin,1,0,0,0
+access_product_template_weightrack_admin,access.product.template.weightrack.admin,product.model_product_template,group_admin,1,0,0,0
+access_stock_location_weightrack_admin,access.stock.location.weightrack.admin,stock.model_stock_location,group_admin,1,0,0,0
+access_stock_picking_type_weightrack_admin,access.stock.picking.type.weightrack.admin,stock.model_stock_picking_type,group_admin,1,0,0,0
 access_stock_warehouse_weightrack_admin,access.stock.warehouse.weightrack.admin,stock.model_stock_warehouse,group_admin,1,0,0,0

@@ -263,7 +263,7 @@ Jika pull master berhasil, Odoo akan:
 | --- | --- |
 | `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, dan weighing location terkait division. |
 | `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division. |
-| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, clerk division, foreman, tapper, estate, warehouse. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, clerk division, foreman, tapper, dan estate. |
 
 ### Success Response
 
@@ -296,6 +296,7 @@ Jika pull master berhasil, Odoo akan:
       "estate_ids": [1],
       "division_ids": [1, 2],
       "weighing_location_ids": [1],
+      "receipt_rule_ids": [1],
       "clerk_employee_ids": [20],
       "foreman_ids": [30, 31],
       "operator_employee_ids": [10],
@@ -338,13 +339,25 @@ Jika pull master berhasil, Odoo akan:
           "name": "Gudang Induk",
           "company_id": 1,
           "estate_id": 1,
-          "warehouse": {
-            "id": 1,
-            "code": "WH01",
-            "name": "Warehouse 01"
-          },
           "operator_employee_id": 10,
           "allowed_division_ids": [1, 2]
+        }
+      ],
+      "receipt_rules": [
+        {
+          "id": 1,
+          "name": "Gudang Induk - Division 01 - Lump",
+          "company_id": 1,
+          "weighing_location_id": 1,
+          "division_id": 1,
+          "product_id": 10
+        }
+      ],
+      "products": [
+        {
+          "id": 10,
+          "name": "Lump",
+          "company_id": 1
         }
       ],
       "clerks": [
@@ -403,11 +416,14 @@ Jika pull master berhasil, Odoo akan:
 | `data.meta.employee_id` | Employee penanggung jawab device. |
 | `data.meta.device` | Informasi device aktif. |
 | `data.scope` | Batas kerja device dalam bentuk daftar ID. |
+| `data.scope.receipt_rule_ids` | Daftar Receipt Rule yang berlaku dalam scope device. |
 | `data.masters.company` | Master company device. |
 | `data.masters.employee` | Master employee penanggung jawab device. |
 | `data.masters.estates` | Daftar estate dalam scope. Minimal membawa `id`, `code`, dan `name`. |
 | `data.masters.divisions` | Daftar division dalam scope. Minimal membawa `id`, `code`, dan `name`. |
-| `data.masters.weighing_locations` | Daftar weighing location dalam scope. Minimal membawa `id`, `code`, dan `name`. |
+| `data.masters.weighing_locations` | Daftar weighing location dalam scope. Tidak membawa warehouse. |
+| `data.masters.receipt_rules` | Daftar aturan receipt yang menentukan kombinasi weighing location, division, dan product yang boleh ditimbang. |
+| `data.masters.products` | Daftar product Odoo yang dipakai oleh receipt rule dalam scope. Payload membawa `id`, `name`, dan `company_id`. |
 | `data.masters.clerks` | Daftar clerk dalam scope, termasuk barcode employee. |
 | `data.masters.foremen` | Daftar foreman dalam scope, termasuk barcode employee. |
 | `data.masters.operators` | Daftar operator dalam scope, termasuk barcode employee. |

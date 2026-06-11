@@ -72,6 +72,7 @@ class ApiPullMasterService(models.AbstractModel):
             "estates": self.env["wt.estate"].browse(),
             "divisions": self.env["wt.division"].browse(),
             "weighing_locations": self.env["wt.weighing.location"].browse(),
+            "receipt_rules": self.env["wt.receipt.rule"].browse(),
             "clerks": self.env["hr.employee"].browse(),
             "foremen": self.env["wt.foreman"].browse(),
             "operators": self.env["hr.employee"].browse(),
@@ -171,12 +172,20 @@ class ApiPullMasterService(models.AbstractModel):
         estates = divisions.mapped("estate_id") | locations.mapped("estate_id")
         clerks = divisions.mapped("clerk_id")
         operators = locations.mapped("operator_id")
+        receipt_rules = self.env["wt.receipt.rule"].sudo().search(
+            [
+                ("company_id", "=", device.company_id.id),
+                ("weighing_location_id", "in", locations.ids),
+                ("division_id", "in", divisions.ids),
+            ]
+        )
         if device.role == Role.OPERATOR:
             operators |= device.employee_id
         return {
             "estates": estates,
             "divisions": divisions,
             "weighing_locations": locations,
+            "receipt_rules": receipt_rules,
             "clerks": clerks,
             "foremen": foremen,
             "operators": operators,
@@ -191,6 +200,7 @@ class ApiPullMasterService(models.AbstractModel):
             "estate_ids": scope["estates"].ids,
             "division_ids": scope["divisions"].ids,
             "weighing_location_ids": scope["weighing_locations"].ids,
+            "receipt_rule_ids": scope["receipt_rules"].ids,
             "clerk_employee_ids": scope["clerks"].ids,
             "foreman_ids": scope["foremen"].ids,
             "operator_employee_ids": scope["operators"].ids,
@@ -198,6 +208,7 @@ class ApiPullMasterService(models.AbstractModel):
         }
 
     def _masters_payload(self, scope, device):
+        receipt_rules = scope["receipt_rules"]
         return {
             "company": self._company_payload(device.company_id),
             "employee": self._employee_payload(device.employee_id),
@@ -208,6 +219,13 @@ class ApiPullMasterService(models.AbstractModel):
             "weighing_locations": [
                 self._weighing_location_payload(location)
                 for location in scope["weighing_locations"]
+            ],
+            "receipt_rules": [
+                self._receipt_rule_payload(rule) for rule in receipt_rules
+            ],
+            "products": [
+                self._product_payload(product)
+                for product in receipt_rules.mapped("product_id")
             ],
             "clerks": [self._employee_payload(employee) for employee in scope["clerks"]],
             "foremen": [self._foreman_payload(foreman) for foreman in scope["foremen"]],
@@ -265,18 +283,25 @@ class ApiPullMasterService(models.AbstractModel):
             "name": location.name,
             "company_id": location.company_id.id,
             "estate_id": location.estate_id.id,
-            "warehouse": self._warehouse_payload(location.warehouse_id),
             "operator_employee_id": location.operator_id.id or False,
             "allowed_division_ids": location.allowed_division_ids.ids,
         }
 
-    def _warehouse_payload(self, warehouse):
-        if not warehouse:
-            return False
+    def _receipt_rule_payload(self, rule):
         return {
-            "id": warehouse.id,
-            "code": warehouse.code if "code" in warehouse._fields else False,
-            "name": warehouse.name,
+            "id": rule.id,
+            "name": rule.name,
+            "company_id": rule.company_id.id,
+            "weighing_location_id": rule.weighing_location_id.id,
+            "division_id": rule.division_id.id,
+            "product_id": rule.product_id.id,
+        }
+
+    def _product_payload(self, product):
+        return {
+            "id": product.id,
+            "name": product.display_name,
+            "company_id": product.product_tmpl_id.company_id.id or False,
         }
 
     def _foreman_payload(self, foreman):

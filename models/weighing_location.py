@@ -28,14 +28,6 @@ class WeighingLocation(models.Model):
         readonly=True,
         index=True,
     )
-    warehouse_id = fields.Many2one(
-        "stock.warehouse",
-        string="Warehouse",
-        required=True,
-        ondelete="restrict",
-        domain="[('company_id', '=', company_id)]",
-        tracking=True,
-    )
     operator_id = fields.Many2one(
         "hr.employee",
         string="Operator",

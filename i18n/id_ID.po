@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: Odoo Server 19.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-06-05 00:00+0000\n"
-"PO-Revision-Date: 2026-06-05 00:00+0000\n"
+"PO-Revision-Date: 2026-06-11 00:00+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: id_ID\n"
@@ -35,6 +35,8 @@ msgstr "Kode"
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_api__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_product__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__name
 msgid "Name"
 msgstr "Nama"
 
@@ -47,6 +49,8 @@ msgstr "Nama"
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_api__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_product__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -344,6 +348,61 @@ msgid "Job Position"
 msgstr "Jabatan"
 
 # -----------------------------------------------------------------------------
+# Product
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_product_list
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_product_form
+#: model:ir.actions.act_window,name:weightrack.action_wt_product
+#: model:ir.ui.menu,name:weightrack.menu_wt_product
+#: model:ir.model,name:weightrack.model_wt_product
+#: model:ir.model.fields,field_description:weightrack.field_wt_product__product_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__product_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_product_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
+msgid "Product"
+msgstr "Produk"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_product__product_type
+msgid "Product Type"
+msgstr "Tipe Produk"
+
+# -----------------------------------------------------------------------------
+# Receipt Rule
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_receipt_rule
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_list
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
+#: model:ir.actions.act_window,name:weightrack.action_wt_receipt_rule
+#: model:ir.ui.menu,name:weightrack.menu_wt_receipt_rule
+msgid "Receipt Rule"
+msgstr "Aturan Penerimaan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
+msgid "Scope"
+msgstr "Lingkup"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
+msgid "Stock Destination"
+msgstr "Tujuan Stok"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__location_id
+msgid "Location"
+msgstr "Lokasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__operation_type_id
+msgid "Operation Type"
+msgstr "Tipe Operasi"
+
+# -----------------------------------------------------------------------------
 # Weighing Location
 # -----------------------------------------------------------------------------
 
@@ -366,7 +425,7 @@ msgid "Weighing Location Name"
 msgstr "Nama Lokasi Timbang"
 
 #. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__warehouse_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__warehouse_id
 msgid "Warehouse"
 msgstr "Gudang"
 
@@ -390,9 +449,15 @@ msgstr "Karyawan Operator yang Diizinkan"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__allowed_division_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__allowed_division_ids
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_form
 msgid "Allowed Divisions"
 msgstr "Divisi yang Diizinkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__allowed_product_ids
+msgid "Allowed Products"
+msgstr "Produk yang Diizinkan"
 
 # -----------------------------------------------------------------------------
 # Foreman
@@ -708,6 +773,73 @@ msgstr "Jabatan harus berada di perusahaan yang sama dengan role karyawan."
 #: model:ir.model.constraint,message:weightrack.constraint_wt_employee_role_company_role_job_uniq
 msgid "Employee role must be unique per company, role, and job position."
 msgstr "Role karyawan harus unik per perusahaan, role, dan jabatan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/product.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_product_company_product_type_uniq
+msgid "Product mapping must be unique per company and product type."
+msgstr "Mapping produk harus unik per perusahaan dan tipe produk."
+
+#. module: weightrack
+#: code:addons/weightrack/models/product.py:0
+msgid "Only one product mapping is allowed per company and product type."
+msgstr "Hanya boleh ada satu mapping produk untuk setiap perusahaan dan tipe produk."
+
+#. module: weightrack
+#: code:addons/weightrack/models/product.py:0
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Product must belong to the same company or be a global product."
+msgstr "Produk harus berada di perusahaan yang sama atau berupa produk global."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Product must be configured in Product for the same company."
+msgstr "Produk harus dikonfigurasi di Product untuk perusahaan yang sama."
+
+#. module: weightrack
+#: model:ir.model.constraint,message:weightrack.constraint_wt_receipt_rule_receipt_rule_uniq
+msgid "Receipt Rule must be unique per company, weighing location, division, and product."
+msgstr "Aturan Penerimaan harus unik per perusahaan, lokasi timbang, divisi, dan produk."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Receipt Rule already exists for company '%(company)s', weighing location '%(location)s', division '%(division)s', and product '%(product)s'. Please use the existing rule or change one of those values."
+msgstr "Aturan Penerimaan untuk perusahaan '%(company)s', lokasi timbang '%(location)s', divisi '%(division)s', dan produk '%(product)s' sudah ada. Gunakan aturan yang sudah ada atau ubah salah satu nilai tersebut."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Weighing location must belong to the same company."
+msgstr "Lokasi timbang harus berada di perusahaan yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Division must belong to the same company."
+msgstr "Divisi harus berada di perusahaan yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Division must be allowed in the selected weighing location."
+msgstr "Divisi harus termasuk divisi yang diizinkan pada lokasi timbang yang dipilih."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Warehouse must belong to the same company."
+msgstr "Gudang harus berada di perusahaan yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Location must belong to the same company or be a shared location."
+msgstr "Lokasi harus berada di perusahaan yang sama atau berupa lokasi bersama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Operation type must belong to the same company."
+msgstr "Tipe operasi harus berada di perusahaan yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Operation type must belong to the selected warehouse."
+msgstr "Tipe operasi harus berada pada gudang yang dipilih."
 
 #. module: weightrack
 #: code:addons/weightrack/models/weighing_location.py:0

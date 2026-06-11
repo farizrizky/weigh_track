@@ -33,7 +33,9 @@ WeighTrack
 └── Configuration
     ├── API
     ├── API Request Logs
-    └── Employee Roles
+    ├── Employee Roles
+    ├── Product
+    └── Receipt Rule
 ```
 
 ## Global Rules
@@ -150,6 +152,131 @@ Employee role must be unique per company, role, and job position.
 %s employee must use an allowed job position for this company.
 ```
 
+## Product
+
+Model teknis:
+
+```text
+wt.product
+```
+
+Deskripsi:
+
+Product adalah konfigurasi produk Odoo yang dipakai oleh WeighTrack untuk setiap tipe produk timbang pada company tertentu. Model ini bukan transaksi timbang; model ini hanya registry/mapping dari `product_type` teknis ke `product.product`.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari company, product type, dan product. |
+| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat mapping berlaku. Default mengikuti company user aktif. |
+| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_type.py`. Saat ini: `lump`. |
+| `product_id` | `Many2one(product.product)` | Ya | Ya | Produk Odoo yang dipakai untuk tipe produk tersebut. `ondelete="restrict"`. |
+
+Urutan data:
+
+```text
+company_id, product_type, product_id
+```
+
+Domain UI:
+
+```text
+product_id: ['|', ('product_tmpl_id.company_id', '=', False), ('product_tmpl_id.company_id', '=', company_id)]
+```
+
+Validasi:
+
+- Kombinasi `company_id` dan `product_type` wajib unik.
+- Produk harus milik company yang sama atau produk global tanpa company.
+
+Constraint database:
+
+```text
+unique(company_id, product_type)
+```
+
+Pesan validasi:
+
+```text
+Product mapping must be unique per company and product type.
+Only one product mapping is allowed per company and product type.
+Product must belong to the same company or be a global product.
+```
+
+## Receipt Rule
+
+Model teknis:
+
+```text
+wt.receipt.rule
+```
+
+Deskripsi:
+
+Receipt Rule adalah konfigurasi aturan produk yang boleh ditimbang pada kombinasi Weighing Location dan Division tertentu. Record ini juga menentukan Warehouse, Location, dan Operation Type yang akan dipakai sebagai tujuan stok saat data timbang nanti diproses menjadi stock receipt.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari weighing location, division, dan product. |
+| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `weighing_location_id.company_id`, `store=True`, readonly. |
+| `weighing_location_id` | `Many2one(wt.weighing.location)` | Ya | Ya | Lokasi timbang tempat aturan berlaku. `ondelete="restrict"`. |
+| `allowed_division_ids` | `Many2many(wt.division)` | Otomatis | Tidak | Computed helper dari `weighing_location_id.allowed_division_ids` untuk domain Division. |
+| `allowed_product_ids` | `Many2many(product.product)` | Otomatis | Tidak | Computed helper dari `wt.product` sesuai company Weighing Location untuk domain Product. |
+| `division_id` | `Many2one(wt.division)` | Ya | Ya | Division yang boleh menimbang produk di lokasi tersebut. Wajib termasuk allowed division pada Weighing Location. |
+| `product_id` | `Many2one(product.product)` | Ya | Ya | Product Odoo yang boleh ditimbang. Pilihan dibatasi dari konfigurasi `wt.product` pada company Weighing Location. |
+| `warehouse_id` | `Many2one(stock.warehouse)` | Ya | Ya | Warehouse tujuan stok. |
+| `location_id` | `Many2one(stock.location)` | Ya | Ya | Stock Location tujuan. Boleh lokasi company yang sama atau shared location. |
+| `operation_type_id` | `Many2one(stock.picking.type)` | Ya | Ya | Operation Type stock yang dipakai. Harus milik warehouse terpilih. |
+
+Urutan data:
+
+```text
+weighing_location_id, division_id, product_id
+```
+
+Domain UI:
+
+```text
+division_id: [('id', 'in', allowed_division_ids)]
+product_id: [('id', 'in', allowed_product_ids)]
+warehouse_id: [('company_id', '=', company_id)]
+location_id: ['|', ('company_id', '=', False), ('company_id', '=', company_id)]
+operation_type_id: [('warehouse_id', '=', warehouse_id)]
+```
+
+Validasi:
+
+- Kombinasi `company_id`, `weighing_location_id`, `division_id`, dan `product_id` wajib unik. Secara database uniqueness dijaga oleh kombinasi weighing location, division, dan product; company mengikuti weighing location.
+- Weighing Location, Division, Product, Warehouse, Location, dan Operation Type harus konsisten dengan company.
+- Division harus termasuk `allowed_division_ids` pada Weighing Location.
+- Product harus sudah terdaftar di konfigurasi `wt.product` pada company yang sama.
+- Operation Type harus berasal dari Warehouse yang dipilih.
+
+Constraint database:
+
+```text
+unique(weighing_location_id, division_id, product_id)
+```
+
+Pesan validasi:
+
+```text
+Receipt Rule must be unique per company, weighing location, division, and product.
+Receipt Rule already exists for company '%(company)s', weighing location '%(location)s', division '%(division)s', and product '%(product)s'. Please use the existing rule or change one of those values.
+Weighing location must belong to the same company.
+Division must belong to the same company.
+Division must be allowed in the selected weighing location.
+Product must belong to the same company or be a global product.
+Product must be configured in Product for the same company.
+Warehouse must belong to the same company.
+Location must belong to the same company or be a shared location.
+Operation type must belong to the same company.
+Operation type must belong to the selected warehouse.
+```
+
 ## Division
 
 Model teknis:
@@ -224,7 +351,6 @@ Field:
 | `name` | `Char` | Ya | Ya | Nama lokasi timbang. |
 | `estate_id` | `Many2one(wt.estate)` | Ya | Ya | Estate lokasi timbang. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
-| `warehouse_id` | `Many2one(stock.warehouse)` | Ya | Ya | Warehouse Odoo yang terkait lokasi timbang. `ondelete="restrict"`. |
 | `operator_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee operator lokasi timbang. Domain berdasarkan employee role `operator`. |
 | `allowed_operator_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Operator. |
 | `allowed_division_ids` | `Many2many(wt.division)` | Tidak | Ya | Daftar divisi yang diizinkan menimbang di lokasi ini. |
@@ -260,7 +386,6 @@ Allowed divisions must belong to the same estate as the weighing location.
 Domain UI:
 
 ```text
-warehouse_id: [('company_id', '=', company_id)]
 allowed_division_ids: [('estate_id', '=', estate_id)]
 ```
 
@@ -883,7 +1008,7 @@ Scope role:
 | --- | --- |
 | `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, dan weighing location terkait division. |
 | `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division. |
-| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, clerk division, foreman, tapper, estate, dan warehouse. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, clerk division, foreman, tapper, dan estate. |
 
 Response data yang disiapkan service:
 
@@ -912,6 +1037,7 @@ employee_id
 estate_ids
 division_ids
 weighing_location_ids
+receipt_rule_ids
 clerk_employee_ids
 foreman_ids
 operator_employee_ids
@@ -926,6 +1052,8 @@ employee
 estates
 divisions
 weighing_locations
+receipt_rules
+products
 clerks
 foremen
 operators
@@ -937,6 +1065,10 @@ Catatan payload:
 - `pull_type` tidak dipakai.
 - Payload device berada di `data.meta.device`.
 - Payload company dan employee berada di `data.masters.company` dan `data.masters.employee`.
+- Weighing Location tidak lagi membawa payload warehouse.
+- Payload Receipt Rule hanya membawa rule scope dan `product_id`.
+- Payload Product membawa `id`, `name`, dan `company_id`; `default_code` tidak dikirim.
+- Warehouse, stock location, dan operation type tetap tersimpan di model Receipt Rule, tetapi tidak dikirim pada response pull master.
 - Setiap data master minimal membawa `id` dan `name`.
 - Master yang memiliki `code`, seperti Estate, Division, dan Weighing Location, ikut membawa `code`.
 - Employee barcode dibawa untuk employee device, clerks, foremen, operators, dan tappers.
@@ -1089,6 +1221,8 @@ Access CSV:
 | --- | --- | --- | --- | --- |
 | `wt.estate` | Ya | Ya | Ya | Ya |
 | `wt.employee.role` | Ya | Ya | Ya | Ya |
+| `wt.product` | Ya | Ya | Ya | Ya |
+| `wt.receipt.rule` | Ya | Ya | Ya | Ya |
 | `wt.api` | Ya | Ya | Ya | Ya |
 | `wt.api.request.log` | Ya | Tidak | Tidak | Tidak |
 | `wt.division` | Ya | Ya | Ya | Ya |
@@ -1099,6 +1233,10 @@ Access CSV:
 | `wt.device.state.reason.wizard` | Ya | Ya | Ya | Ya |
 | `hr.employee` | Ya | Tidak | Tidak | Tidak |
 | `hr.job` | Ya | Tidak | Tidak | Tidak |
+| `product.product` | Ya | Tidak | Tidak | Tidak |
+| `product.template` | Ya | Tidak | Tidak | Tidak |
+| `stock.location` | Ya | Tidak | Tidak | Tidak |
+| `stock.picking.type` | Ya | Tidak | Tidak | Tidak |
 | `stock.warehouse` | Ya | Tidak | Tidak | Tidak |
 
 ## File Utama
@@ -1108,6 +1246,8 @@ Models:
 ```text
 models/estate.py
 models/employee_role.py
+models/product.py
+models/receipt_rule.py
 models/division.py
 models/weighing_location.py
 models/foreman.py
@@ -1145,6 +1285,8 @@ Views:
 ```text
 views/estate_views.xml
 views/employee_role_views.xml
+views/product_views.xml
+views/receipt_rule_views.xml
 views/division_views.xml
 views/weighing_location_views.xml
 views/foreman_views.xml

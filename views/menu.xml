@@ -12,4 +12,6 @@
             <menuitem id="menu_wt_api" name="API" parent="menu_wt_configuration" action="action_wt_api" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_api_request_log" name="API Request Logs" parent="menu_wt_configuration" action="action_wt_api_request_log" sequence="15" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_employee_role" name="Employee Roles" parent="menu_wt_configuration" action="action_wt_employee_role" sequence="20" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_product" name="Product" parent="menu_wt_configuration" action="action_wt_product" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_receipt_rule" name="Receipt Rule" parent="menu_wt_configuration" action="action_wt_receipt_rule" sequence="40" groups="weightrack.group_admin"/>
 </odoo>
