@@ -3,7 +3,7 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from ..constants.product_type import ProductType
+from ..constants.product_types import ProductType
 
 
 class Product(models.Model):
@@ -38,6 +38,13 @@ class Product(models.Model):
         ondelete="restrict",
         domain="['|', ('product_tmpl_id.company_id', '=', False), ('product_tmpl_id.company_id', '=', company_id)]",
         tracking=True,
+    )
+    uom_id = fields.Many2one(
+        "uom.uom",
+        string="UoM",
+        related="product_id.uom_id",
+        store=True,
+        readonly=True,
     )
 
     _sql_constraints = [

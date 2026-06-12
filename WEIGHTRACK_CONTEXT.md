@@ -500,20 +500,25 @@ Prinsip pull master:
 Payload response pull master:
 
 - Root data berisi `meta`, `scope`, dan `masters`.
-- `meta` berisi `server_time`, role, company, employee, dan payload device.
+- `meta` berisi `server_time`, `timezone`, role, company, employee, dan payload device.
+- `server_time`, `last_pull`, dan `last_seen` diformat memakai timezone bot user dari `wt.api`.
 - `scope` berisi batas kerja device dalam bentuk daftar ID.
-- `masters` berisi company, employee, estate, division, weighing location, receipt rule, product, clerk, foreman, operator, dan tapper.
+- `scope` membawa `role`, `company_id`, `estate_ids`, `division_ids`, `weighing_location_ids`, `receipt_rule_ids`, `product_ids`, `product_type_codes`, `uom_ids`, `employee_ids`, `foreman_ids`, dan `tapper_ids`.
+- `masters` berisi company, roles, employees, estate, division, weighing location, receipt rule, product, UoM, product type, foreman, dan tapper.
+- `masters.roles` hanya membawa role milik device yang sedang pull.
+- `masters.product_types` hanya membawa product type yang benar-benar berasal dari mapping `wt.product` untuk product dalam scope.
 - Pull master tidak mengirim warehouse, location, dan operation type; nilai tersebut tetap menjadi konfigurasi backend pada Receipt Rule.
-- Product payload pada pull master hanya membawa `id`, `name`, dan `company_id`; `default_code` tidak dikirim.
+- Product payload pada pull master membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`; `default_code` tidak dikirim.
 - `pull_type` tidak dipakai.
-- Company dan employee berada di `masters`, bukan root data.
+- Company dan employees berada di `masters`, bukan root data.
+- Employee dipusatkan di `masters.employees`; payload foreman dan tapper hanya membawa relasi `employee_id`.
 - Device berada di `meta.device`.
 
 Scope role pull:
 
-- `foreman`: foreman record milik employee device, division foreman, tapper di bawah foreman tersebut, estate, dan weighing location terkait division.
-- `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division.
-- `operator`: weighing location yang dipegang operator, allowed division dari location, receipt rule, product, clerk division, foreman, tapper, dan estate.
+- `foreman`: foreman record milik employee device, division foreman, tapper di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait.
+- `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait.
+- `operator`: weighing location yang dipegang operator, allowed division dari location, receipt rule, product, UoM, clerk division, foreman, tapper, dan estate.
 
 ## Future Push
 

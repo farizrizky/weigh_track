@@ -261,9 +261,9 @@ Jika pull master berhasil, Odoo akan:
 
 | Role | Scope Pull |
 | --- | --- |
-| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, dan weighing location terkait division. |
-| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division. |
-| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, clerk division, foreman, tapper, dan estate. |
+| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
+| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, UoM, clerk division, foreman, tapper, dan estate. |
 
 ### Success Response
 
@@ -274,6 +274,7 @@ Jika pull master berhasil, Odoo akan:
   "data": {
     "meta": {
       "server_time": "2026-06-07 10:00:00",
+      "timezone": "Asia/Jakarta",
       "role": "operator",
       "company_id": 1,
       "employee_id": 10,
@@ -292,14 +293,15 @@ Jika pull master berhasil, Odoo akan:
     "scope": {
       "role": "operator",
       "company_id": 1,
-      "employee_id": 10,
       "estate_ids": [1],
       "division_ids": [1, 2],
       "weighing_location_ids": [1],
       "receipt_rule_ids": [1],
-      "clerk_employee_ids": [20],
+      "product_ids": [10],
+      "product_type_codes": ["lump"],
+      "uom_ids": [1],
+      "employee_ids": [10, 20, 30, 100],
       "foreman_ids": [30, 31],
-      "operator_employee_ids": [10],
       "tapper_ids": [100, 101]
     },
     "masters": {
@@ -307,13 +309,26 @@ Jika pull master berhasil, Odoo akan:
         "id": 1,
         "name": "Company Name"
       },
-      "employee": {
-        "id": 10,
-        "name": "Operator Name",
-        "barcode": "OP001",
-        "job_position": "Operator",
-        "company_id": 1
-      },
+      "roles": [
+        {
+          "code": "operator",
+          "name": "Operator"
+        }
+      ],
+      "employees": [
+        {
+          "id": 10,
+          "name": "Operator Name",
+          "barcode": "OP001",
+          "company_id": 1
+        },
+        {
+          "id": 20,
+          "name": "Clerk Name",
+          "barcode": "CL001",
+          "company_id": 1
+        }
+      ],
       "estates": [
         {
           "id": 1,
@@ -357,45 +372,35 @@ Jika pull master berhasil, Odoo akan:
         {
           "id": 10,
           "name": "Lump",
-          "company_id": 1
+          "company_id": 1,
+          "uom_id": 1,
+          "product_type": "lump"
         }
       ],
-      "clerks": [
+      "uoms": [
         {
-          "id": 20,
-          "name": "Clerk Name",
-          "barcode": "CL001",
-          "job_position": "Clerk",
-          "company_id": 1
+          "id": 1,
+          "name": "kg"
+        }
+      ],
+      "product_types": [
+        {
+          "code": "lump",
+          "name": "Lump"
         }
       ],
       "foremen": [
         {
           "id": 30,
-          "name": "Foreman Name",
           "employee_id": 30,
-          "employee_name": "Foreman Name",
-          "employee_barcode": "FM001",
           "company_id": 1,
           "division_id": 1
-        }
-      ],
-      "operators": [
-        {
-          "id": 10,
-          "name": "Operator Name",
-          "barcode": "OP001",
-          "job_position": "Operator",
-          "company_id": 1
         }
       ],
       "tappers": [
         {
           "id": 100,
-          "name": "Tapper Name",
           "employee_id": 100,
-          "employee_name": "Tapper Name",
-          "employee_barcode": "TP001",
           "company_id": 1,
           "division_id": 1,
           "foreman_id": 30
@@ -410,24 +415,30 @@ Jika pull master berhasil, Odoo akan:
 
 | Path | Description |
 | --- | --- |
-| `data.meta.server_time` | Waktu server saat pull diproses. |
+| `data.meta.server_time` | Waktu server saat pull diproses, sudah dikonversi memakai timezone bot user. |
+| `data.meta.timezone` | Timezone bot user yang dipakai untuk format `server_time`, `last_pull`, dan `last_seen`. |
 | `data.meta.role` | Role operasional device. |
 | `data.meta.company_id` | Company scope device. |
 | `data.meta.employee_id` | Employee penanggung jawab device. |
 | `data.meta.device` | Informasi device aktif. |
 | `data.scope` | Batas kerja device dalam bentuk daftar ID. |
 | `data.scope.receipt_rule_ids` | Daftar Receipt Rule yang berlaku dalam scope device. |
+| `data.scope.product_ids` | Daftar product Odoo yang berlaku dalam scope device. |
+| `data.scope.product_type_codes` | Daftar kode tipe produk dari mapping `wt.product` yang berlaku dalam scope. |
+| `data.scope.uom_ids` | Daftar UoM product dalam scope device. |
+| `data.scope.employee_ids` | Daftar employee yang dibutuhkan aplikasi dalam scope device. |
 | `data.masters.company` | Master company device. |
-| `data.masters.employee` | Master employee penanggung jawab device. |
+| `data.masters.roles` | Master role aplikasi, dibatasi hanya role milik device yang sedang pull. |
+| `data.masters.employees` | Master employee terpusat untuk employee device, clerk, operator, foreman employee, dan tapper employee dalam scope. |
 | `data.masters.estates` | Daftar estate dalam scope. Minimal membawa `id`, `code`, dan `name`. |
 | `data.masters.divisions` | Daftar division dalam scope. Minimal membawa `id`, `code`, dan `name`. |
 | `data.masters.weighing_locations` | Daftar weighing location dalam scope. Tidak membawa warehouse. |
 | `data.masters.receipt_rules` | Daftar aturan receipt yang menentukan kombinasi weighing location, division, dan product yang boleh ditimbang. |
-| `data.masters.products` | Daftar product Odoo yang dipakai oleh receipt rule dalam scope. Payload membawa `id`, `name`, dan `company_id`. |
-| `data.masters.clerks` | Daftar clerk dalam scope, termasuk barcode employee. |
-| `data.masters.foremen` | Daftar foreman dalam scope, termasuk barcode employee. |
-| `data.masters.operators` | Daftar operator dalam scope, termasuk barcode employee. |
-| `data.masters.tappers` | Daftar tapper dalam scope, termasuk barcode employee. |
+| `data.masters.products` | Daftar product Odoo yang dipakai oleh receipt rule dalam scope. Payload membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`. |
+| `data.masters.uoms` | Master UoM dari product dalam scope. |
+| `data.masters.product_types` | Master product type yang benar-benar dipakai oleh mapping `wt.product` dalam scope. |
+| `data.masters.foremen` | Daftar relasi foreman dalam scope, membawa `employee_id`. Detail employee ada di `masters.employees`. |
+| `data.masters.tappers` | Daftar relasi tapper dalam scope, membawa `employee_id`. Detail employee ada di `masters.employees`. |
 
 ## Error Codes
 

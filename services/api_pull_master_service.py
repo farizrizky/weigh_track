@@ -1,5 +1,6 @@
 from odoo import fields, models
 
+from ..constants.product_types import ProductType
 from ..constants.roles import Role
 
 
@@ -33,6 +34,7 @@ class ApiPullMasterService(models.AbstractModel):
         bot_user_result = security.get_bot_user(device.company_id, device=device)
         if not bot_user_result["ok"]:
             return bot_user_result
+        bot_user = bot_user_result["bot_user"]
 
         scope = self._scope_for_device(device)
         now = fields.Datetime.now()
@@ -42,18 +44,19 @@ class ApiPullMasterService(models.AbstractModel):
         }
         if payload.get("app_version"):
             values["app_version"] = payload.get("app_version")
-        device.with_user(bot_user_result["bot_user"]).sudo().with_context(
+        device.with_user(bot_user).sudo().with_context(
             allow_device_state_update=True
         ).write(values)
 
         return response.success(
             {
                 "meta": {
-                    "server_time": fields.Datetime.to_string(now),
+                    "server_time": self._datetime_local_payload(now, bot_user),
+                    "timezone": self._timezone_payload(bot_user),
                     "role": device.role,
                     "company_id": device.company_id.id,
                     "employee_id": device.employee_id.id,
-                    "device": self._device_payload(device),
+                    "device": self._device_payload(device, bot_user),
                 },
                 "scope": self._scope_payload(device, scope),
                 "masters": self._masters_payload(scope, device),
@@ -73,6 +76,10 @@ class ApiPullMasterService(models.AbstractModel):
             "divisions": self.env["wt.division"].browse(),
             "weighing_locations": self.env["wt.weighing.location"].browse(),
             "receipt_rules": self.env["wt.receipt.rule"].browse(),
+            "products": self.env["product.product"].browse(),
+            "uoms": self.env["uom.uom"].browse(),
+            "employees": self.env["hr.employee"].browse(),
+            "product_type_by_product_id": {},
             "clerks": self.env["hr.employee"].browse(),
             "foremen": self.env["wt.foreman"].browse(),
             "operators": self.env["hr.employee"].browse(),
@@ -181,11 +188,28 @@ class ApiPullMasterService(models.AbstractModel):
         )
         if device.role == Role.OPERATOR:
             operators |= device.employee_id
+        products = receipt_rules.mapped("product_id")
+        uoms = products.mapped("uom_id")
+        product_type_by_product_id = self._product_type_by_product_id(
+            device.company_id,
+            products,
+        )
+        employees = (
+            clerks
+            | operators
+            | foremen.mapped("employee_id")
+            | tappers.mapped("employee_id")
+            | device.employee_id
+        )
         return {
             "estates": estates,
             "divisions": divisions,
             "weighing_locations": locations,
             "receipt_rules": receipt_rules,
+            "products": products,
+            "uoms": uoms,
+            "employees": employees,
+            "product_type_by_product_id": product_type_by_product_id,
             "clerks": clerks,
             "foremen": foremen,
             "operators": operators,
@@ -196,22 +220,32 @@ class ApiPullMasterService(models.AbstractModel):
         return {
             "role": device.role,
             "company_id": device.company_id.id,
-            "employee_id": device.employee_id.id,
             "estate_ids": scope["estates"].ids,
             "division_ids": scope["divisions"].ids,
             "weighing_location_ids": scope["weighing_locations"].ids,
             "receipt_rule_ids": scope["receipt_rules"].ids,
-            "clerk_employee_ids": scope["clerks"].ids,
+            "product_ids": scope["products"].ids,
+            "product_type_codes": sorted(
+                product_type
+                for product_type in set(scope["product_type_by_product_id"].values())
+                if product_type
+            ),
+            "uom_ids": scope["uoms"].ids,
+            "employee_ids": scope["employees"].ids,
             "foreman_ids": scope["foremen"].ids,
-            "operator_employee_ids": scope["operators"].ids,
             "tapper_ids": scope["tappers"].ids,
         }
 
     def _masters_payload(self, scope, device):
         receipt_rules = scope["receipt_rules"]
+        product_type_by_product_id = scope["product_type_by_product_id"]
+        product_type_codes = set(product_type_by_product_id.values())
         return {
             "company": self._company_payload(device.company_id),
-            "employee": self._employee_payload(device.employee_id),
+            "roles": self._selection_payload(Role.DEVICE_SELECTION, {device.role}),
+            "employees": [
+                self._employee_payload(employee) for employee in scope["employees"]
+            ],
             "estates": [self._estate_payload(estate) for estate in scope["estates"]],
             "divisions": [
                 self._division_payload(division) for division in scope["divisions"]
@@ -224,18 +258,22 @@ class ApiPullMasterService(models.AbstractModel):
                 self._receipt_rule_payload(rule) for rule in receipt_rules
             ],
             "products": [
-                self._product_payload(product)
-                for product in receipt_rules.mapped("product_id")
+                self._product_payload(
+                    product,
+                    product_type_by_product_id.get(product.id),
+                )
+                for product in scope["products"]
             ],
-            "clerks": [self._employee_payload(employee) for employee in scope["clerks"]],
+            "uoms": [self._uom_payload(uom) for uom in scope["uoms"]],
+            "product_types": self._selection_payload(
+                ProductType.SELECTION,
+                product_type_codes,
+            ),
             "foremen": [self._foreman_payload(foreman) for foreman in scope["foremen"]],
-            "operators": [
-                self._employee_payload(employee) for employee in scope["operators"]
-            ],
             "tappers": [self._tapper_payload(tapper) for tapper in scope["tappers"]],
         }
 
-    def _device_payload(self, device):
+    def _device_payload(self, device, user):
         return {
             "id": device.id,
             "device_id": device.device_id,
@@ -244,13 +282,23 @@ class ApiPullMasterService(models.AbstractModel):
             "role": device.role,
             "device_type": device.device_type,
             "app_version": device.app_version,
-            "last_pull": fields.Datetime.to_string(device.last_pull)
-            if device.last_pull
-            else False,
-            "last_seen": fields.Datetime.to_string(device.last_seen)
-            if device.last_seen
-            else False,
+            "last_pull": self._datetime_local_payload(device.last_pull, user),
+            "last_seen": self._datetime_local_payload(device.last_seen, user),
         }
+
+    def _timezone_payload(self, user):
+        return user.tz or "UTC"
+
+    def _datetime_local_payload(self, value, user):
+        if not value:
+            return False
+        datetime_value = fields.Datetime.to_datetime(value)
+        timezone = self._timezone_payload(user)
+        localized = fields.Datetime.context_timestamp(
+            user.with_context(tz=timezone),
+            datetime_value,
+        )
+        return localized.replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
     def _company_payload(self, company):
         return {
@@ -297,20 +345,52 @@ class ApiPullMasterService(models.AbstractModel):
             "product_id": rule.product_id.id,
         }
 
-    def _product_payload(self, product):
+    def _product_payload(self, product, product_type=False):
         return {
             "id": product.id,
             "name": product.display_name,
             "company_id": product.product_tmpl_id.company_id.id or False,
+            "uom_id": product.uom_id.id,
+            "product_type": product_type or False,
         }
+
+    def _product_type_by_product_id(self, company, products):
+        mapping = {}
+        if not products:
+            return mapping
+
+        product_config_model = self.env["wt.product"].sudo()
+        product_configs = product_config_model.search(
+            [
+                ("company_id", "=", company.id),
+                ("product_id", "in", products.ids),
+            ]
+        )
+        for product_config in product_configs:
+            if product_config.product_id and product_config.product_type:
+                mapping[product_config.product_id.id] = product_config.product_type
+
+        return mapping
+
+    def _uom_payload(self, uom):
+        return {
+            "id": uom.id,
+            "name": uom.name,
+        }
+
+    def _selection_payload(self, selection, allowed_values=None):
+        if allowed_values is not None:
+            selection = [
+                (value, label)
+                for value, label in selection
+                if value in allowed_values
+            ]
+        return [{"code": value, "name": label} for value, label in selection]
 
     def _foreman_payload(self, foreman):
         return {
             "id": foreman.id,
-            "name": foreman.name,
             "employee_id": foreman.employee_id.id,
-            "employee_name": foreman.employee_id.name,
-            "employee_barcode": self._employee_barcode(foreman.employee_id),
             "company_id": foreman.company_id.id,
             "division_id": foreman.division_id.id,
         }
@@ -318,10 +398,7 @@ class ApiPullMasterService(models.AbstractModel):
     def _tapper_payload(self, tapper):
         return {
             "id": tapper.id,
-            "name": tapper.name,
             "employee_id": tapper.employee_id.id,
-            "employee_name": tapper.employee_id.name,
-            "employee_barcode": self._employee_barcode(tapper.employee_id),
             "company_id": tapper.company_id.id,
             "division_id": tapper.division_id.id,
             "foreman_id": tapper.foreman_id.id or False,
@@ -332,7 +409,6 @@ class ApiPullMasterService(models.AbstractModel):
             "id": employee.id,
             "name": employee.name,
             "barcode": self._employee_barcode(employee),
-            "job_position": employee.job_id.name if employee.job_id else False,
             "company_id": employee.company_id.id if employee.company_id else False,
         }
 

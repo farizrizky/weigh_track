@@ -170,8 +170,9 @@ Field:
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Computed name dari company, product type, dan product. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat mapping berlaku. Default mengikuti company user aktif. |
-| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_type.py`. Saat ini: `lump`. |
+| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `lump`. |
 | `product_id` | `Many2one(product.product)` | Ya | Ya | Produk Odoo yang dipakai untuk tipe produk tersebut. `ondelete="restrict"`. |
+| `uom_id` | `Many2one(uom.uom)` | Otomatis | Tidak | Related UoM dari `product_id.uom_id`, stored dan readonly. |
 
 Urutan data:
 
@@ -1006,9 +1007,9 @@ Scope role:
 
 | Role | Scope |
 | --- | --- |
-| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, dan weighing location terkait division. |
-| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, dan weighing location terkait division. |
-| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, clerk division, foreman, tapper, dan estate. |
+| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
+| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, UoM, clerk division, foreman, tapper, dan estate. |
 
 Response data yang disiapkan service:
 
@@ -1022,6 +1023,7 @@ Meta payload:
 
 ```text
 server_time
+timezone
 role
 company_id
 employee_id
@@ -1033,14 +1035,15 @@ Scope payload:
 ```text
 role
 company_id
-employee_id
 estate_ids
 division_ids
 weighing_location_ids
 receipt_rule_ids
-clerk_employee_ids
+product_ids
+product_type_codes
+uom_ids
+employee_ids
 foreman_ids
-operator_employee_ids
 tapper_ids
 ```
 
@@ -1048,15 +1051,16 @@ Master payload:
 
 ```text
 company
-employee
+roles
+employees
 estates
 divisions
 weighing_locations
 receipt_rules
 products
-clerks
+uoms
+product_types
 foremen
-operators
 tappers
 ```
 
@@ -1064,14 +1068,19 @@ Catatan payload:
 
 - `pull_type` tidak dipakai.
 - Payload device berada di `data.meta.device`.
-- Payload company dan employee berada di `data.masters.company` dan `data.masters.employee`.
+- Payload `server_time`, `last_pull`, dan `last_seen` diformat memakai timezone bot user dari `wt.api`; timezone tersebut dikirim di `data.meta.timezone`.
+- Payload company berada di `data.masters.company`.
+- Payload employee dipusatkan di `data.masters.employees`.
+- Payload role aplikasi berada di `data.masters.roles` dan hanya membawa role device yang sedang pull.
 - Weighing Location tidak lagi membawa payload warehouse.
 - Payload Receipt Rule hanya membawa rule scope dan `product_id`.
-- Payload Product membawa `id`, `name`, dan `company_id`; `default_code` tidak dikirim.
+- Payload Product membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`; `default_code` tidak dikirim.
+- Payload UoM berada di `data.masters.uoms`.
+- Payload Product Type berada di `data.masters.product_types` dan hanya membawa tipe produk yang benar-benar berasal dari mapping `wt.product` untuk product dalam scope.
 - Warehouse, stock location, dan operation type tetap tersimpan di model Receipt Rule, tetapi tidak dikirim pada response pull master.
 - Setiap data master minimal membawa `id` dan `name`.
 - Master yang memiliki `code`, seperti Estate, Division, dan Weighing Location, ikut membawa `code`.
-- Employee barcode dibawa untuk employee device, clerks, foremen, operators, dan tappers.
+- Employee barcode dibawa di master terpusat `employees`; payload foreman dan tapper hanya membawa relasi seperti `employee_id`, `company_id`, dan division terkait.
 
 ### API Response Service
 

@@ -369,6 +369,11 @@ msgstr "Produk"
 msgid "Product Type"
 msgstr "Tipe Produk"
 
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_product__uom_id
+msgid "UoM"
+msgstr "Satuan"
+
 # -----------------------------------------------------------------------------
 # Receipt Rule
 # -----------------------------------------------------------------------------
@@ -430,7 +435,7 @@ msgid "Warehouse"
 msgstr "Gudang"
 
 #. module: weightrack
-#: code:addons/weightrack/constants/product_type.py:0
+#: code:addons/weightrack/constants/product_types.py:0
 msgid "Lump"
 msgstr "Lump"
 
