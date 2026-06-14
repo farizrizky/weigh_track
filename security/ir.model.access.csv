@@ -2,7 +2,10 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_wt_estate_admin,access.wt.estate.admin,model_wt_estate,group_admin,1,1,1,1
 access_wt_employee_role_admin,access.wt.employee.role.admin,model_wt_employee_role,group_admin,1,1,1,1
 access_wt_product_admin,access.wt.product.admin,model_wt_product,group_admin,1,1,1,1
+access_wt_shrinkage_tolerance_admin,access.wt.shrinkage.tolerance.admin,model_wt_shrinkage_tolerance,group_admin,1,1,1,1
 access_wt_receipt_rule_admin,access.wt.receipt.rule.admin,model_wt_receipt_rule,group_admin,1,1,1,1
+access_wt_weather_admin,access.wt.weather.admin,model_wt_weather,group_admin,1,1,1,1
+access_wt_weather_data_admin,access.wt.weather.data.admin,model_wt_weather_data,group_admin,1,1,1,1
 access_wt_api_admin,access.wt.api.admin,model_wt_api,group_admin,1,1,1,1
 access_wt_api_request_log_admin,access.wt.api.request.log.admin,model_wt_api_request_log,group_admin,1,0,0,0
 access_wt_division_admin,access.wt.division.admin,model_wt_division,group_admin,1,1,1,1

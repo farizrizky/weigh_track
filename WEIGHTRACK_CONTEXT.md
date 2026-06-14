@@ -39,7 +39,9 @@ product
 Scope aktif saat ini:
 
 - Master data estate operation.
+- Master cuaca dan data cuaca estate.
 - Konfigurasi mapping produk timbang.
+- Konfigurasi toleransi penyusutan produksi.
 - Assignment dan lifecycle device.
 - API untuk bot user.
 - API request audit log.
@@ -68,7 +70,10 @@ POST /weightrack/api/v1/pull/master
   - `_inherit = ["mail.thread", "mail.activity.mixin"]`
   - field penting memakai `tracking=True`
   - form view memakai `<chatter/>`
-- Field `name` pada form dibuat sebagai title besar menggunakan `oe_title`.
+- Field `name` pada form umumnya dibuat sebagai title besar menggunakan `oe_title`.
+- Pengecualian saat ini:
+  - `wt.shrinkage.tolerance`: `name` disembunyikan dari form, field paling atas adalah `company_id`.
+  - `wt.weather.data`: `name` disembunyikan dari form, field paling atas adalah `weather_date`.
 - Akses module dibatasi dengan group `weightrack.group_admin`.
 - Jangan buat role aplikasi baru dulu. Untuk saat ini role aplikasi hanya `Administrator`.
 - Role employee operasional diatur lewat `wt.employee.role` berdasarkan company, role, dan job position.
@@ -96,8 +101,11 @@ sudo chmod -R u+rwX,go+rX /opt/odoo/custom-addons/weightrack
 Model database:
 
 - `wt.estate`
+- `wt.weather`
+- `wt.weather.data`
 - `wt.employee.role`
 - `wt.product`
+- `wt.shrinkage.tolerance`
 - `wt.receipt.rule`
 - `wt.api`
 - `wt.api.request.log`
@@ -124,6 +132,8 @@ Abstract service model:
 WeighTrack
 |-- Master Data
 |   |-- Estates
+|   |-- Weather
+|   |-- Weather Data
 |   |-- Divisions
 |   |-- Weighing Locations
 |   |-- Foremen
@@ -134,6 +144,7 @@ WeighTrack
     |-- API Request Logs
     |-- Employee Roles
     |-- Product
+    |-- Shrinkage Tolerance
     `-- Receipt Rule
 ```
 
@@ -154,12 +165,20 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 ## Data Design Notes
 
 - `Division` wajib terhubung ke `Estate`.
+- `wt.weather` adalah master cuaca sederhana yang berisi nama dan deskripsi.
+- `wt.weather.data` menyimpan data cuaca per tanggal dan estate.
+- Satu estate hanya boleh memiliki satu data cuaca untuk tanggal yang sama.
+- Data cuaca saat ini belum diekspos melalui custom API dan belum masuk payload pull master.
 - `Weighing Location` wajib terhubung ke `Estate`.
 - `company_id` pada `Division`, `Weighing Location`, `Foreman`, dan `Tapper` mengikuti parent operasional.
 - Pengaturan divisi yang boleh menimbang hanya dilakukan dari `Weighing Location` melalui `allowed_division_ids`.
 - `Division` tidak perlu menampilkan atau mengatur relasi balik ke `Weighing Location`.
 - `wt.product` memetakan `company_id` + `product_type` ke produk Odoo `product.product` yang dipakai untuk proses timbang.
 - Satu company hanya boleh memiliki satu mapping untuk setiap `product_type`.
+- `wt.shrinkage.tolerance` menentukan batas toleransi penyusutan produksi per company, product type, dan division.
+- Batas toleransi penyusutan dipakai saat hari produksi tidak sama dengan hari penimbangan di gudang induk.
+- Kombinasi Company, Product Type, dan Division pada `wt.shrinkage.tolerance` tidak boleh berulang.
+- Division pada `wt.shrinkage.tolerance` wajib berasal dari company yang sama.
 - `wt.receipt.rule` menegaskan produk yang boleh ditimbang pada kombinasi Weighing Location dan Division tertentu, sekaligus menentukan Warehouse, Location, dan Operation Type untuk proses receipt stok.
 - Pilihan Product pada `wt.receipt.rule` dibatasi dari product yang sudah dikonfigurasi di `wt.product` untuk company Weighing Location.
 - Division pada `wt.receipt.rule` wajib termasuk `allowed_division_ids` pada Weighing Location.
@@ -503,10 +522,11 @@ Payload response pull master:
 - `meta` berisi `server_time`, `timezone`, role, company, employee, dan payload device.
 - `server_time`, `last_pull`, dan `last_seen` diformat memakai timezone bot user dari `wt.api`.
 - `scope` berisi batas kerja device dalam bentuk daftar ID.
-- `scope` membawa `role`, `company_id`, `estate_ids`, `division_ids`, `weighing_location_ids`, `receipt_rule_ids`, `product_ids`, `product_type_codes`, `uom_ids`, `employee_ids`, `foreman_ids`, dan `tapper_ids`.
-- `masters` berisi company, roles, employees, estate, division, weighing location, receipt rule, product, UoM, product type, foreman, dan tapper.
+- `scope` membawa `role`, `company_id`, `estate_ids`, `division_ids`, `weighing_location_ids`, `receipt_rule_ids`, `product_ids`, `product_type_codes`, `uom_ids`, `shrinkage_tolerance_ids`, `employee_ids`, `foreman_ids`, dan `tapper_ids`.
+- `masters` berisi company, roles, employees, estate, division, weighing location, receipt rule, product, UoM, product type, shrinkage tolerance, foreman, dan tapper.
 - `masters.roles` hanya membawa role milik device yang sedang pull.
 - `masters.product_types` hanya membawa product type yang benar-benar berasal dari mapping `wt.product` untuk product dalam scope.
+- `masters.shrinkage_tolerances` hanya membawa toleransi yang sesuai dengan division dan product type dalam scope device.
 - Pull master tidak mengirim warehouse, location, dan operation type; nilai tersebut tetap menjadi konfigurasi backend pada Receipt Rule.
 - Product payload pada pull master membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`; `default_code` tidak dikirim.
 - `pull_type` tidak dipakai.
@@ -516,9 +536,9 @@ Payload response pull master:
 
 Scope role pull:
 
-- `foreman`: foreman record milik employee device, division foreman, tapper di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait.
-- `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait.
-- `operator`: weighing location yang dipegang operator, allowed division dari location, receipt rule, product, UoM, clerk division, foreman, tapper, dan estate.
+- `foreman`: foreman record milik employee device, division foreman, tapper di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait.
+- `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait.
+- `operator`: weighing location yang dipegang operator, allowed division dari location, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate.
 
 ## Future Push
 
@@ -529,11 +549,183 @@ Konsep yang sudah disiapkan:
 - Request push membawa `device_id` dan `token`.
 - Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`.
 - Device harus berstatus `active`.
+- Role device yang boleh push data penimbangan hanya `operator`.
 - `wt.api.push_enabled` harus aktif untuk company device.
 - Setelah valid, Odoo memakai company, employee, dan role dari assignment device.
 - Eksekusi tulis data bisnis diarahkan ke internal bot user agar auditable.
 - Push akan dibuat hati-hati agar tidak melanggar user license; aktivitas database diarahkan ke bot user internal yang memang dikonfigurasi.
 - Semua request push nanti tetap masuk ke `wt.api.request.log`.
+
+Rancangan push inbound weighing:
+
+- Endpoint rencana:
+
+```text
+POST /weightrack/api/v1/push/inbound-weighing
+```
+
+- Push data penimbangan tidak langsung menjadi stock.
+- Data push hanya membentuk data inbound dan detail penimbangan.
+- Stock resmi baru terbentuk setelah administrator Odoo melakukan validasi secara sadar.
+- Payload push dipisah berdasarkan `product_type` agar setiap tipe produk bisa memiliki format data penimbangan sendiri.
+- Product type menjadi registry/dispatcher melalui `constants/product_types.py`.
+- Untuk `lump`, constant mengarah ke model detail `wt.weighing.lump`.
+- Jika nanti ada product type baru dengan format penimbangan berbeda, tambahkan product type di constant dan buat model detail penimbangannya sendiri.
+
+Struktur data inbound rencana:
+
+- `wt.inbound.weighing`
+  - Header data inbound per division, hasil grouping otomatis oleh Odoo.
+  - Jika satu push membawa 3 division, Odoo membentuk 3 inbound weighing.
+  - Header tidak menyimpan foreman karena satu division bisa memiliki banyak foreman.
+  - Header menjadi acuan pembuatan receipt saat validasi admin.
+- `wt.inbound.weighing.product`
+  - Line/agregasi product per inbound weighing.
+  - Menyimpan `product_type`, product, receipt rule, total bag, dan `inbound_stock`.
+  - Tidak menyimpan field berat khusus seperti reject, slab, atau net weight.
+  - `inbound_stock` adalah agregasi generic yang dipakai sebagai quantity receipt.
+  - Untuk lump, `inbound_stock` dihitung dari total `net_weight` berdasarkan `ProductType.STOCK_QUANTITY_FIELD`.
+  - Line ini menjadi acuan pembuatan/pencarian lot berdasarkan company, production date, division, dan product.
+- `wt.weighing.lump`
+  - Detail penimbangan untuk product type `lump`.
+  - Menyimpan raw data penimbangan lump, termasuk field berat khusus lump.
+  - Initial weighing/penimbangan lapangan awal rencananya disatukan di detail lump.
+
+Prinsip mapping push:
+
+- Aplikasi mengirim raw data penimbangan, bukan struktur final dokumen Odoo.
+- Odoo membentuk `wt.inbound.weighing` dan `wt.inbound.weighing.product` otomatis saat menerima payload.
+- Odoo mengambil `company_id` dan `operator_id` dari assignment device.
+- `operator` resmi untuk push adalah `device.employee_id`, bukan data operator yang dikirim payload.
+- Odoo memvalidasi bahwa `weighing_location_id` memang dipegang oleh operator device.
+- Odoo memvalidasi bahwa `division_id` termasuk `allowed_division_ids` pada weighing location.
+- Odoo memvalidasi receipt rule sesuai kombinasi weighing location, division, dan product.
+- Odoo menghitung ulang total bag dan `inbound_stock` dari detail, tidak mempercayai agregasi dari device sebagai nilai final.
+
+Rancangan payload push v1:
+
+```json
+{
+  "device_id": "OPR-DEVICE-001",
+  "token": "device-token",
+  "app_version": "1.0.0",
+  "batch_local_id": "batch-20260612-001",
+  "master_synced_at": "2026-06-12 06:00:00",
+  "sent_at": "2026-06-12 08:30:00",
+  "inbounds": {
+    "lump": [
+      {
+        "local_id": "lump-001",
+        "production_date": "2026-06-12",
+        "weighing_date": "2026-06-12 07:45:00",
+        "weighing_location_id": 1,
+        "division_id": 10,
+        "product_id": 25,
+        "receipt_rule_id": 7,
+        "tapper_id": 88,
+        "foreman_id": 31,
+        "snapshot": {
+          "company": {
+            "id": 1,
+            "name": "PT. Perkebunan Nusantara III"
+          },
+          "estate": {
+            "id": 5,
+            "code": "EST-A",
+            "name": "Estate A"
+          },
+          "weighing_location": {
+            "id": 1,
+            "code": "WB-01",
+            "name": "Weighbridge 1"
+          },
+          "division": {
+            "id": 10,
+            "code": "DIV-A",
+            "name": "Division A"
+          },
+          "operator": {
+            "employee_id": 101,
+            "name": "John Doe",
+            "barcode": "EMP-101"
+          },
+          "clerk": {
+            "employee_id": 201,
+            "name": "Jane Smith",
+            "barcode": "EMP-201"
+          },
+          "foreman": {
+            "id": 31,
+            "employee_id": 301,
+            "name": "Bob Johnson",
+            "barcode": "EMP-031"
+          },
+          "tapper": {
+            "id": 88,
+            "employee_id": 401,
+            "name": "Sam Tapper",
+            "barcode": "EMP-401"
+          },
+          "product": {
+            "id": 25,
+            "name": "Rubber Lump",
+            "uom": {
+              "id": 1,
+              "name": "kg"
+            }
+          },
+          "receipt_rule": {
+            "id": 7,
+            "warehouse_id": 2,
+            "warehouse_name": "Main Warehouse",
+            "location_id": 15,
+            "location_name": "WH/Stock",
+            "operation_type_id": 4,
+            "operation_type_name": "Receipts"
+          }
+        },
+        "total_bag": 12,
+        "production_weight": 900.0,
+        "reject_weight": 20.0,
+        "slab_weight": 15.0,
+        "net_weight": 865.0,
+        "shrinkage_tolerance_percentage": 5.0,
+        "shrinkage_tolerance_weight": 35.0,
+        "is_manual_weighing": false,
+        "manual_weighing_reason": null,
+        "note": null,
+        "initial_weighing": {
+          "weighing_date": "2026-06-12 07:30:00",
+          "device_id": "FIELD-SCALE-002",
+          "weight": 880.0,
+          "is_manual_weighing": true,
+          "manual_weighing_reason": "Scale device malfunction",
+          "note": "Initial weight taken manually from operator note"
+        }
+      }
+    ]
+  }
+}
+```
+
+Snapshot push:
+
+- Karena device bisa bekerja offline, master Odoo bisa berubah sebelum data sempat dipush.
+- Payload membawa `snapshot` sebagai versi master yang diketahui aplikasi saat penimbangan.
+- Odoo tetap membuat snapshot sendiri saat data diterima.
+- Snapshot dari device tidak menjadi sumber otoritatif untuk validasi, tetapi dipakai untuk audit dan review.
+- Jika master terbaru berbeda dari snapshot device, data tidak otomatis dibuang.
+- Data bisa masuk dengan status review/blocking sesuai tingkat konflik.
+- Contoh konflik ringan: nama master berubah tetapi ID dan relasi masih valid.
+- Contoh konflik berat: division sudah tidak allowed pada weighing location, receipt rule tidak valid, atau product mapping berubah.
+
+Idempotency push:
+
+- `batch_local_id` mengidentifikasi satu sesi push dari device.
+- `local_id` pada tiap detail penimbangan wajib unik minimal per device dan product type.
+- Aturan idempotency rencana: `device_id + product_type + local_id`.
+- Retry dari device tidak boleh membuat data timbang double.
+- Response push nanti perlu mengembalikan status per item: accepted, duplicate, needs_review, blocked, atau error.
 
 ## Localization Notes
 
@@ -555,9 +747,15 @@ Istilah utama:
 - `Name` -> `Nama`
 - `Company` -> `Perusahaan`
 - `Master Data` -> `Data Master`
+- `Weather` -> `Cuaca`
+- `Weather Data` -> `Data Cuaca`
+- `Description` -> `Deskripsi`
+- `Date` -> `Tanggal`
 - `Employee Role` / `Employee Roles` -> `Role Karyawan`
 - `Product` -> `Produk`
 - `Product Type` -> `Tipe Produk`
+- `Shrinkage Tolerance` / `Shrinkage Tolerances` -> `Toleransi Penyusutan`
+- `Shrinkage Tolerance (%)` -> `Toleransi Penyusutan (%)`
 - `Receipt Rule` -> `Aturan Penerimaan`
 - `Location` -> `Lokasi`
 - `Operation Type` -> `Tipe Operasi`

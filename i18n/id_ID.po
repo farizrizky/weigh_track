@@ -36,7 +36,10 @@ msgstr "Kode"
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_api__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_weather__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__name
 msgid "Name"
 msgstr "Nama"
 
@@ -50,7 +53,9 @@ msgstr "Nama"
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_api__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -83,6 +88,7 @@ msgstr "Konfigurasi"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_estate_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_division__estate_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__estate_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__estate_id
 msgid "Estate"
 msgstr "Estate"
 
@@ -99,11 +105,52 @@ msgid "Estate Name"
 msgstr "Nama Estate"
 
 # -----------------------------------------------------------------------------
+# Weather
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_weather
+#: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__weather_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_list
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_form
+#: model:ir.actions.act_window,name:weightrack.action_wt_weather
+#: model:ir.ui.menu,name:weightrack.menu_wt_weather
+msgid "Weather"
+msgstr "Cuaca"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_weather_data
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_data_list
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_data_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_data_form
+#: model:ir.actions.act_window,name:weightrack.action_wt_weather_data
+#: model:ir.ui.menu,name:weightrack.menu_wt_weather_data
+msgid "Weather Data"
+msgstr "Data Cuaca"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weather__description
+msgid "Description"
+msgstr "Deskripsi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__weather_date
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_data_search
+msgid "Date"
+msgstr "Tanggal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_form
+msgid "Weather Name"
+msgstr "Nama Cuaca"
+
+# -----------------------------------------------------------------------------
 # Division
 # -----------------------------------------------------------------------------
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_division
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__division_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__division_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__division_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_division_form
@@ -366,6 +413,7 @@ msgstr "Produk"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__product_type
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__product_type
 msgid "Product Type"
 msgstr "Tipe Produk"
 
@@ -373,6 +421,34 @@ msgstr "Tipe Produk"
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__uom_id
 msgid "UoM"
 msgstr "Satuan"
+
+# -----------------------------------------------------------------------------
+# Shrinkage Tolerance
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_shrinkage_tolerance
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_form
+#: model:ir.ui.menu,name:weightrack.menu_wt_shrinkage_tolerance
+msgid "Shrinkage Tolerance"
+msgstr "Toleransi Penyusutan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_list
+#: model:ir.actions.act_window,name:weightrack.action_wt_shrinkage_tolerance
+msgid "Shrinkage Tolerances"
+msgstr "Toleransi Penyusutan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__shrinkage_tolerance_percentage
+msgid "Shrinkage Tolerance (%)"
+msgstr "Toleransi Penyusutan (%)"
+
+#. module: weightrack
+#: model:ir.model.fields,help:weightrack.field_wt_shrinkage_tolerance__shrinkage_tolerance_percentage
+msgid "Maximum allowed production shrinkage percentage when production date differs from warehouse weighing date."
+msgstr "Persentase batas penyusutan produksi yang diizinkan ketika tanggal produksi berbeda dengan tanggal penimbangan di gudang induk."
 
 # -----------------------------------------------------------------------------
 # Receipt Rule
@@ -436,6 +512,7 @@ msgstr "Gudang"
 
 #. module: weightrack
 #: code:addons/weightrack/constants/product_types.py:0
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance__product_type__lump
 msgid "Lump"
 msgstr "Lump"
 
@@ -760,6 +837,16 @@ msgid "Estate code must be unique per company."
 msgstr "Kode estate harus unik per perusahaan."
 
 #. module: weightrack
+#: model:ir.model.constraint,message:weightrack.constraint_wt_weather_data_estate_date_uniq
+msgid "Weather data must be unique per estate and date."
+msgstr "Data cuaca harus unik per estate dan tanggal."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weather_data.py:0
+msgid "Weather data already exists for estate '%(estate)s' and date '%(date)s'."
+msgstr "Data cuaca untuk estate '%(estate)s' dan tanggal '%(date)s' sudah ada."
+
+#. module: weightrack
 #: code:addons/weightrack/models/division.py:0
 msgid "Division code must be unique per estate."
 msgstr "Kode divisi harus unik per estate."
@@ -818,8 +905,25 @@ msgstr "Lokasi timbang harus berada di perusahaan yang sama."
 
 #. module: weightrack
 #: code:addons/weightrack/models/receipt_rule.py:0
+#: code:addons/weightrack/models/shrinkage_tolerance.py:0
 msgid "Division must belong to the same company."
 msgstr "Divisi harus berada di perusahaan yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance.py:0
+#: model:ir.model.constraint,message:weightrack.constraint_wt_shrinkage_tolerance_company_product_type_division_uniq
+msgid "Shrinkage tolerance must be unique per company, product type, and division."
+msgstr "Toleransi penyusutan harus unik per perusahaan, tipe produk, dan divisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance.py:0
+msgid "Shrinkage tolerance already exists for company '%(company)s', product type '%(product_type)s', and division '%(division)s'."
+msgstr "Toleransi penyusutan untuk perusahaan '%(company)s', tipe produk '%(product_type)s', dan divisi '%(division)s' sudah ada."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance.py:0
+msgid "Shrinkage tolerance percentage must be between 0 and 100."
+msgstr "Persentase toleransi penyusutan harus berada di antara 0 dan 100."
 
 #. module: weightrack
 #: code:addons/weightrack/models/receipt_rule.py:0

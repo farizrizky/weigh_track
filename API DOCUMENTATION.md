@@ -13,6 +13,8 @@ POST /weightrack/api/v1/pull/master
 
 Endpoint push belum diekspos. Struktur security dan konfigurasi enable/disable push sudah disiapkan agar endpoint push bisa memakai pola yang sama.
 
+Data cuaca (`wt.weather` dan `wt.weather.data`) saat ini belum diekspos melalui custom API dan belum masuk payload pull master. Data tersebut masih dikelola sebagai data Odoo/UI.
+
 ## Prinsip Umum
 
 - Semua request memakai JSON.
@@ -51,6 +53,15 @@ Pembagian tanggung jawab:
 - `api_pull_master_service.py` memproses scope data master berdasarkan role device.
 - `api_security_service.py` memusatkan validasi security bersama.
 - `api_response_service.py` hanya membungkus response standar, tidak menyiapkan data bisnis.
+
+## Data Odoo Tanpa Custom API
+
+Beberapa model operasional sudah tersedia di Odoo tetapi belum memiliki endpoint custom API:
+
+| Model | Status API |
+| --- | --- |
+| `wt.weather` | Belum diekspos melalui custom API. |
+| `wt.weather.data` | Belum diekspos melalui custom API dan belum dikirim pada pull master. |
 
 ## Format Response
 
@@ -261,9 +272,9 @@ Jika pull master berhasil, Odoo akan:
 
 | Role | Scope Pull |
 | --- | --- |
-| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
-| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
-| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, UoM, clerk division, foreman, tapper, dan estate. |
+| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait. |
+| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate. |
 
 ### Success Response
 
@@ -300,6 +311,7 @@ Jika pull master berhasil, Odoo akan:
       "product_ids": [10],
       "product_type_codes": ["lump"],
       "uom_ids": [1],
+      "shrinkage_tolerance_ids": [1],
       "employee_ids": [10, 20, 30, 100],
       "foreman_ids": [30, 31],
       "tapper_ids": [100, 101]
@@ -389,6 +401,15 @@ Jika pull master berhasil, Odoo akan:
           "name": "Lump"
         }
       ],
+      "shrinkage_tolerances": [
+        {
+          "id": 1,
+          "company_id": 1,
+          "product_type": "lump",
+          "division_id": 1,
+          "shrinkage_tolerance_percentage": 5.0
+        }
+      ],
       "foremen": [
         {
           "id": 30,
@@ -426,6 +447,7 @@ Jika pull master berhasil, Odoo akan:
 | `data.scope.product_ids` | Daftar product Odoo yang berlaku dalam scope device. |
 | `data.scope.product_type_codes` | Daftar kode tipe produk dari mapping `wt.product` yang berlaku dalam scope. |
 | `data.scope.uom_ids` | Daftar UoM product dalam scope device. |
+| `data.scope.shrinkage_tolerance_ids` | Daftar shrinkage tolerance yang berlaku dalam scope device. |
 | `data.scope.employee_ids` | Daftar employee yang dibutuhkan aplikasi dalam scope device. |
 | `data.masters.company` | Master company device. |
 | `data.masters.roles` | Master role aplikasi, dibatasi hanya role milik device yang sedang pull. |
@@ -437,6 +459,7 @@ Jika pull master berhasil, Odoo akan:
 | `data.masters.products` | Daftar product Odoo yang dipakai oleh receipt rule dalam scope. Payload membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`. |
 | `data.masters.uoms` | Master UoM dari product dalam scope. |
 | `data.masters.product_types` | Master product type yang benar-benar dipakai oleh mapping `wt.product` dalam scope. |
+| `data.masters.shrinkage_tolerances` | Daftar batas toleransi penyusutan produksi sesuai division dan product type dalam scope device. |
 | `data.masters.foremen` | Daftar relasi foreman dalam scope, membawa `employee_id`. Detail employee ada di `masters.employees`. |
 | `data.masters.tappers` | Daftar relasi tapper dalam scope, membawa `employee_id`. Detail employee ada di `masters.employees`. |
 

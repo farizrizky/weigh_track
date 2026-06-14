@@ -25,6 +25,8 @@ Menu utama:
 WeighTrack
 ├── Master Data
 │   ├── Estates
+│   ├── Weather
+│   ├── Weather Data
 │   ├── Divisions
 │   ├── Weighing Locations
 │   ├── Foremen
@@ -35,6 +37,7 @@ WeighTrack
     ├── API Request Logs
     ├── Employee Roles
     ├── Product
+    ├── Shrinkage Tolerance
     └── Receipt Rule
 ```
 
@@ -53,6 +56,7 @@ WeighTrack
 - Device activation hanya dilakukan melalui custom API, bukan tombol manual di form device.
 - Endpoint pull master sudah aktif untuk mengambil data master offline.
 - Endpoint push belum aktif.
+- Pada beberapa form konfigurasi, field teknis `name` tetap tersimpan untuk display/search tetapi tidak ditampilkan sebagai title besar jika user lebih perlu mengisi field bisnis utama terlebih dahulu.
 
 ## Estate
 
@@ -94,6 +98,81 @@ Pesan validasi:
 
 ```text
 Estate code must be unique per company.
+```
+
+## Weather
+
+Model teknis:
+
+```text
+wt.weather
+```
+
+Deskripsi:
+
+Weather adalah master cuaca sederhana untuk pilihan kondisi cuaca operasional.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Ya | Ya | Nama cuaca. Diindeks untuk pencarian. |
+| `description` | `Text` | Tidak | Ya | Deskripsi cuaca. |
+
+Urutan data:
+
+```text
+name
+```
+
+## Weather Data
+
+Model teknis:
+
+```text
+wt.weather.data
+```
+
+Deskripsi:
+
+Weather Data menyimpan data cuaca per tanggal dan estate. Data ini menjadi catatan kondisi cuaca harian pada estate tertentu.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari tanggal, estate, dan weather. |
+| `weather_date` | `Date` | Ya | Ya | Tanggal data cuaca. |
+| `estate_id` | `Many2one(wt.estate)` | Ya | Ya | Estate tempat data cuaca berlaku. `ondelete="restrict"`. |
+| `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
+| `weather_id` | `Many2one(wt.weather)` | Ya | Ya | Master cuaca untuk tanggal dan estate tersebut. `ondelete="restrict"`. |
+
+Catatan UI:
+
+- Field `name` tidak ditampilkan pada form.
+- Field paling atas pada form adalah `weather_date`.
+
+Urutan data:
+
+```text
+weather_date desc, estate_id
+```
+
+Validasi:
+
+- Kombinasi `estate_id` dan `weather_date` wajib unik.
+
+Constraint database:
+
+```text
+unique(estate_id, weather_date)
+```
+
+Pesan validasi:
+
+```text
+Weather data must be unique per estate and date.
+Weather data already exists for estate '%(estate)s' and date '%(date)s'.
 ```
 
 ## Employee Role
@@ -203,6 +282,66 @@ Pesan validasi:
 Product mapping must be unique per company and product type.
 Only one product mapping is allowed per company and product type.
 Product must belong to the same company or be a global product.
+```
+
+## Shrinkage Tolerance
+
+Model teknis:
+
+```text
+wt.shrinkage.tolerance
+```
+
+Deskripsi:
+
+Shrinkage Tolerance adalah konfigurasi batas toleransi penyusutan produksi per company, product type, dan division. Konfigurasi ini dipakai sebagai nilai batas susut saat tanggal produksi tidak sama dengan tanggal penimbangan di gudang induk.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari company, product type, dan division. |
+| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat toleransi berlaku. Default mengikuti company user aktif. |
+| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `lump`. |
+| `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat toleransi berlaku. `ondelete="restrict"`. |
+| `shrinkage_tolerance_percentage` | `Float` | Ya | Ya | Persentase batas penyusutan produksi yang diizinkan. |
+
+Catatan UI:
+
+- Field `name` tidak ditampilkan pada form.
+- Field paling atas pada form adalah `company_id`.
+
+Urutan data:
+
+```text
+company_id, product_type, division_id
+```
+
+Domain UI:
+
+```text
+division_id: [('company_id', '=', company_id)]
+```
+
+Validasi:
+
+- Kombinasi `company_id`, `product_type`, dan `division_id` wajib unik.
+- Division harus berada pada company yang sama.
+- `shrinkage_tolerance_percentage` harus berada di antara 0 dan 100.
+
+Constraint database:
+
+```text
+unique(company_id, product_type, division_id)
+```
+
+Pesan validasi:
+
+```text
+Shrinkage tolerance must be unique per company, product type, and division.
+Shrinkage tolerance already exists for company '%(company)s', product type '%(product_type)s', and division '%(division)s'.
+Division must belong to the same company.
+Shrinkage tolerance percentage must be between 0 and 100.
 ```
 
 ## Receipt Rule
@@ -1007,9 +1146,9 @@ Scope role:
 
 | Role | Scope |
 | --- | --- |
-| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
-| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, dan employee terkait. |
-| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, UoM, clerk division, foreman, tapper, dan estate. |
+| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait. |
+| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate. |
 
 Response data yang disiapkan service:
 
@@ -1042,6 +1181,7 @@ receipt_rule_ids
 product_ids
 product_type_codes
 uom_ids
+shrinkage_tolerance_ids
 employee_ids
 foreman_ids
 tapper_ids
@@ -1060,6 +1200,7 @@ receipt_rules
 products
 uoms
 product_types
+shrinkage_tolerances
 foremen
 tappers
 ```
@@ -1077,6 +1218,7 @@ Catatan payload:
 - Payload Product membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`; `default_code` tidak dikirim.
 - Payload UoM berada di `data.masters.uoms`.
 - Payload Product Type berada di `data.masters.product_types` dan hanya membawa tipe produk yang benar-benar berasal dari mapping `wt.product` untuk product dalam scope.
+- Payload Shrinkage Tolerance berada di `data.masters.shrinkage_tolerances` dan hanya membawa toleransi yang sesuai dengan division dan product type dalam scope.
 - Warehouse, stock location, dan operation type tetap tersimpan di model Receipt Rule, tetapi tidak dikirim pada response pull master.
 - Setiap data master minimal membawa `id` dan `name`.
 - Master yang memiliki `code`, seperti Estate, Division, dan Weighing Location, ikut membawa `code`.
@@ -1229,8 +1371,11 @@ Access CSV:
 | Model | Read | Write | Create | Delete |
 | --- | --- | --- | --- | --- |
 | `wt.estate` | Ya | Ya | Ya | Ya |
+| `wt.weather` | Ya | Ya | Ya | Ya |
+| `wt.weather.data` | Ya | Ya | Ya | Ya |
 | `wt.employee.role` | Ya | Ya | Ya | Ya |
 | `wt.product` | Ya | Ya | Ya | Ya |
+| `wt.shrinkage.tolerance` | Ya | Ya | Ya | Ya |
 | `wt.receipt.rule` | Ya | Ya | Ya | Ya |
 | `wt.api` | Ya | Ya | Ya | Ya |
 | `wt.api.request.log` | Ya | Tidak | Tidak | Tidak |
@@ -1254,8 +1399,11 @@ Models:
 
 ```text
 models/estate.py
+models/weather.py
+models/weather_data.py
 models/employee_role.py
 models/product.py
+models/shrinkage_tolerance.py
 models/receipt_rule.py
 models/division.py
 models/weighing_location.py
@@ -1293,8 +1441,11 @@ Views:
 
 ```text
 views/estate_views.xml
+views/weather_views.xml
+views/weather_data_views.xml
 views/employee_role_views.xml
 views/product_views.xml
+views/shrinkage_tolerance_views.xml
 views/receipt_rule_views.xml
 views/division_views.xml
 views/weighing_location_views.xml

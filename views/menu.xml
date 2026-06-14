@@ -3,6 +3,8 @@
     <menuitem id="menu_wt_root" name="WeighTrack" sequence="10" groups="weightrack.group_admin" web_icon="weightrack,static/description/icon.png"/>
         <menuitem id="menu_wt_master_data" name="Master Data" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_estate" name="Estates" parent="menu_wt_master_data" action="action_wt_estate" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_weather" name="Weather" parent="menu_wt_master_data" action="action_wt_weather" sequence="20" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_weather_data" name="Weather Data" parent="menu_wt_master_data" action="action_wt_weather_data" sequence="25" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_division" name="Divisions" parent="menu_wt_master_data" action="action_wt_division" sequence="30" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_weighing_location" name="Weighing Locations" parent="menu_wt_master_data" action="action_wt_weighing_location" sequence="40" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_foreman" name="Foremen" parent="menu_wt_master_data" action="action_wt_foreman" sequence="50" groups="weightrack.group_admin"/>
@@ -13,5 +15,6 @@
             <menuitem id="menu_wt_api_request_log" name="API Request Logs" parent="menu_wt_configuration" action="action_wt_api_request_log" sequence="15" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_employee_role" name="Employee Roles" parent="menu_wt_configuration" action="action_wt_employee_role" sequence="20" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_product" name="Product" parent="menu_wt_configuration" action="action_wt_product" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_shrinkage_tolerance" name="Shrinkage Tolerance" parent="menu_wt_configuration" action="action_wt_shrinkage_tolerance" sequence="35" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_receipt_rule" name="Receipt Rule" parent="menu_wt_configuration" action="action_wt_receipt_rule" sequence="40" groups="weightrack.group_admin"/>
 </odoo>

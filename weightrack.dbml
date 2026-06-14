@@ -139,6 +139,45 @@ Table wt_estate {
   Note: "Odoo model: wt.estate. Order: code, name."
 }
 
+Table wt_weather {
+  id integer [pk, increment]
+  name varchar [not null, note: "Indexed in Odoo"]
+  description text
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    name
+  }
+
+  Note: "Odoo model: wt.weather. Simple weather master with name and description."
+}
+
+Table wt_weather_data {
+  id integer [pk, increment]
+  name varchar [note: "Computed and stored from date, estate, and weather. Stored for display/search; hidden on the form view."]
+  weather_date date [not null, note: "Indexed in Odoo"]
+  estate_id integer [not null]
+  company_id integer [not null]
+  weather_id integer [not null]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    weather_date
+    estate_id
+    company_id
+    weather_id
+    (estate_id, weather_date) [unique, name: "estate_date_uniq"]
+  }
+
+  Note: "Odoo model: wt.weather.data. Daily weather data per estate. Form starts from weather_date; computed name is hidden."
+}
+
 Table wt_employee_role {
   id integer [pk, increment]
   name varchar [note: "Computed and stored from company, role, and job position"]
@@ -179,6 +218,28 @@ Table wt_product {
   }
 
   Note: "Odoo model: wt.product. Company-level mapping from weighing product type to Odoo product.product. Product must belong to the same company or be global."
+}
+
+Table wt_shrinkage_tolerance {
+  id integer [pk, increment]
+  name varchar [note: "Computed and stored from company, product type, and division. Stored for display/search; hidden on the form view."]
+  company_id integer [not null]
+  product_type wt_product_type [not null]
+  division_id integer [not null]
+  shrinkage_tolerance_percentage decimal [not null]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id
+    product_type
+    division_id
+    (company_id, product_type, division_id) [unique, name: "company_product_type_division_uniq"]
+  }
+
+  Note: "Odoo model: wt.shrinkage.tolerance. Defines maximum production shrinkage tolerance per company, product type, and division when production date differs from warehouse weighing date. Form starts from company_id; computed name is hidden."
 }
 
 Table wt_receipt_rule {
@@ -428,11 +489,18 @@ Table wt_device_state_reason_wizard {
 
 Ref: wt_estate.company_id > res_company.id
 
+Ref: wt_weather_data.estate_id > wt_estate.id [delete: restrict]
+Ref: wt_weather_data.company_id > res_company.id
+Ref: wt_weather_data.weather_id > wt_weather.id [delete: restrict]
+
 Ref: wt_employee_role.company_id > res_company.id
 Ref: wt_employee_role.job_id > hr_job.id [delete: restrict]
 
 Ref: wt_product.company_id > res_company.id
 Ref: wt_product.product_id > product_product.id [delete: restrict]
+
+Ref: wt_shrinkage_tolerance.company_id > res_company.id
+Ref: wt_shrinkage_tolerance.division_id > wt_division.id [delete: restrict]
 
 Ref: wt_receipt_rule.company_id > res_company.id
 Ref: wt_receipt_rule.weighing_location_id > wt_weighing_location.id [delete: restrict]
@@ -488,10 +556,16 @@ Ref: product_product.company_id > res_company.id
 
 Ref: wt_estate.create_uid > res_users.id
 Ref: wt_estate.write_uid > res_users.id
+Ref: wt_weather.create_uid > res_users.id
+Ref: wt_weather.write_uid > res_users.id
+Ref: wt_weather_data.create_uid > res_users.id
+Ref: wt_weather_data.write_uid > res_users.id
 Ref: wt_employee_role.create_uid > res_users.id
 Ref: wt_employee_role.write_uid > res_users.id
 Ref: wt_product.create_uid > res_users.id
 Ref: wt_product.write_uid > res_users.id
+Ref: wt_shrinkage_tolerance.create_uid > res_users.id
+Ref: wt_shrinkage_tolerance.write_uid > res_users.id
 Ref: wt_receipt_rule.create_uid > res_users.id
 Ref: wt_receipt_rule.write_uid > res_users.id
 Ref: wt_api.create_uid > res_users.id

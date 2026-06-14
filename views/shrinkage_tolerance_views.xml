@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_shrinkage_tolerance_search" model="ir.ui.view">
+        <field name="name">wt.shrinkage.tolerance.search</field>
+        <field name="model">wt.shrinkage.tolerance</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="company_id"/>
+                <field name="product_type"/>
+                <field name="division_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_shrinkage_tolerance_list" model="ir.ui.view">
+        <field name="name">wt.shrinkage.tolerance.list</field>
+        <field name="model">wt.shrinkage.tolerance</field>
+        <field name="arch" type="xml">
+            <list string="Shrinkage Tolerances">
+                <field name="company_id"/>
+                <field name="product_type"/>
+                <field name="division_id"/>
+                <field name="shrinkage_tolerance_percentage"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_shrinkage_tolerance_form" model="ir.ui.view">
+        <field name="name">wt.shrinkage.tolerance.form</field>
+        <field name="model">wt.shrinkage.tolerance</field>
+        <field name="arch" type="xml">
+            <form string="Shrinkage Tolerance">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="company_id"/>
+                            <field name="product_type"/>
+                            <field name="division_id" domain="[('company_id', '=', company_id)]"/>
+                            <field name="shrinkage_tolerance_percentage"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_shrinkage_tolerance" model="ir.actions.act_window">
+        <field name="name">Shrinkage Tolerances</field>
+        <field name="res_model">wt.shrinkage.tolerance</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_shrinkage_tolerance_search"/>
+    </record>
+</odoo>

@@ -3,7 +3,10 @@ from . import employee_role
 from . import api
 from . import api_request_log
 from . import product
+from . import shrinkage_tolerance
 from . import receipt_rule
+from . import weather
+from . import weather_data
 from . import division
 from . import weighing_location
 from . import foreman

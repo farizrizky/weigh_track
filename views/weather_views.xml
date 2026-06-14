@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_weather_search" model="ir.ui.view">
+        <field name="name">wt.weather.search</field>
+        <field name="model">wt.weather</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="description"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_weather_list" model="ir.ui.view">
+        <field name="name">wt.weather.list</field>
+        <field name="model">wt.weather</field>
+        <field name="arch" type="xml">
+            <list string="Weather">
+                <field name="name"/>
+                <field name="description"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_weather_form" model="ir.ui.view">
+        <field name="name">wt.weather.form</field>
+        <field name="model">wt.weather</field>
+        <field name="arch" type="xml">
+            <form string="Weather">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" placeholder="Weather Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_weather" model="ir.actions.act_window">
+        <field name="name">Weather</field>
+        <field name="res_model">wt.weather</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_weather_search"/>
+    </record>
+</odoo>

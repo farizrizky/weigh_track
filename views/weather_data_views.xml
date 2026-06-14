@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_weather_data_search" model="ir.ui.view">
+        <field name="name">wt.weather.data.search</field>
+        <field name="model">wt.weather.data</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="weather_date"/>
+                <field name="estate_id"/>
+                <field name="weather_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_weather_data_list" model="ir.ui.view">
+        <field name="name">wt.weather.data.list</field>
+        <field name="model">wt.weather.data</field>
+        <field name="arch" type="xml">
+            <list string="Weather Data">
+                <field name="weather_date"/>
+                <field name="estate_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="weather_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_weather_data_form" model="ir.ui.view">
+        <field name="name">wt.weather.data.form</field>
+        <field name="model">wt.weather.data</field>
+        <field name="arch" type="xml">
+            <form string="Weather Data">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="weather_date"/>
+                            <field name="estate_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="weather_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_weather_data" model="ir.actions.act_window">
+        <field name="name">Weather Data</field>
+        <field name="res_model">wt.weather.data</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_weather_data_search"/>
+    </record>
+</odoo>
