@@ -12,6 +12,8 @@ class Product(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "company_id, product_type, product_id"
 
+    LEGACY_PRODUCT_TYPE = "lump"
+
     name = fields.Char(
         compute="_compute_name",
         store=True,
@@ -65,6 +67,21 @@ class Product(models.Model):
                 mapping.company_id.name or "",
                 label,
                 product_name,
+            )
+
+    def init(self):
+        for table_name in (
+            "wt_product",
+            "wt_shrinkage_tolerance",
+            "wt_weighing_cup_lump",
+        ):
+            self.env.cr.execute("SELECT to_regclass(%s)", (table_name,))
+            if not self.env.cr.fetchone()[0]:
+                continue
+            self.env.cr.execute(
+                "UPDATE %s SET product_type = %%s WHERE product_type = %%s"
+                % table_name,
+                (ProductType.CUP_LUMP, self.LEGACY_PRODUCT_TYPE),
             )
 
     @api.constrains("company_id", "product_id")

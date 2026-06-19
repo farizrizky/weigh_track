@@ -48,7 +48,28 @@ Enum wt_device_state_reason_action {
 }
 
 Enum wt_product_type {
-  lump
+  cup_lump
+}
+
+Enum wt_inbound_state {
+  draft
+  validated
+}
+
+Enum wt_data_gap_code {
+  none
+  master_sync_expired
+  company_mismatch
+  operator_mismatch
+  weighing_location_mismatch
+  division_not_allowed
+  receipt_rule_mismatch
+  product_mapping_mismatch
+  clerk_mismatch
+  foreman_mismatch
+  tapper_mismatch
+  missing_master
+  multiple_gap
 }
 
 Table res_users {
@@ -118,6 +139,13 @@ Table product_product {
   company_id integer
 
   Note: "Odoo product variant table stub. Company can be empty for global products."
+}
+
+Table uom_uom {
+  id integer [pk]
+  name varchar
+
+  Note: "Odoo UoM table stub."
 }
 
 Table wt_estate {
@@ -269,6 +297,174 @@ Table wt_receipt_rule {
   }
 
   Note: "Odoo model: wt.receipt.rule. Defines which product can be weighed by which division at a weighing location and the stock warehouse/location/operation type destination."
+}
+
+Table wt_inbound_weighing {
+  id integer [pk, increment]
+  name varchar [note: "Number format: INB/KODE_DIVISI/YYYYMMDD/NNN"]
+  company_id integer [not null]
+  production_date date [not null]
+  weighing_location_id integer
+  division_id integer
+  operator_employee_id integer
+  device_record_id integer
+  device_id varchar
+  device_name varchar
+  batch_local_id varchar
+  master_synced_at timestamp
+  sent_at timestamp
+  received_at timestamp
+  state wt_inbound_state [not null, default: "draft"]
+  has_data_gap boolean
+  data_gap_count integer
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id
+    production_date
+    weighing_location_id
+    division_id
+    operator_employee_id
+    device_record_id
+    device_id
+    state
+    has_data_gap
+  }
+
+  Note: "Odoo model: wt.inbound.weighing. Draft inbound weighing header created by push API, grouped by company, production_date, weighing location, and division."
+}
+
+Table wt_inbound_weighing_product {
+  id integer [pk, increment]
+  name varchar [note: "Number format: PRD/PRODUCT_TYPE/YYYYMMDD/NNN"]
+  inbound_weighing_id integer [not null]
+  company_id integer
+  production_date date
+  product_type wt_product_type [not null]
+  product_id integer
+  receipt_rule_id integer
+  state wt_inbound_state [not null, default: "draft"]
+  has_data_gap boolean
+  data_gap_count integer
+  total_bag integer
+  inbound_stock decimal
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    inbound_weighing_id
+    company_id
+    production_date
+    product_type
+    product_id
+    receipt_rule_id
+    state
+    has_data_gap
+  }
+
+  Note: "Odoo model: wt.inbound.weighing.product. Product aggregation line; for cup_lump, inbound_stock is total net_weight from detail lines."
+}
+
+Table wt_weighing_lump {
+  id integer [pk, increment]
+  name varchar [note: "Number format: WH/PRODUCT_TYPE/YYYYMMDD/NNN"]
+  inbound_product_id integer [not null]
+  inbound_weighing_id integer
+  local_id varchar [not null]
+  device_id varchar [not null]
+  device_record_id integer
+  company_id integer [not null]
+  product_type wt_product_type [not null, default: "cup_lump"]
+  production_date date [not null]
+  weighing_date timestamp [not null]
+  master_synced_at timestamp
+  sent_at timestamp
+  received_at timestamp
+  batch_local_id varchar
+  state wt_inbound_state [not null, default: "draft"]
+  has_data_gap boolean
+  data_gap_code wt_data_gap_code
+  data_gap_note text
+  device_snapshot_json text
+  odoo_snapshot_json text
+  estate_id integer
+  weighing_location_id integer
+  division_id integer
+  product_id integer
+  receipt_rule_id integer
+  uom_id integer
+  operator_employee_id integer
+  operator_name varchar
+  operator_barcode varchar
+  clerk_employee_id integer
+  clerk_name varchar
+  clerk_barcode varchar
+  foreman_id integer
+  foreman_employee_id integer
+  foreman_name varchar
+  foreman_barcode varchar
+  tapper_id integer
+  tapper_employee_id integer
+  tapper_name varchar
+  tapper_barcode varchar
+  total_bag integer
+  production_weight decimal
+  reject_weight decimal
+  slab_weight decimal
+  net_weight decimal
+  shrinkage_tolerance_percentage decimal
+  shrinkage_tolerance_weight decimal
+  is_manual_weighing boolean
+  manual_weighing_reason text
+  note text
+  initial_weighing_date timestamp
+  initial_device_id varchar
+  initial_device_role varchar
+  initial_device_employee_id integer
+  initial_device_employee_name varchar
+  initial_device_employee_barcode varchar
+  initial_weight decimal
+  initial_is_manual_weighing boolean
+  initial_manual_weighing_reason text
+  initial_note text
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    inbound_product_id
+    inbound_weighing_id
+    local_id
+    device_id
+    device_record_id
+    company_id
+    product_type
+    production_date
+    weighing_date
+    state
+    has_data_gap
+    data_gap_code
+    estate_id
+    weighing_location_id
+    division_id
+    product_id
+    receipt_rule_id
+    operator_employee_id
+    clerk_employee_id
+    foreman_id
+    foreman_employee_id
+    tapper_id
+    tapper_employee_id
+    (device_id, product_type, local_id) [unique, name: "device_product_local_uniq"]
+  }
+
+  Note: "Odoo model: wt.weighing.lump. Detail cup lump weighing pushed from offline app. Officer name/barcode fields are stored related fields from hr_employee."
 }
 
 Table wt_api {
@@ -510,6 +706,35 @@ Ref: wt_receipt_rule.warehouse_id > stock_warehouse.id [delete: restrict]
 Ref: wt_receipt_rule.location_id > stock_location.id [delete: restrict]
 Ref: wt_receipt_rule.operation_type_id > stock_picking_type.id [delete: restrict]
 
+Ref: wt_inbound_weighing.company_id > res_company.id
+Ref: wt_inbound_weighing.weighing_location_id > wt_weighing_location.id [delete: restrict]
+Ref: wt_inbound_weighing.division_id > wt_division.id [delete: restrict]
+Ref: wt_inbound_weighing.operator_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_inbound_weighing.device_record_id > wt_device.id [delete: restrict]
+
+Ref: wt_inbound_weighing_product.inbound_weighing_id > wt_inbound_weighing.id [delete: cascade]
+Ref: wt_inbound_weighing_product.company_id > res_company.id
+Ref: wt_inbound_weighing_product.product_id > product_product.id [delete: restrict]
+Ref: wt_inbound_weighing_product.receipt_rule_id > wt_receipt_rule.id [delete: restrict]
+
+Ref: wt_weighing_lump.inbound_product_id > wt_inbound_weighing_product.id [delete: cascade]
+Ref: wt_weighing_lump.inbound_weighing_id > wt_inbound_weighing.id
+Ref: wt_weighing_lump.device_record_id > wt_device.id [delete: restrict]
+Ref: wt_weighing_lump.company_id > res_company.id
+Ref: wt_weighing_lump.estate_id > wt_estate.id [delete: restrict]
+Ref: wt_weighing_lump.weighing_location_id > wt_weighing_location.id [delete: restrict]
+Ref: wt_weighing_lump.division_id > wt_division.id [delete: restrict]
+Ref: wt_weighing_lump.product_id > product_product.id [delete: restrict]
+Ref: wt_weighing_lump.receipt_rule_id > wt_receipt_rule.id [delete: restrict]
+Ref: wt_weighing_lump.uom_id > uom_uom.id [delete: restrict]
+Ref: wt_weighing_lump.operator_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing_lump.clerk_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing_lump.foreman_id > wt_foreman.id [delete: restrict]
+Ref: wt_weighing_lump.foreman_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing_lump.tapper_id > wt_tapper.id [delete: restrict]
+Ref: wt_weighing_lump.tapper_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing_lump.initial_device_employee_id > hr_employee.id [delete: restrict]
+
 Ref: wt_api.company_id > res_company.id
 Ref: wt_api.bot_user_id > res_users.id [delete: restrict]
 
@@ -568,6 +793,12 @@ Ref: wt_shrinkage_tolerance.create_uid > res_users.id
 Ref: wt_shrinkage_tolerance.write_uid > res_users.id
 Ref: wt_receipt_rule.create_uid > res_users.id
 Ref: wt_receipt_rule.write_uid > res_users.id
+Ref: wt_inbound_weighing.create_uid > res_users.id
+Ref: wt_inbound_weighing.write_uid > res_users.id
+Ref: wt_inbound_weighing_product.create_uid > res_users.id
+Ref: wt_inbound_weighing_product.write_uid > res_users.id
+Ref: wt_weighing_lump.create_uid > res_users.id
+Ref: wt_weighing_lump.write_uid > res_users.id
 Ref: wt_api.create_uid > res_users.id
 Ref: wt_api.write_uid > res_users.id
 Ref: wt_api_request_log.create_uid > res_users.id

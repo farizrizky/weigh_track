@@ -210,6 +210,8 @@ msgstr "Service Pull Master API"
 #: model:ir.model,name:weightrack.model_wt_api
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_api_form
 #: model:ir.ui.menu,name:weightrack.menu_wt_api
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_source__api
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_search
 msgid "API"
 msgstr "API"
 
@@ -465,6 +467,7 @@ msgstr "Aturan Penerimaan"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
 msgid "Scope"
 msgstr "Lingkup"
 
@@ -512,9 +515,9 @@ msgstr "Gudang"
 
 #. module: weightrack
 #: code:addons/weightrack/constants/product_types.py:0
-#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance__product_type__lump
-msgid "Lump"
-msgstr "Lump"
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance__product_type__cup_lump
+msgid "Cup Lump"
+msgstr "Cup Lump"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__operator_id
@@ -626,6 +629,7 @@ msgstr "Nama Perangkat"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__device_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__device_id
 msgid "Device ID"
 msgstr "ID Perangkat"
 
@@ -1143,3 +1147,689 @@ msgstr "Pull data ditutup untuk perusahaan ini."
 #: code:addons/weightrack/services/api_security_service.py:0
 msgid "Push data is closed for this company."
 msgstr "Push data ditutup untuk perusahaan ini."
+
+# -----------------------------------------------------------------------------
+# Inbound Weighing / Push
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_operations
+msgid "Operations"
+msgstr "Operasional"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_inbound_weighing
+#: model:ir.actions.act_window,name:weightrack.action_wt_inbound_weighing
+#: model:ir.ui.menu,name:weightrack.menu_wt_inbound_weighing
+msgid "Inbound Weighing"
+msgstr "Inbound Penimbangan"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_inbound_weighing_product
+msgid "Inbound Weighing Product"
+msgstr "Produk Inbound Penimbangan"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_weighing_cup_lump
+#: model:ir.actions.act_window,name:weightrack.action_wt_weighing_cup_lump
+#: model:ir.ui.menu,name:weightrack.menu_wt_weighing_cup_lump
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_list
+msgid "Weighing Cup Lump"
+msgstr "Penimbangan Cup Lump"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_push_inbound_weighing_service
+msgid "API Push Inbound Weighing Service"
+msgstr "Service API Push Inbound Penimbangan"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__state__draft
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_search
+msgid "Draft"
+msgstr "Draft"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__state__validated
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_search
+msgid "Validated"
+msgstr "Tervalidasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__production_date
+msgid "Production Date"
+msgstr "Tanggal Produksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__has_data_problem
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_search
+msgid "Has Data Problem"
+msgstr "Ada Masalah Data"
+
+#. module: weightrack
+msgid "Data Problem Count"
+msgstr "Jumlah Masalah Data"
+
+#. module: weightrack
+msgid "Data with Problem Count"
+msgstr "Jumlah Data with Problem"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__data_problem_code
+msgid "Data Problem Code"
+msgstr "Kode Masalah Data"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__data_problem_note
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__data_problem_note_display
+msgid "Data Problem Note"
+msgstr "Catatan Masalah Data"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Recheck Data Problem"
+msgstr "Cek Ulang Masalah Data"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__data_source
+msgid "Data Source"
+msgstr "Sumber Data"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_source__manual
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_search
+msgid "Manual"
+msgstr "Manual"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Validate"
+msgstr "Validasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Cancel Validate"
+msgstr "Batalkan Validasi"
+
+#. module: weightrack
+#: code:addons/weightrack/models/inbound_weighing.py:0
+msgid "Only validated inbound weighing can be cancelled."
+msgstr "Hanya inbound penimbangan yang sudah tervalidasi yang dapat dibatalkan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Only validated weighing detail can be cancelled."
+msgstr "Hanya detail penimbangan yang sudah tervalidasi yang dapat dibatalkan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Weighing location must belong to the selected estate."
+msgstr "Lokasi timbang harus berada pada estate yang dipilih."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Payload estate does not match weighing location estate."
+msgstr "Estate payload tidak sesuai dengan estate lokasi timbang."
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__estate_mismatch
+msgid "Estate Mismatch"
+msgstr "Estate Tidak Sesuai"
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Estate does not belong to weighing company."
+msgstr "Estate tidak berada pada perusahaan penimbangan."
+
+#. module: weightrack
+msgid "Weighing Data Count"
+msgstr "Jumlah Data Penimbangan"
+
+#. module: weightrack
+msgid "Clean Weighing Count"
+msgstr "Jumlah Penimbangan Bersih"
+
+#. module: weightrack
+msgid "Data OK Count"
+msgstr "Jumlah Data OK"
+
+#. module: weightrack
+msgid "Clean Cup Lump Details"
+msgstr "Detail Cup Lump Bersih"
+
+#. module: weightrack
+msgid "Cup Lump Details"
+msgstr "Detail Cup Lump"
+
+#. module: weightrack
+msgid "Data OK"
+msgstr "Data OK"
+
+#. module: weightrack
+msgid "Problem Cup Lump Details"
+msgstr "Detail Cup Lump Bermasalah"
+
+#. module: weightrack
+msgid "Data with Problem"
+msgstr "Data with Problem"
+
+#. module: weightrack
+msgid "Clean Weighing Cup Lump"
+msgstr "Penimbangan Cup Lump Bersih"
+
+#. module: weightrack
+msgid "Problem Weighing Cup Lump"
+msgstr "Penimbangan Cup Lump Bermasalah"
+
+#. module: weightrack
+msgid "Inbound Stock"
+msgstr "Stok Inbound"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__name
+msgid "Number"
+msgstr "Nomor"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__total_bag
+msgid "Total Bag"
+msgstr "Total Karung"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__net_weight
+msgid "Net Weight"
+msgstr "Berat Net"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__device_snapshot_json
+msgid "Device Snapshot"
+msgstr "Snapshot Device"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__odoo_snapshot_json
+msgid "Odoo Snapshot"
+msgstr "Snapshot Odoo"
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Each inbound cup lump item must be an object."
+msgstr "Setiap item inbound cup lump harus berupa object."
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_cup_lump_service
+msgid "Cup Lump Service"
+msgstr "Layanan Cup Lump"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_api_push_weighing_cup_lump_service
+msgid "API Push Weighing Cup Lump Service"
+msgstr "Layanan API Push Penimbangan Cup Lump"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__none
+msgid "None"
+msgstr "Tidak Ada"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__company_mismatch
+msgid "Company Mismatch"
+msgstr "Perusahaan Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__operator_mismatch
+msgid "Operator Mismatch"
+msgstr "Operator Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__weighing_location_mismatch
+msgid "Weighing Location Mismatch"
+msgstr "Lokasi Timbang Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__division_not_allowed
+msgid "Division Not Allowed"
+msgstr "Divisi Tidak Diizinkan"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__receipt_rule_mismatch
+msgid "Receipt Rule Mismatch"
+msgstr "Aturan Penerimaan Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__product_mapping_mismatch
+msgid "Product Mapping Mismatch"
+msgstr "Mapping Produk Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__clerk_mismatch
+msgid "Clerk Mismatch"
+msgstr "Kerani Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__foreman_mismatch
+msgid "Foreman Mismatch"
+msgstr "Mandor Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__tapper_mismatch
+msgid "Tapper Mismatch"
+msgstr "Tapper Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__weight_formula_mismatch
+msgid "Weight Formula Mismatch"
+msgstr "Rumus Berat Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__initial_weighing_date_mismatch
+msgid "Initial Weighing Date Mismatch"
+msgstr "Tanggal Penimbangan Awal Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__initial_weight_mismatch
+msgid "Initial Weight Mismatch"
+msgstr "Berat Awal Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__shrinkage_tolerance_mismatch
+msgid "Shrinkage Tolerance Mismatch"
+msgstr "Toleransi Penyusutan Tidak Sesuai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__missing_master
+msgid "Missing Master"
+msgstr "Data Master Tidak Ditemukan"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__data_problem_code__multiple_problem
+msgid "Multiple Problem"
+msgstr "Beberapa Masalah"
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Payload company does not match weighing company."
+msgstr "Perusahaan pada payload tidak sesuai dengan perusahaan penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Payload operator does not match device operator."
+msgstr "Operator pada payload tidak sesuai dengan operator device."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Weighing location"
+msgstr "Lokasi timbang"
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Receipt rule"
+msgstr "Aturan penerimaan"
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "%s was not found in Odoo."
+msgstr "%s tidak ditemukan di Odoo."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Initial weighing device is required."
+msgstr "Device penimbangan awal wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Initial weighing device was not found in Odoo."
+msgstr "Device penimbangan awal tidak ditemukan di Odoo."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Weighing location does not belong to the weighing company."
+msgstr "Lokasi timbang tidak berada pada perusahaan penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Weighing location operator does not match device operator."
+msgstr "Operator lokasi timbang tidak sesuai dengan operator device."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Division does not belong to weighing company."
+msgstr "Divisi tidak berada pada perusahaan penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Division is not allowed in the weighing location."
+msgstr "Divisi tidak diizinkan pada lokasi timbang."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Receipt rule company does not match."
+msgstr "Perusahaan pada aturan penerimaan tidak sesuai."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Receipt rule weighing location does not match."
+msgstr "Lokasi timbang pada aturan penerimaan tidak sesuai."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Receipt rule division does not match."
+msgstr "Divisi pada aturan penerimaan tidak sesuai."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Receipt rule product does not match."
+msgstr "Produk pada aturan penerimaan tidak sesuai."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Product is not configured as Cup Lump for the weighing company."
+msgstr "Produk belum dikonfigurasi sebagai Cup Lump untuk perusahaan penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Payload clerk does not match division clerk."
+msgstr "Kerani pada payload tidak sesuai dengan kerani divisi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Foreman employee is not assigned as foreman in the division."
+msgstr "Karyawan mandor tidak ditugaskan sebagai mandor pada divisi tersebut."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Foreman does not belong to the division."
+msgstr "Mandor tidak berada pada divisi tersebut."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Foreman employee does not match."
+msgstr "Karyawan mandor tidak sesuai."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Tapper employee is not assigned as tapper."
+msgstr "Karyawan tapper tidak ditugaskan sebagai tapper."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Tapper does not belong to the division."
+msgstr "Tapper tidak berada pada divisi tersebut."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Tapper does not belong to the foreman."
+msgstr "Tapper tidak berada di bawah mandor tersebut."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Tapper employee does not match."
+msgstr "Karyawan tapper tidak sesuai."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Tapper foreman employee does not match weighing foreman."
+msgstr "Karyawan mandor tapper tidak sesuai dengan mandor penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Production weight must equal slab weight + reject weight + net weight."
+msgstr "Berat produksi harus sama dengan berat slab + berat reject + berat net."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Shrinkage tolerance weight must equal initial weight * shrinkage percentage."
+msgstr "Berat toleransi penyusutan harus sama dengan berat awal * persentase penyusutan."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Production weight must equal initial weight minus shrinkage tolerance weight for cross-day weighing."
+msgstr "Berat produksi harus sama dengan berat awal dikurangi berat toleransi penyusutan untuk penimbangan lintas hari."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Production date must match initial weighing date."
+msgstr "Tanggal produksi harus sama dengan tanggal penimbangan awal."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Production date is invalid."
+msgstr "Tanggal produksi tidak valid."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "Weighing date is invalid."
+msgstr "Tanggal penimbangan tidak valid."
+
+#. module: weightrack
+#: code:addons/weightrack/services/cup_lump_service.py:0
+msgid "%s is required."
+msgstr "%s wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "New"
+msgstr "Baru"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__weighing_date
+msgid "Weighing Date"
+msgstr "Tanggal Penimbangan"
+
+#. module: weightrack
+msgid "Operator Name"
+msgstr "Nama Operator"
+
+#. module: weightrack
+msgid "Clerk Name"
+msgstr "Nama Kerani"
+
+#. module: weightrack
+msgid "Foreman Name"
+msgstr "Nama Mandor"
+
+#. module: weightrack
+msgid "Tapper Name"
+msgstr "Nama Tapper"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__production_weight
+msgid "Production Weight"
+msgstr "Berat Produksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__local_id
+msgid "Local ID"
+msgstr "ID Lokal"
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "API weighing requires: %s."
+msgstr "Penimbangan API mewajibkan: %s."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Only draft weighing detail can be validated."
+msgstr "Hanya detail penimbangan berstatus draft yang dapat divalidasi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Weighing detail still has data problem and cannot be validated."
+msgstr "Detail penimbangan masih memiliki masalah data dan tidak dapat divalidasi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Please complete required fields before validate: %s."
+msgstr "Lengkapi field wajib sebelum validasi: %s."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Production Date cannot be later than Weighing Date."
+msgstr "Tanggal Produksi tidak boleh lebih besar dari Tanggal Penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "By Device is required when Initial Weighing Date is filled."
+msgstr "By Device wajib diisi ketika Tanggal Penimbangan Awal terisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Initial Weight is required when Initial Weighing Date is filled."
+msgstr "Berat Awal wajib diisi ketika Tanggal Penimbangan Awal terisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing_cup_lump.py:0
+msgid "Initial Manual Weighing Reason is required when Initial Manual Weighing is checked."
+msgstr "Alasan Penimbangan Manual Awal wajib diisi ketika Penimbangan Manual Awal dicentang."
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Transaction"
+msgstr "Transaksi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Dates"
+msgstr "Tanggal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Data Problem"
+msgstr "Masalah Data"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Employees"
+msgstr "Karyawan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Weights"
+msgstr "Berat"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Initial Weighing"
+msgstr "Penimbangan Awal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+msgid "Snapshots"
+msgstr "Snapshot"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__batch_local_id
+msgid "Batch Local ID"
+msgstr "ID Batch Lokal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__master_synced_at
+msgid "Master Synced At"
+msgstr "Master Disinkronkan Pada"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__sent_at
+msgid "Sent At"
+msgstr "Dikirim Pada"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__received_at
+msgid "Received At"
+msgstr "Diterima Pada"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__reject_weight
+msgid "Reject Weight"
+msgstr "Berat Reject"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__slab_weight
+msgid "Slab Weight"
+msgstr "Berat Slab"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__shrinkage_tolerance_weight
+msgid "Shrinkage Tolerance Weight"
+msgstr "Berat Toleransi Penyusutan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__is_manual_weighing
+msgid "Manual Weighing"
+msgstr "Penimbangan Manual"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__manual_weighing_reason
+msgid "Manual Weighing Reason"
+msgstr "Alasan Penimbangan Manual"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_weighing_date
+msgid "Initial Weighing Date"
+msgstr "Tanggal Penimbangan Awal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_device_id
+msgid "By Device"
+msgstr "Oleh Device"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_device_employee_id
+msgid "Device Owner"
+msgstr "Pemilik Device"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_device_employee_barcode
+msgid "Device Owner Badge Number"
+msgstr "Nomor Badge Pemilik Device"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__operator_barcode
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__clerk_barcode
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__foreman_barcode
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__tapper_barcode
+msgid "Badge Number"
+msgstr "Nomor Badge"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_weight
+msgid "Initial Weight"
+msgstr "Berat Awal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_is_manual_weighing
+msgid "Initial Manual Weighing"
+msgstr "Penimbangan Manual Awal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_manual_weighing_reason
+msgid "Initial Manual Weighing Reason"
+msgstr "Alasan Penimbangan Manual Awal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__initial_note
+msgid "Initial Weighing Note"
+msgstr "Catatan Penimbangan Awal"
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_push_weighing_cup_lump_service.py:0
+msgid "Weighing cup lump items are required."
+msgstr "Item penimbangan Cup Lump wajib dikirim."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_push_weighing_cup_lump_service.py:0
+msgid "Weighing cup lump items are empty."
+msgstr "Item penimbangan Cup Lump kosong."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_push_weighing_cup_lump_service.py:0
+msgid "Master synced at is invalid."
+msgstr "Waktu sinkronisasi master tidak valid."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_push_weighing_cup_lump_service.py:0
+msgid "Sent at is invalid."
+msgstr "Waktu pengiriman tidak valid."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_push_weighing_cup_lump_service.py:0
+msgid "Unsupported product type: %s."
+msgstr "Tipe produk tidak didukung: %s."

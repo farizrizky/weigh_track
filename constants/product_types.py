@@ -2,22 +2,22 @@
 
 
 class ProductType:
-    LUMP = "lump"
+    CUP_LUMP = "cup_lump"
 
-    LUMP_LABEL = "Lump"
+    CUP_LUMP_LABEL = "Cup Lump"
 
     SELECTION = [
-        (LUMP, LUMP_LABEL),
+        (CUP_LUMP, CUP_LUMP_LABEL),
     ]
 
     MODEL = {
-        LUMP: "wt.weighing.lump",
+        CUP_LUMP: "wt.weighing.cup.lump",
     }
 
     STOCK_QUANTITY_FIELD = {
-        LUMP: "net_weight",
+        CUP_LUMP: "net_weight",
     }
 
     TRANSLATION_TERMS = (
-        LUMP_LABEL,
+        CUP_LUMP_LABEL,
     )

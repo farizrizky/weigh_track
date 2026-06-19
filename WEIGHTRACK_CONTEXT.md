@@ -16,6 +16,7 @@ Lokasi Windows/SSHFS workspace:
 
 ```text
 i:/odoo/custom-addons/weightrack
+g:/odoo/custom-addons/weightrack
 ```
 
 Module teknis:
@@ -47,18 +48,19 @@ Scope aktif saat ini:
 - API request audit log.
 - Custom API device activation.
 - API pull master untuk data offline penimbangan.
+- API push weighing cup lump untuk data timbang cup lump dari aplikasi offline.
 
 Scope yang belum aktif:
 
-- API push data.
-- Sinkronisasi data timbang operasional.
-- Push data timbang operasional.
+- Push data timbang selain cup_lump.
+- Pembuatan inbound/receipt stock resmi dari data weighing cup lump.
 
 Custom API yang aktif saat ini:
 
 ```text
 POST /weightrack/api/v1/device/activate
 POST /weightrack/api/v1/pull/master
+POST /weightrack/api/v1/push/weighing-cup-lump
 ```
 
 ## Important Conventions
@@ -114,6 +116,7 @@ Model database:
 - `wt.foreman`
 - `wt.tapper`
 - `wt.device`
+- `wt.weighing.cup.lump`
 
 Transient model:
 
@@ -123,6 +126,8 @@ Abstract service model:
 
 - `wt.api.device.service`
 - `wt.api.pull.master.service`
+- `wt.api.push.weighing.cup.lump.service`
+- `wt.cup.lump.service`
 - `wt.api.security.service`
 - `wt.api.response.service`
 
@@ -138,6 +143,8 @@ WeighTrack
 |   |-- Weighing Locations
 |   |-- Foremen
 |   `-- Tappers
+|-- Operations
+|   `-- Weighing Cup Lump
 |-- Device
 `-- Configuration
     |-- API
@@ -367,7 +374,7 @@ Aturan:
 - `pull_enabled` mengatur apakah endpoint pull data boleh dipakai untuk company tersebut.
 - `push_enabled` mengatur apakah endpoint push data boleh dipakai untuk company tersebut.
 
-Saat ini record API dipakai oleh activation device dan pull master. Push belum diekspos, tetapi helper security untuk mengecek `push_enabled` sudah disiapkan.
+Saat ini record API dipakai oleh activation device, pull master, dan push weighing cup lump. `push_enabled` mengatur apakah endpoint push boleh dipakai oleh device company tersebut.
 
 ## API Request Log
 
@@ -423,6 +430,7 @@ Controller:
 ```text
 controllers/api/v1/device_api.py
 controllers/api/v1/pull_api.py
+controllers/api/v1/push_api.py
 ```
 
 Handler:
@@ -436,6 +444,8 @@ Services:
 ```text
 services/api_device_service.py
 services/api_pull_master_service.py
+services/api_push_weighing_cup_lump_service.py
+services/cup_lump_service.py
 services/api_security_service.py
 services/api_response_service.py
 ```
@@ -540,11 +550,15 @@ Scope role pull:
 - `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait.
 - `operator`: weighing location yang dipegang operator, allowed division dari location, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate.
 
-## Future Push
+## Push Weighing Cup Lump
 
-Push belum diekspos.
+Push weighing cup lump sudah diekspos melalui:
 
-Konsep yang sudah disiapkan:
+```text
+POST /weightrack/api/v1/push/weighing-cup-lump
+```
+
+Konsep:
 
 - Request push membawa `device_id` dan `token`.
 - Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`.
@@ -553,179 +567,218 @@ Konsep yang sudah disiapkan:
 - `wt.api.push_enabled` harus aktif untuk company device.
 - Setelah valid, Odoo memakai company, employee, dan role dari assignment device.
 - Eksekusi tulis data bisnis diarahkan ke internal bot user agar auditable.
-- Push akan dibuat hati-hati agar tidak melanggar user license; aktivitas database diarahkan ke bot user internal yang memang dikonfigurasi.
-- Semua request push nanti tetap masuk ke `wt.api.request.log`.
+- Semua request push masuk ke `wt.api.request.log`.
+- Push saat ini hanya menerima product type `cup_lump`.
+- Data push tidak langsung menjadi stock.
+- Data push saat ini langsung membentuk detail `wt.weighing.cup.lump`.
+- Model inbound/header belum aktif kembali; rencana pembentukan inbound/receipt akan dibuat terpisah setelah desain per product type matang.
 
-Rancangan push inbound weighing:
+Struktur runtime saat ini:
 
-- Endpoint rencana:
+- `wt.weighing.cup.lump`
+  - Detail penimbangan untuk product type `cup_lump`.
+  - Number memakai format `WH/PRODUCT_TYPE/YYYYMMDD/NNN`.
+  - Menyimpan raw data penimbangan cup lump, termasuk field berat khusus cup lump.
+  - Menyimpan `data_source` dengan nilai `api` atau `manual`.
+  - Data manual baru menyimpan `local_id`, `device_id`, `device_record_id`, dan `batch_local_id` sebagai null.
+  - Data API mewajibkan `local_id`, `device_id`, dan `device_record_id`.
+  - Menyimpan employee operator, clerk, foreman, dan tapper langsung pada detail timbang.
+  - Nama dan badge number employee dikunci mengikuti `hr.employee`, bukan mengikuti struktur assignment lama.
+  - Field `foreman_id` dan `tapper_id` tetap disimpan untuk kebutuhan validasi assignment, tetapi yang ditampilkan ke user adalah employee.
+  - Initial weighing/penimbangan lapangan awal disimpan di detail cup lump.
+  - `initial_device_id` adalah relasi ke `wt.device` dengan label UI `By Device`.
+  - `initial_device_role`, `initial_device_employee_id`, dan `initial_device_employee_barcode` mengikuti `initial_device_id` dan readonly.
+  - Memakai chatter dan activity (`mail.thread`, `mail.activity.mixin`).
 
-```text
-POST /weightrack/api/v1/push/inbound-weighing
-```
+Service push:
 
-- Push data penimbangan tidak langsung menjadi stock.
-- Data push hanya membentuk data inbound dan detail penimbangan.
-- Stock resmi baru terbentuk setelah administrator Odoo melakukan validasi secara sadar.
-- Payload push dipisah berdasarkan `product_type` agar setiap tipe produk bisa memiliki format data penimbangan sendiri.
-- Product type menjadi registry/dispatcher melalui `constants/product_types.py`.
-- Untuk `lump`, constant mengarah ke model detail `wt.weighing.lump`.
-- Jika nanti ada product type baru dengan format penimbangan berbeda, tambahkan product type di constant dan buat model detail penimbangannya sendiri.
+- Endpoint cup lump memakai service root `wt.api.push.weighing.cup.lump.service`.
+- Service root melakukan autentikasi device, pengecekan `push_enabled`, validasi root payload, update `last_seen`/`last_push`, dan membentuk response.
+- Business processor cup lump berada di `wt.cup.lump.service`.
+- `wt.cup.lump.service` melakukan validasi item, idempotency, mapping payload ke `wt.weighing.cup.lump`, snapshot, dan pengecekan data problem.
+- Service ini juga dipakai oleh action `Recheck Data Problem` dari model Odoo dan tidak mengurus endpoint HTTP.
+- Pemisahan ini menjaga cup lump tetap mandiri; product type lain nanti bisa dibuat dengan endpoint/service/model sendiri tanpa dipaksa mengikuti struktur cup lump.
 
-Struktur data inbound rencana:
+Data problem:
 
-- `wt.inbound.weighing`
-  - Header data inbound per division, hasil grouping otomatis oleh Odoo.
-  - Jika satu push membawa 3 division, Odoo membentuk 3 inbound weighing.
-  - Header tidak menyimpan foreman karena satu division bisa memiliki banyak foreman.
-  - Header menjadi acuan pembuatan receipt saat validasi admin.
-- `wt.inbound.weighing.product`
-  - Line/agregasi product per inbound weighing.
-  - Menyimpan `product_type`, product, receipt rule, total bag, dan `inbound_stock`.
-  - Tidak menyimpan field berat khusus seperti reject, slab, atau net weight.
-  - `inbound_stock` adalah agregasi generic yang dipakai sebagai quantity receipt.
-  - Untuk lump, `inbound_stock` dihitung dari total `net_weight` berdasarkan `ProductType.STOCK_QUANTITY_FIELD`.
-  - Line ini menjadi acuan pembuatan/pencarian lot berdasarkan company, production date, division, dan product.
-- `wt.weighing.lump`
-  - Detail penimbangan untuk product type `lump`.
-  - Menyimpan raw data penimbangan lump, termasuk field berat khusus lump.
-  - Initial weighing/penimbangan lapangan awal rencananya disatukan di detail lump.
+- `state` pada weighing cup lump adalah `draft` dan `validated`.
+- `has_data_problem` menandai konflik antara payload device, master Odoo saat ini, atau aturan khusus cup lump.
+- Data push tetap diterima sebagai `draft` walaupun `has_data_problem = True`.
+- Data manual otomatis menjalankan pengecekan data problem saat create.
+- Save record draft, baik sumber API maupun manual, otomatis menjalankan recheck jika field pemicu berubah.
+- Data tidak boleh divalidasi selama `has_data_problem = True`.
+- Admin dapat memperbaiki master atau data draft, lalu menjalankan `Recheck Data Problem`.
+- Tombol validate menjalankan validasi form/backend, menjalankan ulang `Recheck Data Problem`, lalu menolak validate jika masih ada problem.
+- Tombol cancel validate mengembalikan data validated ke draft.
+- Idempotency memakai kombinasi `device_id + product_type + local_id` dan hanya berlaku untuk `data_source = api`.
+- Database memakai partial unique index khusus API sebagai pengaman request paralel.
+
+Validasi form/backend:
+
+- Field wajib sebelum validate: production date, weighing date, company, estate, division, weighing location, product, UoM, receipt rule, operator, clerk, foreman, dan tapper.
+- `total_bag`, `production_weight`, dan `net_weight` wajib bernilai lebih dari 0 sebelum validate.
+- `production_date` tidak boleh lebih besar dari tanggal pada `weighing_date`.
+- Jika `initial_weighing_date` terisi, maka `initial_weight` wajib terisi.
+- Untuk input manual, `initial_device_id` juga wajib. Untuk API, initial device yang kosong/tidak ditemukan menjadi `missing_master` dan tidak menggagalkan penerimaan push.
+- Jika `initial_is_manual_weighing` tercentang, maka `initial_manual_weighing_reason` wajib terisi.
+- Validasi di atas tetap berada pada `@api.constrains` dan juga dipanggil saat action validate.
+
+Kode data problem aktif:
+
+| Code | Penjelasan |
+| --- | --- |
+| `none` | Tidak ditemukan masalah. Record dapat divalidasi jika field wajib lengkap. |
+| `company_mismatch` | Company payload berbeda dari company device, atau division bukan milik company penimbangan. |
+| `estate_mismatch` | Estate bukan milik company atau berbeda dari estate yang terikat pada weighing location. |
+| `operator_mismatch` | Operator payload berbeda dari operator device, atau operator weighing location berbeda dari operator device. |
+| `weighing_location_mismatch` | Weighing location tidak berada pada company penimbangan. |
+| `division_not_allowed` | Division tidak termasuk `allowed_division_ids` weighing location. |
+| `receipt_rule_mismatch` | Receipt rule tidak sesuai company, weighing location, division, atau product. |
+| `product_mapping_mismatch` | Product belum dikonfigurasi sebagai `cup_lump` melalui `wt.product` untuk company. |
+| `clerk_mismatch` | Clerk employee berbeda dari `division.clerk_id`. |
+| `foreman_mismatch` | Foreman employee tidak memiliki assignment `wt.foreman` pada division, foreman ID berbeda division, atau employee payload tidak sesuai master foreman. |
+| `tapper_mismatch` | Tapper tidak terdaftar, berada pada division lain, tidak berada di bawah foreman yang dipilih, atau employee payload tidak sesuai master tapper. |
+| `weight_formula_mismatch` | `production_weight` tidak sama dengan `slab_weight + reject_weight + net_weight`. |
+| `initial_weighing_date_mismatch` | Tanggal initial weighing berbeda dari production date. Perbandingan memakai timezone context Odoo. |
+| `initial_weight_mismatch` | Untuk cross-day weighing, `production_weight` tidak sama dengan `initial_weight - shrinkage_tolerance_weight`. |
+| `shrinkage_tolerance_mismatch` | `shrinkage_tolerance_weight` tidak sama dengan `initial_weight * shrinkage_tolerance_percentage / 100`. |
+| `missing_master` | Master payload tidak ditemukan. Berlaku untuk estate, weighing location, division, product, receipt rule, foreman, tapper, atau initial device. Juga dipakai jika initial weighing date diisi tetapi device awal tidak dikirim. |
+| `multiple_problem` | Lebih dari satu jenis problem ditemukan. Rincian lengkap tersimpan pada `data_problem_note`. |
+
+Catatan aturan:
+
+- `master_synced_at` tetap disimpan dan divalidasi formatnya, tetapi tidak menjadi data problem.
+- Rule `production_weight = initial_weight` untuk penimbangan pada production date yang sama sudah dihapus.
+- `data_problem_note` disimpan sebagai audit, sedangkan `data_problem_note_display` menerjemahkan note sesuai bahasa user saat form dibuka.
 
 Prinsip mapping push:
 
 - Aplikasi mengirim raw data penimbangan, bukan struktur final dokumen Odoo.
-- Odoo membentuk `wt.inbound.weighing` dan `wt.inbound.weighing.product` otomatis saat menerima payload.
-- Odoo mengambil `company_id` dan `operator_id` dari assignment device.
-- `operator` resmi untuk push adalah `device.employee_id`, bukan data operator yang dikirim payload.
+- Odoo mengambil `company_id` resmi dari assignment device.
+- `operator` resmi untuk push adalah `device.employee_id`; payload operator tetap dicek sebagai data problem bila berbeda.
 - Odoo memvalidasi bahwa `weighing_location_id` memang dipegang oleh operator device.
+- Odoo memvalidasi bahwa `estate_id` sesuai company dan sesuai estate pada weighing location.
 - Odoo memvalidasi bahwa `division_id` termasuk `allowed_division_ids` pada weighing location.
-- Odoo memvalidasi receipt rule sesuai kombinasi weighing location, division, dan product.
-- Odoo menghitung ulang total bag dan `inbound_stock` dari detail, tidak mempercayai agregasi dari device sebagai nilai final.
+- Odoo memvalidasi receipt rule sesuai kombinasi company, weighing location, division, dan product.
+- Initial weighing device memakai `initial_weighing.device_id` untuk mencari `wt.device`; role, device owner, dan badge number mengikuti record device di Odoo, bukan payload bebas.
 
-Rancangan payload push v1:
+Payload push v1 aktif:
 
 ```json
 {
   "device_id": "OPR-DEVICE-001",
   "token": "device-token",
   "app_version": "1.0.0",
-  "batch_local_id": "batch-20260612-001",
-  "master_synced_at": "2026-06-12 06:00:00",
-  "sent_at": "2026-06-12 08:30:00",
-  "inbounds": {
-    "lump": [
-      {
-        "local_id": "lump-001",
-        "production_date": "2026-06-12",
-        "weighing_date": "2026-06-12 07:45:00",
+  "batch_local_id": "batch-20260614-001",
+  "master_synced_at": "2026-06-14 06:00:00",
+  "sent_at": "2026-06-15 08:30:00",
+  "product_type": "cup_lump",
+  "items": [
+    {
+      "local_id": "cup-lump-20260614-0001",
+      "production_date": "2026-06-14",
+      "weighing_date": "2026-06-15 08:00:00",
+      "company": {
+        "id": 1,
+        "name": "PT. Perkebunan Nusantara III"
+      },
+      "estate": {
+        "id": 5,
+        "code": "EST-A",
+        "name": "Estate A"
+      },
+      "weighing_location": {
+        "id": 1,
+        "code": "WB-01",
+        "name": "Gudang Induk 01"
+      },
+      "division": {
+        "id": 10,
+        "code": "DIV-A",
+        "name": "Afdeling A"
+      },
+      "operator": {
+        "employee_id": 101,
+        "name": "Budi Operator",
+        "barcode": "EMP-101"
+      },
+      "clerk": {
+        "employee_id": 201,
+        "name": "Sari Kerani",
+        "barcode": "EMP-201"
+      },
+      "foreman": {
+        "id": 31,
+        "employee_id": 301,
+        "name": "Andi Mandor",
+        "barcode": "EMP-301"
+      },
+      "tapper": {
+        "id": 88,
+        "employee_id": 401,
+        "name": "Joko Tapper",
+        "barcode": "EMP-401"
+      },
+      "product": {
+        "id": 25,
+        "name": "Rubber Cup Lump",
+        "uom": {
+          "id": 1,
+          "name": "kg"
+        }
+      },
+      "receipt_rule": {
+        "id": 7,
+        "company_id": 1,
         "weighing_location_id": 1,
         "division_id": 10,
-        "product_id": 25,
-        "receipt_rule_id": 7,
-        "tapper_id": 88,
-        "foreman_id": 31,
-        "snapshot": {
-          "company": {
-            "id": 1,
-            "name": "PT. Perkebunan Nusantara III"
-          },
-          "estate": {
-            "id": 5,
-            "code": "EST-A",
-            "name": "Estate A"
-          },
-          "weighing_location": {
-            "id": 1,
-            "code": "WB-01",
-            "name": "Weighbridge 1"
-          },
-          "division": {
-            "id": 10,
-            "code": "DIV-A",
-            "name": "Division A"
-          },
-          "operator": {
-            "employee_id": 101,
-            "name": "John Doe",
-            "barcode": "EMP-101"
-          },
-          "clerk": {
-            "employee_id": 201,
-            "name": "Jane Smith",
-            "barcode": "EMP-201"
-          },
-          "foreman": {
-            "id": 31,
-            "employee_id": 301,
-            "name": "Bob Johnson",
-            "barcode": "EMP-031"
-          },
-          "tapper": {
-            "id": 88,
-            "employee_id": 401,
-            "name": "Sam Tapper",
-            "barcode": "EMP-401"
-          },
-          "product": {
-            "id": 25,
-            "name": "Rubber Lump",
-            "uom": {
-              "id": 1,
-              "name": "kg"
-            }
-          },
-          "receipt_rule": {
-            "id": 7,
-            "warehouse_id": 2,
-            "warehouse_name": "Main Warehouse",
-            "location_id": 15,
-            "location_name": "WH/Stock",
-            "operation_type_id": 4,
-            "operation_type_name": "Receipts"
-          }
-        },
-        "total_bag": 12,
-        "production_weight": 900.0,
-        "reject_weight": 20.0,
-        "slab_weight": 15.0,
-        "net_weight": 865.0,
-        "shrinkage_tolerance_percentage": 5.0,
-        "shrinkage_tolerance_weight": 35.0,
+        "product_id": 25
+      },
+      "total_bag": 12,
+      "production_weight": 950.0,
+      "reject_weight": 20.0,
+      "slab_weight": 30.0,
+      "net_weight": 900.0,
+      "shrinkage_tolerance_percentage": 5.0,
+      "shrinkage_tolerance_weight": 50.0,
+      "is_manual_weighing": false,
+      "manual_weighing_reason": null,
+      "note": null,
+      "initial_weighing": {
+        "weighing_date": "2026-06-14 16:00:00",
+        "device_id": "FIELD-SCALE-002",
+        "weight": 1000.0,
         "is_manual_weighing": false,
         "manual_weighing_reason": null,
-        "note": null,
-        "initial_weighing": {
-          "weighing_date": "2026-06-12 07:30:00",
-          "device_id": "FIELD-SCALE-002",
-          "weight": 880.0,
-          "is_manual_weighing": true,
-          "manual_weighing_reason": "Scale device malfunction",
-          "note": "Initial weight taken manually from operator note"
-        }
+        "note": "Berat awal saat tanggal produksi"
       }
-    ]
-  }
+    }
+  ]
 }
 ```
 
 Snapshot push:
 
 - Karena device bisa bekerja offline, master Odoo bisa berubah sebelum data sempat dipush.
-- Payload membawa `snapshot` sebagai versi master yang diketahui aplikasi saat penimbangan.
+- Payload membawa object nested sebagai versi master yang diketahui aplikasi saat penimbangan.
 - Odoo tetap membuat snapshot sendiri saat data diterima.
 - Snapshot dari device tidak menjadi sumber otoritatif untuk validasi, tetapi dipakai untuk audit dan review.
 - Jika master terbaru berbeda dari snapshot device, data tidak otomatis dibuang.
-- Data bisa masuk dengan status review/blocking sesuai tingkat konflik.
+- Data bisa masuk sebagai draft dengan penanda `has_data_problem` sesuai tingkat konflik.
 - Contoh konflik ringan: nama master berubah tetapi ID dan relasi masih valid.
-- Contoh konflik berat: division sudah tidak allowed pada weighing location, receipt rule tidak valid, atau product mapping berubah.
+- Contoh konflik berat: division sudah tidak allowed pada weighing location, receipt rule tidak valid, product mapping berubah, atau assignment clerk/foreman/tapper berubah.
 
 Idempotency push:
 
 - `batch_local_id` mengidentifikasi satu sesi push dari device.
-- `local_id` pada tiap detail penimbangan wajib unik minimal per device dan product type.
-- Aturan idempotency rencana: `device_id + product_type + local_id`.
+- `local_id` wajib untuk setiap item API.
+- Aturan idempotency API: `device_id + product_type + local_id`.
+- Partial unique index database hanya berlaku ketika `data_source = api`.
+- Data manual tidak mengikuti idempotency API dan field identitas aplikasi dibiarkan null.
 - Retry dari device tidak boleh membuat data timbang double.
-- Response push nanti perlu mengembalikan status per item: accepted, duplicate, needs_review, blocked, atau error.
+- Response push mengembalikan summary dan daftar item response.
+- Summary response membawa `received`, `created`, `duplicates`, `with_data_problem`, dan `weighing_cup_lump_ids`.
+- Item response membawa `local_id`, `status` (`created` atau `duplicate`), `has_data_problem`, `data_problem_code`, dan `weighing_cup_lump_id`.
 
 ## Localization Notes
 

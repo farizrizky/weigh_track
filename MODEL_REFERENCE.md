@@ -17,6 +17,7 @@ base
 mail
 stock
 hr
+product
 ```
 
 Menu utama:
@@ -55,7 +56,7 @@ WeighTrack
   - `Clerk` diterjemahkan menjadi `Kerani`.
 - Device activation hanya dilakukan melalui custom API, bukan tombol manual di form device.
 - Endpoint pull master sudah aktif untuk mengambil data master offline.
-- Endpoint push belum aktif.
+- Endpoint push weighing Cup Lump sudah aktif dan langsung membuat `wt.weighing.cup.lump`.
 - Pada beberapa form konfigurasi, field teknis `name` tetap tersimpan untuk display/search tetapi tidak ditampilkan sebagai title besar jika user lebih perlu mengisi field bisnis utama terlebih dahulu.
 
 ## Estate
@@ -249,7 +250,7 @@ Field:
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Computed name dari company, product type, dan product. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat mapping berlaku. Default mengikuti company user aktif. |
-| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `lump`. |
+| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `cup_lump`. |
 | `product_id` | `Many2one(product.product)` | Ya | Ya | Produk Odoo yang dipakai untuk tipe produk tersebut. `ondelete="restrict"`. |
 | `uom_id` | `Many2one(uom.uom)` | Otomatis | Tidak | Related UoM dari `product_id.uom_id`, stored dan readonly. |
 
@@ -302,7 +303,7 @@ Field:
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Computed name dari company, product type, dan division. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat toleransi berlaku. Default mengikuti company user aktif. |
-| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `lump`. |
+| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `cup_lump`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat toleransi berlaku. `ondelete="restrict"`. |
 | `shrinkage_tolerance_percentage` | `Float` | Ya | Ya | Persentase batas penyusutan produksi yang diizinkan. |
 
@@ -678,7 +679,7 @@ Field:
 | `token` | `Char` | Otomatis | Tidak | Token enrollment. Dibuat otomatis saat create jika belum diisi. Unik. |
 | `actived_at` | `Datetime` | Tidak | Ya | Waktu aktivasi pertama. Nama field saat ini masih `actived_at`. |
 | `last_pull` | `Datetime` | Tidak | Ya | Waktu pull terakhir. Diperbarui saat pull master berhasil. |
-| `last_push` | `Datetime` | Tidak | Ya | Waktu push terakhir. Belum digunakan karena push API belum aktif. |
+| `last_push` | `Datetime` | Tidak | Ya | Waktu push terakhir. Diperbarui saat push weighing Cup Lump berhasil. |
 | `last_seen` | `Datetime` | Tidak | Ya | Waktu terakhir device terlihat oleh API. Terisi saat activation. |
 | `app_version` | `Char` | Tidak | Ya | Versi aplikasi lokal. Wajib dikirim saat activation. |
 | `device_type` | `Selection` | Tidak | Ya | Jenis device: `mobile`, `desktop`. Wajib dikirim saat activation. |
@@ -812,6 +813,111 @@ Alur:
 - Jika `action = revoke`, wizard memanggil `device_id.action_confirm_revoke(reason)`.
 - Setelah selesai, wizard ditutup dengan `ir.actions.act_window_close`.
 
+## Weighing Cup Lump
+
+Model teknis:
+
+```text
+wt.weighing.cup.lump
+```
+
+Deskripsi:
+
+Weighing Cup Lump adalah transaksi raw penimbangan Cup Lump. Record dapat dibuat melalui push API atau secara manual dari Odoo. Model inbound/header tidak aktif; setiap item push langsung membentuk satu record model ini.
+
+Field utama:
+
+| Field | Type | Keterangan |
+| --- | --- | --- |
+| `name` | `Char` | Number computed. Format: `WH/PRODUCT_TYPE/YYYYMMDD/NNN`. |
+| `data_source` | `Selection` | Sumber record: `api` atau `manual`. |
+| `local_id` | `Char` | ID lokal item aplikasi. Wajib untuk API dan null untuk data manual baru. |
+| `device_id` | `Char` | Device ID teknis. Wajib untuk API dan null untuk data manual baru. |
+| `device_record_id` | `Many2one(wt.device)` | Device pengirim API. Null untuk manual. |
+| `batch_local_id` | `Char` | ID batch aplikasi. Null untuk manual. |
+| `company_id` | `Many2one(res.company)` | Company device. |
+| `product_type` | `Selection` | Saat ini `cup_lump`. |
+| `production_date` | `Date` | Tanggal produksi. |
+| `weighing_date` | `Datetime` | Waktu timbang. |
+| `master_synced_at` | `Datetime` | Waktu sync master aplikasi; disimpan untuk audit dan bukan data problem. |
+| `sent_at`, `received_at` | `Datetime` | Waktu kirim aplikasi dan waktu terima Odoo. |
+| `state` | `Selection` | `draft`, `validated`. |
+| `has_data_problem` | `Boolean` | Flag konflik terhadap master Odoo atau aturan Cup Lump. |
+| `data_problem_code` | `Selection` | Kode problem utama atau `multiple_problem`. |
+| `data_problem_note` | `Text` | Catatan asli hasil evaluasi untuk audit. |
+| `data_problem_note_display` | `Text` computed | Catatan yang diterjemahkan saat ditampilkan sesuai bahasa user. |
+| `device_snapshot_json` | `Text` | Snapshot item payload dari aplikasi. |
+| `odoo_snapshot_json` | `Text` | Snapshot master Odoo saat pengecekan problem. |
+| `estate_id`, `weighing_location_id`, `division_id` | Relasi scope | Scope estate, lokasi timbang, dan division. |
+| `product_id`, `uom_id`, `receipt_rule_id` | Relasi product | Produk, satuan, dan aturan penerimaan. |
+| `operator_employee_id`, `operator_name`, `operator_barcode` | Employee | Operator. Nama dan barcode related dari employee. |
+| `clerk_employee_id`, `clerk_name`, `clerk_barcode` | Employee | Clerk/Kerani. Nama dan barcode related dari employee. |
+| `foreman_employee_id`, `foreman_name`, `foreman_barcode` | Employee | Foreman/Mandor. Nama dan barcode related dari employee. |
+| `tapper_employee_id`, `tapper_name`, `tapper_barcode` | Employee | Tapper. Nama dan barcode related dari employee. |
+| `foreman_id`, `tapper_id` | Assignment reference | Reference tersembunyi untuk reverse tracking assignment. |
+| `total_bag` | `Integer` | Jumlah karung. |
+| `production_weight` | `Float` | Berat produksi. |
+| `reject_weight` | `Float` | Berat reject. |
+| `slab_weight` | `Float` | Berat slab. |
+| `net_weight` | `Float` | Berat net. |
+| `shrinkage_tolerance_percentage`, `shrinkage_tolerance_weight` | `Float` | Persentase dan berat toleransi penyusutan. |
+| `initial_weighing_date`, `initial_weight` | Initial weighing | Waktu dan berat penimbangan awal. |
+| `initial_device_id` | `Many2one(wt.device)` | Device penimbangan awal (`By Device`). |
+| `initial_device_role`, `initial_device_employee_id`, `initial_device_employee_barcode` | Related | Mengikuti initial device dan readonly. |
+| `initial_is_manual_weighing`, `initial_manual_weighing_reason`, `initial_note` | Mixed | Informasi manual dan catatan penimbangan awal. |
+
+Index idempotency:
+
+```sql
+CREATE UNIQUE INDEX wt_weighing_cup_lump_api_idempotency_uniq
+ON wt_weighing_cup_lump (device_id, product_type, local_id)
+WHERE data_source = 'api';
+```
+
+Aturan:
+
+- Idempotency hanya berlaku untuk data API.
+- Data manual baru menyimpan `local_id`, `device_id`, `device_record_id`, dan `batch_local_id` sebagai null.
+- Data API mewajibkan `local_id`, `device_id`, dan `device_record_id`.
+- Detail dengan `has_data_problem = True` tidak boleh divalidasi.
+- Save record draft manual maupun API menjalankan recheck jika field pemicu berubah.
+- Push menghitung problem dari payload sebelum create; action Validate selalu melakukan recheck lagi.
+- Field petugas mengunci nama dan barcode pada `hr.employee` langsung, bukan pada struktur assignment foreman/tapper yang bisa berubah.
+- Reverse tracking foreman: employee -> `wt.foreman` -> division.
+- Reverse tracking tapper: employee -> `wt.tapper` -> division dan foreman -> employee foreman.
+
+Validasi backend:
+
+- `production_date` tidak boleh lebih besar dari tanggal lokal `weighing_date`.
+- Sebelum validate, production date, weighing date, company, estate, division, weighing location, product, UoM, receipt rule, serta seluruh employee wajib terisi.
+- `total_bag`, `production_weight`, dan `net_weight` wajib lebih dari 0 sebelum validate.
+- Jika initial weighing date terisi, initial weight wajib lebih dari 0.
+- Untuk data manual, initial device wajib jika initial weighing date terisi.
+- Untuk API, initial device yang tidak ditemukan menjadi `missing_master` dan tidak menggagalkan create.
+- Jika initial manual weighing aktif, manual weighing reason wajib terisi.
+
+Kode data problem:
+
+| Code | Penjelasan |
+| --- | --- |
+| `none` | Tidak ditemukan masalah. |
+| `company_mismatch` | Company payload tidak sesuai company device, atau division bukan milik company transaksi. |
+| `estate_mismatch` | Estate bukan milik company atau berbeda dari estate weighing location. |
+| `operator_mismatch` | Operator payload/lokasi timbang berbeda dari operator device. |
+| `weighing_location_mismatch` | Weighing location bukan milik company transaksi. |
+| `division_not_allowed` | Division tidak diizinkan pada weighing location. |
+| `receipt_rule_mismatch` | Receipt rule tidak sesuai company, weighing location, division, atau product. |
+| `product_mapping_mismatch` | Product tidak dipetakan sebagai `cup_lump` untuk company. |
+| `clerk_mismatch` | Clerk employee berbeda dari clerk pada division. |
+| `foreman_mismatch` | Foreman employee tidak memiliki assignment pada division, atau ID/employee foreman tidak konsisten. |
+| `tapper_mismatch` | Tapper tidak terdaftar, berbeda division, tidak berada di bawah foreman, atau employee tidak konsisten. |
+| `weight_formula_mismatch` | `production_weight != slab_weight + reject_weight + net_weight`. |
+| `initial_weighing_date_mismatch` | Tanggal initial weighing berbeda dari production date. |
+| `initial_weight_mismatch` | Untuk cross-day weighing, production weight bukan initial weight dikurangi shrinkage weight. |
+| `shrinkage_tolerance_mismatch` | Shrinkage weight tidak sama dengan initial weight dikali persentase shrinkage. |
+| `missing_master` | Master payload atau initial device tidak ditemukan/tidak dikirim saat diperlukan. |
+| `multiple_problem` | Lebih dari satu jenis problem ditemukan; rincian berada pada note. |
+
 ## API
 
 Model teknis:
@@ -832,7 +938,7 @@ Field:
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat konfigurasi berlaku. |
 | `bot_user_id` | `Many2one(res.users)` | Ya | Ya | User internal aktif yang dipakai untuk proses API. |
 | `pull_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint pull data untuk company ini ditutup. Default aktif. |
-| `push_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint push data untuk company ini ditutup. Default aktif. Endpoint push belum diekspos. |
+| `push_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint push data untuk company ini ditutup. Default aktif. Saat ini dipakai oleh push weighing Cup Lump. |
 
 Urutan data:
 
@@ -1224,6 +1330,100 @@ Catatan payload:
 - Master yang memiliki `code`, seperti Estate, Division, dan Weighing Location, ikut membawa `code`.
 - Employee barcode dibawa di master terpusat `employees`; payload foreman dan tapper hanya membawa relasi seperti `employee_id`, `company_id`, dan division terkait.
 
+### API Push Weighing Cup Lump Service
+
+Model teknis:
+
+```text
+wt.api.push.weighing.cup.lump.service
+```
+
+File:
+
+```text
+services/api_push_weighing_cup_lump_service.py
+```
+
+Tanggung jawab:
+
+- Mengautentikasi device melalui `wt.api.security.service`.
+- Memastikan role device adalah `operator`.
+- Memastikan push dibuka melalui `wt.api.push_enabled`.
+- Mengambil bot user dari `wt.api.security.service`.
+- Memvalidasi root payload: `product_type`, `items`, `master_synced_at`, dan `sent_at`.
+- Memanggil `wt.cup.lump.service` untuk validasi dan pemrosesan setiap item.
+- Menjalankan Cup Lump Service menggunakan user dan bahasa bot user.
+- Memperbarui `last_push`, `last_seen`, dan `app_version` pada device.
+- Membentuk summary response `received`, `created`, `duplicates`, `with_data_problem`, dan `weighing_cup_lump_ids`.
+
+Endpoint:
+
+```text
+POST /weightrack/api/v1/push/weighing-cup-lump
+```
+
+Payload wajib root:
+
+```text
+device_id
+token
+items
+```
+
+Payload wajib per item cup lump:
+
+```text
+local_id
+production_date
+weighing_date
+```
+
+Response data yang disiapkan service:
+
+```text
+summary
+items
+```
+
+Catatan:
+
+- Jika `product_type` dikirim, nilainya harus `cup_lump`.
+- `master_synced_at` disimpan untuk audit, tetapi tidak menjadi data problem.
+- Push langsung membuat `wt.weighing.cup.lump` dan tidak membuat inbound/receipt.
+
+### Cup Lump Service
+
+Model teknis:
+
+```text
+wt.cup.lump.service
+```
+
+File:
+
+```text
+services/cup_lump_service.py
+```
+
+Tanggung jawab:
+
+- Memvalidasi bentuk dan field wajib setiap item.
+- Melakukan pre-check duplicate berdasarkan `data_source = api`, `device_id`, `product_type`, dan `local_id`.
+- Menangani race condition idempotency melalui partial unique index dan savepoint database.
+- Memetakan object payload ke master Odoo dan membuat `wt.weighing.cup.lump`.
+- Melakukan reverse lookup assignment foreman dan tapper dari employee.
+- Mengevaluasi seluruh data problem, rumus berat, shrinkage, dan initial weighing.
+- Membentuk snapshot payload device dan snapshot master Odoo.
+- Dipakai juga oleh model `wt.weighing.cup.lump` untuk action `Recheck Data Problem`, sehingga service ini bukan endpoint HTTP.
+
+Method penting:
+
+```text
+validate_items(items)
+process_items(...)
+evaluate_data_problem_from_record(detail)
+```
+
 ### API Response Service
 
 Model teknis:
@@ -1317,6 +1517,7 @@ Endpoint aktif:
 ```text
 POST /weightrack/api/v1/device/activate
 POST /weightrack/api/v1/pull/master
+POST /weightrack/api/v1/push/weighing-cup-lump
 ```
 
 File:
@@ -1324,6 +1525,7 @@ File:
 ```text
 controllers/api/v1/device_api.py
 controllers/api/v1/pull_api.py
+controllers/api/v1/push_api.py
 ```
 
 Route activation:
@@ -1343,6 +1545,18 @@ Route pull master:
 ```python
 @http.route(
     "/weightrack/api/v1/pull/master",
+    type="http",
+    auth="public",
+    methods=["POST"],
+    csrf=False,
+)
+```
+
+Route push weighing Cup Lump:
+
+```python
+@http.route(
+    "/weightrack/api/v1/push/weighing-cup-lump",
     type="http",
     auth="public",
     methods=["POST"],
@@ -1384,6 +1598,7 @@ Access CSV:
 | `wt.foreman` | Ya | Ya | Ya | Ya |
 | `wt.tapper` | Ya | Ya | Ya | Ya |
 | `wt.device` | Ya | Ya | Ya | Ya |
+| `wt.weighing.cup.lump` | Ya | Ya | Ya | Ya |
 | `wt.device.state.reason.wizard` | Ya | Ya | Ya | Ya |
 | `hr.employee` | Ya | Tidak | Tidak | Tidak |
 | `hr.job` | Ya | Tidak | Tidak | Tidak |
@@ -1405,6 +1620,7 @@ models/employee_role.py
 models/product.py
 models/shrinkage_tolerance.py
 models/receipt_rule.py
+models/weighing_cup_lump.py
 models/division.py
 models/weighing_location.py
 models/foreman.py
@@ -1425,6 +1641,8 @@ Services:
 ```text
 services/api_device_service.py
 services/api_pull_master_service.py
+services/api_push_weighing_cup_lump_service.py
+services/cup_lump_service.py
 services/api_security_service.py
 services/api_response_service.py
 ```
@@ -1435,6 +1653,7 @@ Controllers:
 controllers/api/api_handler.py
 controllers/api/v1/device_api.py
 controllers/api/v1/pull_api.py
+controllers/api/v1/push_api.py
 ```
 
 Views:
@@ -1447,6 +1666,8 @@ views/employee_role_views.xml
 views/product_views.xml
 views/shrinkage_tolerance_views.xml
 views/receipt_rule_views.xml
+views/inbound_weighing_views.xml
+views/weighing_lump_views.xml
 views/division_views.xml
 views/weighing_location_views.xml
 views/foreman_views.xml

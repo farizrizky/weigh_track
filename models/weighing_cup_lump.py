@@ -1,0 +1,800 @@
+# -*- coding: utf-8 -*-
+
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
+
+from ..constants.product_types import ProductType
+from ..constants.roles import Role
+
+
+class WeighingCupLump(models.Model):
+    _name = "wt.weighing.cup.lump"
+    _description = "Weighing Cup Lump"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
+    _order = "production_date desc, weighing_date desc, id desc"
+
+    STATE_SELECTION = [
+        ("draft", "Draft"),
+        ("validated", "Validated"),
+    ]
+    DATA_SOURCE_SELECTION = [
+        ("manual", "Manual"),
+        ("api", "API"),
+    ]
+
+    DATA_PROBLEM_SELECTION = [
+        ("none", "None"),
+        ("company_mismatch", "Company Mismatch"),
+        ("estate_mismatch", "Estate Mismatch"),
+        ("operator_mismatch", "Operator Mismatch"),
+        ("weighing_location_mismatch", "Weighing Location Mismatch"),
+        ("division_not_allowed", "Division Not Allowed"),
+        ("receipt_rule_mismatch", "Receipt Rule Mismatch"),
+        ("product_mapping_mismatch", "Product Mapping Mismatch"),
+        ("clerk_mismatch", "Clerk Mismatch"),
+        ("foreman_mismatch", "Foreman Mismatch"),
+        ("tapper_mismatch", "Tapper Mismatch"),
+        ("weight_formula_mismatch", "Weight Formula Mismatch"),
+        ("initial_weighing_date_mismatch", "Initial Weighing Date Mismatch"),
+        ("initial_weight_mismatch", "Initial Weight Mismatch"),
+        ("shrinkage_tolerance_mismatch", "Shrinkage Tolerance Mismatch"),
+        ("missing_master", "Missing Master"),
+        ("multiple_problem", "Multiple Problem"),
+    ]
+    DATA_PROBLEM_TRIGGER_FIELDS = {
+        "company_id",
+        "estate_id",
+        "weighing_location_id",
+        "division_id",
+        "operator_employee_id",
+        "clerk_employee_id",
+        "foreman_id",
+        "foreman_employee_id",
+        "tapper_id",
+        "tapper_employee_id",
+        "product_id",
+        "receipt_rule_id",
+        "production_date",
+        "weighing_date",
+        "production_weight",
+        "reject_weight",
+        "slab_weight",
+        "net_weight",
+        "shrinkage_tolerance_percentage",
+        "shrinkage_tolerance_weight",
+        "initial_weighing_date",
+        "initial_device_id",
+        "initial_weight",
+    }
+
+    name = fields.Char(
+        string="Number",
+        compute="_compute_name",
+        store=True,
+    )
+    local_id = fields.Char(
+        string="Local ID",
+        index=True,
+        tracking=True,
+    )
+    device_id = fields.Char(
+        string="Device ID",
+        index=True,
+        tracking=True,
+    )
+    device_record_id = fields.Many2one(
+        "wt.device",
+        string="Device",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    company_id = fields.Many2one(
+        "res.company",
+        string="Company",
+        required=True,
+        index=True,
+        tracking=True,
+    )
+    allowed_division_ids = fields.Many2many(
+        "wt.division",
+        string="Allowed Divisions",
+        compute="_compute_allowed_division_ids",
+    )
+    product_type = fields.Selection(
+        ProductType.SELECTION,
+        string="Product Type",
+        default=ProductType.CUP_LUMP,
+        required=True,
+        index=True,
+        tracking=True,
+    )
+    production_date = fields.Date(
+        string="Production Date",
+        required=True,
+        index=True,
+        tracking=True,
+    )
+    weighing_date = fields.Datetime(
+        string="Weighing Date",
+        required=True,
+        index=True,
+        tracking=True,
+    )
+    master_synced_at = fields.Datetime(
+        string="Master Synced At",
+        tracking=True,
+    )
+    sent_at = fields.Datetime(
+        string="Sent At",
+        tracking=True,
+    )
+    received_at = fields.Datetime(
+        string="Received At",
+        tracking=True,
+    )
+    batch_local_id = fields.Char(
+        string="Batch Local ID",
+        index=True,
+        tracking=True,
+    )
+    state = fields.Selection(
+        STATE_SELECTION,
+        string="Status",
+        default="draft",
+        required=True,
+        index=True,
+        tracking=True,
+    )
+    data_source = fields.Selection(
+        DATA_SOURCE_SELECTION,
+        string="Data Source",
+        default="manual",
+        required=True,
+        store=True,
+        index=True,
+    )
+    has_data_problem = fields.Boolean(
+        string="Has Data Problem",
+        default=False,
+        index=True,
+        tracking=True,
+    )
+    data_problem_code = fields.Selection(
+        DATA_PROBLEM_SELECTION,
+        string="Data Problem Code",
+        default="none",
+        tracking=True,
+    )
+    data_problem_note = fields.Text(
+        string="Data Problem Note",
+        tracking=True,
+    )
+    data_problem_note_display = fields.Text(
+        string="Data Problem Note",
+        compute="_compute_data_problem_note_display",
+    )
+    device_snapshot_json = fields.Text(
+        string="Device Snapshot",
+        readonly=True,
+    )
+    odoo_snapshot_json = fields.Text(
+        string="Odoo Snapshot",
+        readonly=True,
+    )
+
+    estate_id = fields.Many2one(
+        "wt.estate",
+        string="Estate",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    weighing_location_id = fields.Many2one(
+        "wt.weighing.location",
+        string="Weighing Location",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    division_id = fields.Many2one(
+        "wt.division",
+        string="Division",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    product_id = fields.Many2one(
+        "product.product",
+        string="Product",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    receipt_rule_id = fields.Many2one(
+        "wt.receipt.rule",
+        string="Receipt Rule",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    uom_id = fields.Many2one(
+        "uom.uom",
+        string="UoM",
+        ondelete="restrict",
+        tracking=True,
+    )
+
+    operator_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Name",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    operator_name = fields.Char(
+        string="Operator Name",
+        related="operator_employee_id.name",
+        store=True,
+        readonly=True,
+    )
+    operator_barcode = fields.Char(
+        string="Badge Number",
+        related="operator_employee_id.barcode",
+        store=True,
+        readonly=True,
+    )
+    clerk_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Name",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    clerk_name = fields.Char(
+        string="Clerk Name",
+        related="clerk_employee_id.name",
+        store=True,
+        readonly=True,
+    )
+    clerk_barcode = fields.Char(
+        string="Badge Number",
+        related="clerk_employee_id.barcode",
+        store=True,
+        readonly=True,
+    )
+    foreman_id = fields.Many2one(
+        "wt.foreman",
+        string="Foreman",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    foreman_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Name",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    foreman_name = fields.Char(
+        string="Foreman Name",
+        related="foreman_employee_id.name",
+        store=True,
+        readonly=True,
+    )
+    foreman_barcode = fields.Char(
+        string="Badge Number",
+        related="foreman_employee_id.barcode",
+        store=True,
+        readonly=True,
+    )
+    tapper_id = fields.Many2one(
+        "wt.tapper",
+        string="Tapper",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    tapper_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Name",
+        ondelete="restrict",
+        index=True,
+        tracking=True,
+    )
+    tapper_name = fields.Char(
+        string="Tapper Name",
+        related="tapper_employee_id.name",
+        store=True,
+        readonly=True,
+    )
+    tapper_barcode = fields.Char(
+        string="Badge Number",
+        related="tapper_employee_id.barcode",
+        store=True,
+        readonly=True,
+    )
+
+    total_bag = fields.Integer(
+        string="Total Bag",
+        tracking=True,
+    )
+    production_weight = fields.Float(
+        string="Production Weight",
+        tracking=True,
+    )
+    reject_weight = fields.Float(
+        string="Reject Weight",
+        tracking=True,
+    )
+    slab_weight = fields.Float(
+        string="Slab Weight",
+        tracking=True,
+    )
+    net_weight = fields.Float(
+        string="Net Weight",
+        tracking=True,
+    )
+    shrinkage_tolerance_percentage = fields.Float(
+        string="Shrinkage Tolerance (%)",
+        tracking=True,
+    )
+    shrinkage_tolerance_weight = fields.Float(
+        string="Shrinkage Tolerance Weight",
+        tracking=True,
+    )
+    is_manual_weighing = fields.Boolean(
+        string="Manual Weighing",
+        tracking=True,
+    )
+    manual_weighing_reason = fields.Text(
+        string="Manual Weighing Reason",
+        tracking=True,
+    )
+    note = fields.Text(
+        string="Note",
+        tracking=True,
+    )
+
+    initial_weighing_date = fields.Datetime(
+        string="Initial Weighing Date",
+        tracking=True,
+    )
+    initial_device_id = fields.Many2one(
+        "wt.device",
+        string="By Device",
+        ondelete="restrict",
+        tracking=True,
+    )
+    initial_device_role = fields.Selection(
+        Role.DEVICE_SELECTION,
+        string="Role",
+        related="initial_device_id.role",
+        store=True,
+        readonly=True,
+    )
+    initial_device_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Device Owner",
+        related="initial_device_id.employee_id",
+        store=True,
+        readonly=True,
+    )
+    initial_device_employee_name = fields.Char(
+        string="Initial Device Employee Name",
+        related="initial_device_employee_id.name",
+        store=True,
+        readonly=True,
+    )
+    initial_device_employee_barcode = fields.Char(
+        string="Device Owner Badge Number",
+        related="initial_device_employee_id.barcode",
+        store=True,
+        readonly=True,
+    )
+    initial_weight = fields.Float(
+        string="Initial Weight",
+        tracking=True,
+    )
+    initial_is_manual_weighing = fields.Boolean(
+        string="Initial Manual Weighing",
+        tracking=True,
+    )
+    initial_manual_weighing_reason = fields.Text(
+        string="Initial Manual Weighing Reason",
+        tracking=True,
+    )
+    initial_note = fields.Text(
+        string="Initial Weighing Note",
+        tracking=True,
+    )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            self._set_estate_from_location_vals(vals)
+            self._set_uom_from_product_vals(vals)
+            if vals.get("data_source", "manual") == "manual":
+                vals.update(
+                    {
+                        "local_id": False,
+                        "device_id": False,
+                        "device_record_id": False,
+                        "batch_local_id": False,
+                    }
+                )
+        records = super().create(vals_list)
+        for detail in records.filtered(lambda record: record.data_source == "manual"):
+            detail.with_context(
+                skip_auto_recheck_data_problem=True
+            )._sync_assignment_refs_from_employees()
+        records._compute_name()
+        records.filtered(lambda record: record.data_source == "manual").with_context(
+            skip_auto_recheck_data_problem=True
+        ).action_recheck_data_problem()
+        return records
+
+    def write(self, vals):
+        vals = dict(vals)
+        self._set_estate_from_location_vals(vals)
+        result = super().write(vals)
+        if set(vals) & {
+            "division_id",
+            "foreman_employee_id",
+            "tapper_employee_id",
+        }:
+            self.filtered(
+                lambda record: record.data_source == "manual"
+                and record.state == "draft"
+            ).with_context(
+                skip_auto_recheck_data_problem=True
+            )._sync_assignment_refs_from_employees()
+        if not self.env.context.get("skip_auto_recheck_data_problem") and (
+            set(vals) & self.DATA_PROBLEM_TRIGGER_FIELDS
+        ):
+            self.filtered(
+                lambda record: record.state == "draft"
+            ).with_context(skip_auto_recheck_data_problem=True).action_recheck_data_problem()
+        return result
+
+    def _set_estate_from_location_vals(self, vals):
+        location_id = vals.get("weighing_location_id")
+        if location_id:
+            location = self.env["wt.weighing.location"].browse(location_id)
+            vals["estate_id"] = location.estate_id.id
+
+    def _set_uom_from_product_vals(self, vals):
+        if vals.get("product_id") and not vals.get("uom_id"):
+            product = self.env["product.product"].browse(vals["product_id"])
+            vals["uom_id"] = product.uom_id.id
+
+    @api.depends("data_problem_note")
+    def _compute_data_problem_note_display(self):
+        missing_master_suffix = " was not found in Odoo."
+        missing_master_message = "%s was not found in Odoo."
+        for detail in self:
+            translated_lines = []
+            for line in (detail.data_problem_note or "").splitlines():
+                if line.endswith(missing_master_suffix):
+                    label = line[: -len(missing_master_suffix)]
+                    translated_lines.append(
+                        detail.env._(missing_master_message) % detail.env._(label)
+                    )
+                else:
+                    translated_lines.append(detail.env._(line))
+            detail.data_problem_note_display = "\n".join(translated_lines)
+
+    @api.depends("product_type", "production_date")
+    def _compute_name(self):
+        for detail in self:
+            product_type = (detail.product_type or "").upper()
+            production_date = detail._date_number_part(detail.production_date)
+            if product_type and production_date:
+                detail.name = "WH/%s/%s/%03d" % (
+                    product_type,
+                    production_date,
+                    detail._sequence_number(),
+                )
+            else:
+                detail.name = _("New")
+
+    def _sequence_number(self):
+        self.ensure_one()
+        if not self.id:
+            return 1
+        return self.search_count(
+            [
+                ("id", "<=", self.id),
+                ("product_type", "=", self.product_type),
+                ("production_date", "=", self.production_date),
+            ]
+        )
+
+    def _date_number_part(self, value):
+        if not value:
+            return ""
+        return fields.Date.to_date(value).strftime("%Y%m%d")
+
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_weighing_cup_lump
+            DROP CONSTRAINT IF EXISTS wt_weighing_cup_lump_device_product_local_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS
+                wt_weighing_cup_lump_api_idempotency_uniq
+            ON wt_weighing_cup_lump (device_id, product_type, local_id)
+            WHERE data_source = 'api'
+            """
+        )
+
+    @api.constrains(
+        "data_source",
+        "local_id",
+        "device_id",
+        "device_record_id",
+    )
+    def _check_api_identity_fields(self):
+        for detail in self.filtered(lambda record: record.data_source == "api"):
+            missing = []
+            if not detail.local_id:
+                missing.append(_("Local ID"))
+            if not detail.device_id:
+                missing.append(_("Device ID"))
+            if not detail.device_record_id:
+                missing.append(_("Device"))
+            if missing:
+                raise ValidationError(
+                    _("API weighing requires: %s.") % ", ".join(missing)
+                )
+
+    def _sync_assignment_refs_from_employees(self):
+        foreman_model = self.env["wt.foreman"].sudo()
+        tapper_model = self.env["wt.tapper"].sudo()
+        for detail in self:
+            vals = {}
+            foreman = foreman_model.browse()
+            if detail.foreman_employee_id and detail.division_id:
+                foreman = foreman_model.search(
+                    [
+                        ("employee_id", "=", detail.foreman_employee_id.id),
+                        ("division_id", "=", detail.division_id.id),
+                    ],
+                    limit=1,
+                )
+            if detail.foreman_id != foreman:
+                vals["foreman_id"] = foreman.id or False
+
+            tapper = tapper_model.browse()
+            if detail.tapper_employee_id:
+                tapper = tapper_model.search(
+                    [("employee_id", "=", detail.tapper_employee_id.id)],
+                    limit=1,
+                )
+            if detail.tapper_id != tapper:
+                vals["tapper_id"] = tapper.id or False
+
+            if vals:
+                detail.write(vals)
+
+    @api.depends("weighing_location_id")
+    def _compute_allowed_division_ids(self):
+        for detail in self:
+            detail.allowed_division_ids = detail.weighing_location_id.allowed_division_ids
+
+    @api.onchange("estate_id")
+    def _onchange_estate_id(self):
+        if (
+            self.weighing_location_id
+            and self.weighing_location_id.estate_id != self.estate_id
+        ):
+            self.weighing_location_id = False
+            self.division_id = False
+            self.receipt_rule_id = False
+
+    @api.onchange("weighing_location_id")
+    def _onchange_weighing_location_id(self):
+        if self.weighing_location_id:
+            self.estate_id = self.weighing_location_id.estate_id
+            self.company_id = self.weighing_location_id.company_id
+            if self.division_id not in self.weighing_location_id.allowed_division_ids:
+                self.division_id = False
+                self.receipt_rule_id = False
+            self._set_receipt_rule_from_scope()
+
+    @api.onchange("division_id", "product_id")
+    def _onchange_receipt_rule_scope(self):
+        if self.product_id:
+            self.uom_id = self.product_id.uom_id
+        self._set_receipt_rule_from_scope()
+
+    @api.onchange("company_id")
+    def _onchange_company_id(self):
+        if (
+            self.initial_device_id
+            and self.company_id
+            and self.initial_device_id.company_id != self.company_id
+        ):
+            self.initial_device_id = False
+
+    def _set_receipt_rule_from_scope(self):
+        if not (self.weighing_location_id and self.division_id and self.product_id):
+            self.receipt_rule_id = False
+            return
+        self.receipt_rule_id = self.env["wt.receipt.rule"].search(
+            [
+                ("company_id", "=", self.company_id.id),
+                ("weighing_location_id", "=", self.weighing_location_id.id),
+                ("division_id", "=", self.division_id.id),
+                ("product_id", "=", self.product_id.id),
+            ],
+            limit=1,
+        )
+
+    @api.constrains("estate_id", "weighing_location_id")
+    def _check_weighing_location_estate(self):
+        for detail in self:
+            if (
+                detail.estate_id
+                and detail.weighing_location_id
+                and detail.weighing_location_id.estate_id != detail.estate_id
+            ):
+                raise ValidationError(
+                    _("Weighing location must belong to the selected estate.")
+                )
+
+    @api.constrains("production_date", "weighing_date")
+    def _check_production_date_not_after_weighing_date(self):
+        for detail in self:
+            detail._check_production_date_not_after_weighing_date_one()
+
+    @api.constrains(
+        "initial_weighing_date",
+        "initial_device_id",
+        "initial_weight",
+        "initial_is_manual_weighing",
+        "initial_manual_weighing_reason",
+    )
+    def _check_initial_weighing_required_fields(self):
+        for detail in self:
+            detail._check_initial_weighing_required_one()
+
+    @api.onchange("foreman_employee_id")
+    def _onchange_foreman_employee_id(self):
+        if not self.foreman_employee_id:
+            self.foreman_id = False
+            return
+        foreman = self.env["wt.foreman"].search(
+            [
+                ("employee_id", "=", self.foreman_employee_id.id),
+                ("division_id", "=", self.division_id.id),
+            ],
+            limit=1,
+        )
+        self.foreman_id = foreman
+
+    @api.onchange("tapper_employee_id")
+    def _onchange_tapper_employee_id(self):
+        if not self.tapper_employee_id:
+            self.tapper_id = False
+            return
+        domain = [
+            ("employee_id", "=", self.tapper_employee_id.id),
+            ("division_id", "=", self.division_id.id),
+        ]
+        if self.foreman_id:
+            domain.append(("foreman_id", "=", self.foreman_id.id))
+        tapper = self.env["wt.tapper"].search(domain, limit=1)
+        self.tapper_id = tapper
+
+    def action_recheck_data_problem(self):
+        service = self.env["wt.cup.lump.service"].sudo()
+        for detail in self:
+            result = service.evaluate_data_problem_from_record(detail)
+            detail.write(
+                {
+                    "has_data_problem": result["has_data_problem"],
+                    "data_problem_code": result["data_problem_code"],
+                    "data_problem_note": result["data_problem_note"],
+                    "odoo_snapshot_json": result["odoo_snapshot_json"],
+                }
+            )
+
+    def action_validate(self):
+        for detail in self:
+            if detail.state != "draft":
+                raise ValidationError(_("Only draft weighing detail can be validated."))
+
+        self._check_required_for_validate()
+        self.action_recheck_data_problem()
+
+        for detail in self:
+            if detail.has_data_problem:
+                raise ValidationError(
+                    _("Weighing detail still has data problem and cannot be validated.")
+                )
+        self.write({"state": "validated"})
+
+    def _check_required_for_validate(self):
+        for detail in self:
+            missing_labels = detail._missing_validate_required_labels()
+            if missing_labels:
+                raise ValidationError(
+                    _("Please complete required fields before validate: %s.")
+                    % ", ".join(missing_labels)
+                )
+
+            detail._check_production_date_not_after_weighing_date_one()
+            detail._check_initial_weighing_required_one()
+
+    def _missing_validate_required_labels(self):
+        self.ensure_one()
+        required_fields = (
+            ("production_date", _("Production Date")),
+            ("weighing_date", _("Weighing Date")),
+            ("company_id", _("Company")),
+            ("estate_id", _("Estate")),
+            ("division_id", _("Division")),
+            ("weighing_location_id", _("Weighing Location")),
+            ("product_id", _("Product")),
+            ("uom_id", _("UoM")),
+            ("receipt_rule_id", _("Receipt Rule")),
+            ("operator_employee_id", _("Operator Name")),
+            ("clerk_employee_id", _("Clerk Name")),
+            ("foreman_employee_id", _("Foreman Name")),
+            ("tapper_employee_id", _("Tapper Name")),
+        )
+        missing = [label for field_name, label in required_fields if not self[field_name]]
+        positive_fields = (
+            ("total_bag", _("Total Bag")),
+            ("production_weight", _("Production Weight")),
+            ("net_weight", _("Net Weight")),
+        )
+        missing.extend(
+            label for field_name, label in positive_fields if self[field_name] <= 0
+        )
+        return missing
+
+    def _check_production_date_not_after_weighing_date_one(self):
+        self.ensure_one()
+        if not (self.production_date and self.weighing_date):
+            return
+        if self.production_date > self._datetime_date_part(self.weighing_date):
+            raise ValidationError(
+                _("Production Date cannot be later than Weighing Date.")
+            )
+
+    def _datetime_date_part(self, value):
+        datetime_value = fields.Datetime.to_datetime(value)
+        return fields.Datetime.context_timestamp(self, datetime_value).date()
+
+    def _check_initial_weighing_required_one(self):
+        self.ensure_one()
+        if not self.initial_weighing_date:
+            return
+        if not self.initial_device_id:
+            if self.data_source == "api":
+                return
+            raise ValidationError(
+                _("By Device is required when Initial Weighing Date is filled.")
+            )
+        if self.initial_weight <= 0:
+            raise ValidationError(
+                _("Initial Weight is required when Initial Weighing Date is filled.")
+            )
+        if self.initial_is_manual_weighing and not self.initial_manual_weighing_reason:
+            raise ValidationError(
+                _("Initial Manual Weighing Reason is required when Initial Manual Weighing is checked.")
+            )
+
+    def action_cancel_validate(self):
+        for detail in self:
+            if detail.state != "validated":
+                raise ValidationError(
+                    _("Only validated weighing detail can be cancelled.")
+                )
+        self.write({"state": "draft"})

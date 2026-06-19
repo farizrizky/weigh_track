@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "WeighTrack",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.3.0",
     "category": "Operations/Inventory",
     "summary": "Weighing management for estate operations",
     "author": "PT. Hanara Prima Solusindo",
@@ -16,6 +16,7 @@
         "views/product_views.xml",
         "views/shrinkage_tolerance_views.xml",
         "views/receipt_rule_views.xml",
+        "views/weighing_cup_lump_views.xml",
         "views/estate_views.xml",
         "views/weather_views.xml",
         "views/weather_data_views.xml",
