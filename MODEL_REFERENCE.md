@@ -898,25 +898,25 @@ Validasi backend:
 
 Kode data problem:
 
-| Code | Penjelasan |
-| --- | --- |
-| `none` | Tidak ditemukan masalah. |
-| `company_mismatch` | Company payload tidak sesuai company device, atau division bukan milik company transaksi. |
-| `estate_mismatch` | Estate bukan milik company atau berbeda dari estate weighing location. |
-| `operator_mismatch` | Operator payload/lokasi timbang berbeda dari operator device. |
-| `weighing_location_mismatch` | Weighing location bukan milik company transaksi. |
-| `division_not_allowed` | Division tidak diizinkan pada weighing location. |
-| `receipt_rule_mismatch` | Receipt rule tidak sesuai company, weighing location, division, atau product. |
-| `product_mapping_mismatch` | Product tidak dipetakan sebagai `cup_lump` untuk company. |
-| `clerk_mismatch` | Clerk employee berbeda dari clerk pada division. |
-| `foreman_mismatch` | Foreman employee tidak memiliki assignment pada division, atau ID/employee foreman tidak konsisten. |
-| `tapper_mismatch` | Tapper tidak terdaftar, berbeda division, tidak berada di bawah foreman, atau employee tidak konsisten. |
-| `weight_formula_mismatch` | `production_weight != slab_weight + reject_weight + net_weight`. |
-| `initial_weighing_date_mismatch` | Tanggal initial weighing berbeda dari production date. |
-| `initial_weight_mismatch` | Untuk cross-day weighing, production weight bukan initial weight dikurangi shrinkage weight. |
-| `shrinkage_tolerance_mismatch` | Shrinkage weight tidak sama dengan initial weight dikali persentase shrinkage. |
-| `missing_master` | Master payload atau initial device tidak ditemukan/tidak dikirim saat diperlukan. |
-| `multiple_problem` | Lebih dari satu jenis problem ditemukan; rincian berada pada note. |
+| Code | English Description | Penjelasan Indonesia |
+| --- | --- | --- |
+| `none` | No data problem was found. | Tidak ditemukan masalah data. |
+| `company_mismatch` | The payload company does not match the device company, or the division does not belong to the weighing company. | Company payload tidak sesuai company device, atau division bukan milik company penimbangan. |
+| `estate_mismatch` | The estate does not belong to the weighing company, or it does not match the estate assigned to the weighing location. | Estate bukan milik company penimbangan, atau berbeda dari estate yang terikat pada weighing location. |
+| `operator_mismatch` | The payload operator or weighing-location operator does not match the device operator. | Operator payload atau operator weighing location berbeda dari operator device. |
+| `weighing_location_mismatch` | The weighing location does not belong to the weighing company. | Weighing location bukan milik company penimbangan. |
+| `division_not_allowed` | The division is not included in the weighing location's allowed divisions. | Division tidak termasuk division yang diizinkan pada weighing location. |
+| `receipt_rule_mismatch` | The receipt rule does not match the company, weighing location, division, or product. | Receipt rule tidak sesuai company, weighing location, division, atau product. |
+| `product_mapping_mismatch` | The product is not configured as `cup_lump` for the weighing company. | Product tidak dipetakan sebagai `cup_lump` untuk company penimbangan. |
+| `clerk_mismatch` | The clerk employee does not match the clerk assigned to the division. | Employee clerk berbeda dari clerk yang ditetapkan pada division. |
+| `foreman_mismatch` | The foreman employee is not assigned to the division, or the foreman ID and employee are inconsistent. | Employee foreman tidak memiliki assignment pada division, atau ID dan employee foreman tidak konsisten. |
+| `tapper_mismatch` | The tapper is not registered, belongs to another division, is not assigned to the selected foreman, or has an inconsistent employee. | Tapper tidak terdaftar, berada pada division lain, tidak berada di bawah foreman yang dipilih, atau employee tidak konsisten. |
+| `weight_formula_mismatch` | `production_weight` does not equal `slab_weight + reject_weight + net_weight`. | `production_weight` tidak sama dengan `slab_weight + reject_weight + net_weight`. |
+| `initial_weighing_date_mismatch` | The initial weighing date does not match the production date. | Tanggal initial weighing berbeda dari production date. |
+| `initial_weight_mismatch` | For cross-day weighing, production weight does not equal initial weight minus shrinkage tolerance weight. | Untuk penimbangan lintas hari, production weight tidak sama dengan initial weight dikurangi shrinkage tolerance weight. |
+| `shrinkage_tolerance_mismatch` | Shrinkage tolerance weight does not equal initial weight multiplied by the shrinkage percentage. | Shrinkage tolerance weight tidak sama dengan initial weight dikali persentase penyusutan. |
+| `missing_master` | A referenced master record or initial device was not found, or the required initial device was not provided. | Master yang direferensikan atau initial device tidak ditemukan, atau initial device yang wajib tidak dikirim. |
+| `multiple_problem` | More than one data problem type was found; details are stored in the problem note. | Lebih dari satu jenis masalah data ditemukan; rinciannya tersimpan pada catatan masalah. |
 
 ## API
 
