@@ -38,6 +38,7 @@ class WeighingCupLump(models.Model):
         ("initial_weighing_date_mismatch", "Initial Weighing Date Mismatch"),
         ("initial_weight_mismatch", "Initial Weight Mismatch"),
         ("shrinkage_tolerance_mismatch", "Shrinkage Tolerance Mismatch"),
+        ("inactive_master", "Inactive Master"),
         ("missing_master", "Missing Master"),
         ("multiple_problem", "Multiple Problem"),
     ]
@@ -69,8 +70,11 @@ class WeighingCupLump(models.Model):
 
     name = fields.Char(
         string="Number",
-        compute="_compute_name",
-        store=True,
+        default="/",
+        readonly=True,
+        copy=False,
+        index=True,
+        tracking=True,
     )
     local_id = fields.Char(
         string="Local ID",
@@ -166,13 +170,17 @@ class WeighingCupLump(models.Model):
         default="none",
         tracking=True,
     )
-    data_problem_note = fields.Text(
-        string="Data Problem Note",
+    data_problem_note_en = fields.Text(
+        string="Data Problem Note (English)",
         tracking=True,
     )
-    data_problem_note_display = fields.Text(
+    data_problem_note_idn = fields.Text(
+        string="Data Problem Note (Indonesian)",
+        tracking=True,
+    )
+    data_problem_note = fields.Text(
         string="Data Problem Note",
-        compute="_compute_data_problem_note_display",
+        compute="_compute_data_problem_note",
     )
     device_snapshot_json = fields.Text(
         string="Device Snapshot",
@@ -412,9 +420,24 @@ class WeighingCupLump(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        sequence_model = self.env["ir.sequence"]
         for vals in vals_list:
             self._set_estate_from_location_vals(vals)
             self._set_uom_from_product_vals(vals)
+            if not vals.get("name") or vals["name"] == "/":
+                sequence_date = (
+                    fields.Date.to_date(vals["production_date"])
+                    if vals.get("production_date")
+                    else fields.Date.context_today(self)
+                )
+                vals["name"] = sequence_model.next_by_code(
+                    "wt.weighing.cup.lump",
+                    sequence_date=sequence_date,
+                )
+                if not vals["name"]:
+                    raise ValidationError(
+                        _("Weighing Cup Lump sequence is not configured.")
+                    )
             if vals.get("data_source", "manual") == "manual":
                 vals.update(
                     {
@@ -429,7 +452,6 @@ class WeighingCupLump(models.Model):
             detail.with_context(
                 skip_auto_recheck_data_problem=True
             )._sync_assignment_refs_from_employees()
-        records._compute_name()
         records.filtered(lambda record: record.data_source == "manual").with_context(
             skip_auto_recheck_data_problem=True
         ).action_recheck_data_problem()
@@ -469,54 +491,46 @@ class WeighingCupLump(models.Model):
             product = self.env["product.product"].browse(vals["product_id"])
             vals["uom_id"] = product.uom_id.id
 
-    @api.depends("data_problem_note")
-    def _compute_data_problem_note_display(self):
-        missing_master_suffix = " was not found in Odoo."
-        missing_master_message = "%s was not found in Odoo."
+    @api.depends_context("lang")
+    @api.depends("data_problem_note_en", "data_problem_note_idn")
+    def _compute_data_problem_note(self):
         for detail in self:
-            translated_lines = []
-            for line in (detail.data_problem_note or "").splitlines():
-                if line.endswith(missing_master_suffix):
-                    label = line[: -len(missing_master_suffix)]
-                    translated_lines.append(
-                        detail.env._(missing_master_message) % detail.env._(label)
-                    )
-                else:
-                    translated_lines.append(detail.env._(line))
-            detail.data_problem_note_display = "\n".join(translated_lines)
-
-    @api.depends("product_type", "production_date")
-    def _compute_name(self):
-        for detail in self:
-            product_type = (detail.product_type or "").upper()
-            production_date = detail._date_number_part(detail.production_date)
-            if product_type and production_date:
-                detail.name = "WH/%s/%s/%03d" % (
-                    product_type,
-                    production_date,
-                    detail._sequence_number(),
+            if detail.env.lang == "id_ID":
+                detail.data_problem_note = (
+                    detail.data_problem_note_idn or detail.data_problem_note_en
                 )
             else:
-                detail.name = _("New")
-
-    def _sequence_number(self):
-        self.ensure_one()
-        if not self.id:
-            return 1
-        return self.search_count(
-            [
-                ("id", "<=", self.id),
-                ("product_type", "=", self.product_type),
-                ("production_date", "=", self.production_date),
-            ]
-        )
-
-    def _date_number_part(self, value):
-        if not value:
-            return ""
-        return fields.Date.to_date(value).strftime("%Y%m%d")
+                detail.data_problem_note = (
+                    detail.data_problem_note_en or detail.data_problem_note_idn
+                )
 
     def init(self):
+        self.env.cr.execute(
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_weighing_cup_lump'
+                      AND column_name = 'data_problem_note'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_weighing_cup_lump'
+                      AND column_name = 'data_problem_note_en'
+                )
+                THEN
+                    UPDATE wt_weighing_cup_lump
+                       SET data_problem_note_en = data_problem_note
+                     WHERE COALESCE(data_problem_note_en, '') = ''
+                       AND COALESCE(data_problem_note, '') != '';
+                END IF;
+            END
+            $$;
+            """
+        )
         self.env.cr.execute(
             """
             ALTER TABLE wt_weighing_cup_lump
@@ -652,6 +666,11 @@ class WeighingCupLump(models.Model):
         for detail in self:
             detail._check_production_date_not_after_weighing_date_one()
 
+    @api.constrains("is_manual_weighing", "manual_weighing_reason")
+    def _check_manual_weighing_required_fields(self):
+        for detail in self:
+            detail._check_manual_weighing_required_one()
+
     @api.constrains(
         "initial_weighing_date",
         "initial_device_id",
@@ -699,7 +718,8 @@ class WeighingCupLump(models.Model):
                 {
                     "has_data_problem": result["has_data_problem"],
                     "data_problem_code": result["data_problem_code"],
-                    "data_problem_note": result["data_problem_note"],
+                    "data_problem_note_en": result["data_problem_note_en"],
+                    "data_problem_note_idn": result["data_problem_note_idn"],
                     "odoo_snapshot_json": result["odoo_snapshot_json"],
                 }
             )
@@ -729,6 +749,7 @@ class WeighingCupLump(models.Model):
                 )
 
             detail._check_production_date_not_after_weighing_date_one()
+            detail._check_manual_weighing_required_one()
             detail._check_initial_weighing_required_one()
 
     def _missing_validate_required_labels(self):
@@ -771,6 +792,13 @@ class WeighingCupLump(models.Model):
     def _datetime_date_part(self, value):
         datetime_value = fields.Datetime.to_datetime(value)
         return fields.Datetime.context_timestamp(self, datetime_value).date()
+
+    def _check_manual_weighing_required_one(self):
+        self.ensure_one()
+        if self.is_manual_weighing and not self.manual_weighing_reason:
+            raise ValidationError(
+                _("Manual Weighing Reason is required when Manual Weighing is checked.")
+            )
 
     def _check_initial_weighing_required_one(self):
         self.ensure_one()

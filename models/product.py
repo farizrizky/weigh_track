@@ -14,6 +14,7 @@ class Product(models.Model):
 
     LEGACY_PRODUCT_TYPE = "lump"
 
+    active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
         compute="_compute_name",
         store=True,
@@ -49,14 +50,6 @@ class Product(models.Model):
         readonly=True,
     )
 
-    _sql_constraints = [
-        (
-            "company_product_type_uniq",
-            "unique(company_id, product_type)",
-            "Product mapping must be unique per company and product type.",
-        ),
-    ]
-
     @api.depends("company_id", "product_type", "product_id")
     def _compute_name(self):
         product_type_labels = dict(ProductType.SELECTION)
@@ -83,6 +76,19 @@ class Product(models.Model):
                 % table_name,
                 (ProductType.CUP_LUMP, self.LEGACY_PRODUCT_TYPE),
             )
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_product
+            DROP CONSTRAINT IF EXISTS wt_product_company_product_type_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_product_company_product_type_active_uniq
+            ON wt_product (company_id, product_type)
+            WHERE active
+            """
+        )
 
     @api.constrains("company_id", "product_id")
     def _check_product_company(self):
@@ -95,16 +101,17 @@ class Product(models.Model):
                     _("Product must belong to the same company or be a global product.")
                 )
 
-    @api.constrains("company_id", "product_type")
+    @api.constrains("company_id", "product_type", "active")
     def _check_unique_company_product_type(self):
         for mapping in self:
-            if not mapping.company_id or not mapping.product_type:
+            if not (mapping.active and mapping.company_id and mapping.product_type):
                 continue
             duplicate = self.search(
                 [
                     ("id", "!=", mapping.id),
                     ("company_id", "=", mapping.company_id.id),
                     ("product_type", "=", mapping.product_type),
+                    ("active", "=", True),
                 ],
                 limit=1,
             )

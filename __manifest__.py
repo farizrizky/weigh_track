@@ -10,6 +10,7 @@
     "data": [
         "security/access_groups.xml",
         "security/ir.model.access.csv",
+        "data/weighing_cup_lump_sequence.xml",
         "views/api_views.xml",
         "views/api_request_log_views.xml",
         "views/employee_role_views.xml",

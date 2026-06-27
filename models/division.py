@@ -10,6 +10,7 @@ class Division(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "estate_id, code, name"
 
+    active = fields.Boolean(default=True, tracking=True)
     code = fields.Char(string="Code", required=True, index=True, tracking=True)
     name = fields.Char(string="Name", required=True, tracking=True)
     estate_id = fields.Many2one(
@@ -40,13 +41,20 @@ class Division(models.Model):
         compute="_compute_allowed_clerk_employee_ids",
         string="Allowed Clerk Employees",
     )
-    _sql_constraints = [
-        (
-            "code_estate_uniq",
-            "unique(code, estate_id)",
-            "Division code must be unique per estate.",
-        ),
-    ]
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_division
+            DROP CONSTRAINT IF EXISTS wt_division_code_estate_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_division_code_estate_active_uniq
+            ON wt_division (code, estate_id)
+            WHERE active
+            """
+        )
 
     @api.constrains("code", "estate_id")
     def _check_unique_code_estate(self):
@@ -56,9 +64,10 @@ class Division(models.Model):
                     ("id", "!=", division.id),
                     ("code", "=", division.code),
                     ("estate_id", "=", division.estate_id.id),
+                    ("active", "=", True),
                 ]
             )
-            if duplicate:
+            if division.active and duplicate:
                 raise ValidationError(_("Division code must be unique per estate."))
 
     @api.constrains("clerk_id", "estate_id")

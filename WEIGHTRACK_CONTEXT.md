@@ -72,6 +72,10 @@ POST /weightrack/api/v1/push/weighing-cup-lump
   - `_inherit = ["mail.thread", "mail.activity.mixin"]`
   - field penting memakai `tracking=True`
   - form view memakai `<chatter/>`
+- Master dan konfigurasi operasional yang boleh diarsipkan memakai field standar `active`.
+  - Model yang aktif memakai archive: `wt.estate`, `wt.weather`, `wt.employee.role`, `wt.product`, `wt.shrinkage.tolerance`, `wt.receipt.rule`, `wt.division`, `wt.weighing.location`, `wt.foreman`, dan `wt.tapper`.
+  - Model transaksi, log, device assignment, dan konfigurasi API tidak memakai archive untuk saat ini.
+  - Unique business key pada model archive dibuat unik hanya untuk record aktif, sehingga record lama bisa diarsipkan lalu kombinasi pengganti dapat dibuat.
 - Field `name` pada form umumnya dibuat sebagai title besar menggunakan `oe_title`.
 - Pengecualian saat ini:
   - `wt.shrinkage.tolerance`: `name` disembunyikan dari form, field paling atas adalah `company_id`.
@@ -534,6 +538,7 @@ Payload response pull master:
 - `scope` berisi batas kerja device dalam bentuk daftar ID.
 - `scope` membawa `role`, `company_id`, `estate_ids`, `division_ids`, `weighing_location_ids`, `receipt_rule_ids`, `product_ids`, `product_type_codes`, `uom_ids`, `shrinkage_tolerance_ids`, `employee_ids`, `foreman_ids`, dan `tapper_ids`.
 - `masters` berisi company, roles, employees, estate, division, weighing location, receipt rule, product, UoM, product type, shrinkage tolerance, foreman, dan tapper.
+- Pull master hanya mengirim master/config yang masih aktif. Record yang sudah diarsipkan tidak masuk scope dan tidak dikirim ke aplikasi offline pada pull berikutnya.
 - `masters.roles` hanya membawa role milik device yang sedang pull.
 - `masters.product_types` hanya membawa product type yang benar-benar berasal dari mapping `wt.product` untuk product dalam scope.
 - `masters.shrinkage_tolerances` hanya membawa toleransi yang sesuai dengan division dan product type dalam scope device.
@@ -577,7 +582,9 @@ Struktur runtime saat ini:
 
 - `wt.weighing.cup.lump`
   - Detail penimbangan untuk product type `cup_lump`.
-  - Number memakai format `WH/PRODUCT_TYPE/YYYYMMDD/NNN`.
+  - Number dibuat sekali saat record dibuat melalui `ir.sequence` dengan code `wt.weighing.cup.lump`.
+  - Format default sequence adalah `WH/CUP_LUMP/YYYYMMDD/NNN` dan dapat diatur administrator melalui menu Technical Odoo.
+  - Tanggal pada nomor memakai `production_date`; perubahan tanggal setelah create tidak mengubah nomor yang sudah tersimpan.
   - Menyimpan raw data penimbangan cup lump, termasuk field berat khusus cup lump.
   - Menyimpan `data_source` dengan nilai `api` atau `manual`.
   - Data manual baru menyimpan `local_id`, `device_id`, `device_record_id`, dan `batch_local_id` sebagai null.
@@ -642,6 +649,7 @@ Kode data problem aktif:
 | `initial_weighing_date_mismatch` | Tanggal initial weighing berbeda dari production date. Perbandingan memakai timezone context Odoo. |
 | `initial_weight_mismatch` | Untuk cross-day weighing, `production_weight` tidak sama dengan `initial_weight - shrinkage_tolerance_weight`. |
 | `shrinkage_tolerance_mismatch` | `shrinkage_tolerance_weight` tidak sama dengan `initial_weight * shrinkage_tolerance_percentage / 100`. |
+| `inactive_master` | Master payload masih ditemukan di Odoo, tetapi record tersebut sudah diarsipkan/nonaktif. Berlaku untuk estate, weighing location, division, product mapping, receipt rule, foreman, atau tapper. |
 | `missing_master` | Master payload tidak ditemukan. Berlaku untuk estate, weighing location, division, product, receipt rule, foreman, tapper, atau initial device. Juga dipakai jika initial weighing date diisi tetapi device awal tidak dikirim. |
 | `multiple_problem` | Lebih dari satu jenis problem ditemukan. Rincian lengkap tersimpan pada `data_problem_note`. |
 
@@ -649,7 +657,9 @@ Catatan aturan:
 
 - `master_synced_at` tetap disimpan dan divalidasi formatnya, tetapi tidak menjadi data problem.
 - Rule `production_weight = initial_weight` untuk penimbangan pada production date yang sama sudah dihapus.
-- `data_problem_note` disimpan sebagai audit, sedangkan `data_problem_note_display` menerjemahkan note sesuai bahasa user saat form dibuka.
+- `data_problem_note_en` menyimpan catatan masalah versi Inggris untuk audit/debug.
+- `data_problem_note_idn` menyimpan catatan masalah versi Indonesia.
+- `data_problem_note` menjadi field display sesuai preferensi bahasa user; user `id_ID` melihat `data_problem_note_idn`, sedangkan bahasa lain melihat `data_problem_note_en`.
 
 Prinsip mapping push:
 
@@ -660,6 +670,7 @@ Prinsip mapping push:
 - Odoo memvalidasi bahwa `estate_id` sesuai company dan sesuai estate pada weighing location.
 - Odoo memvalidasi bahwa `division_id` termasuk `allowed_division_ids` pada weighing location.
 - Odoo memvalidasi receipt rule sesuai kombinasi company, weighing location, division, dan product.
+- Odoo tetap mencari referensi master dengan `active_test=False` saat push, sehingga payload lama yang menunjuk record archived tidak dianggap hilang, tetapi ditandai `inactive_master`.
 - Initial weighing device memakai `initial_weighing.device_id` untuk mencari `wt.device`; role, device owner, dan badge number mengikuti record device di Odoo, bukan payload bebas.
 
 Payload push v1 aktif:

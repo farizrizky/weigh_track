@@ -57,6 +57,8 @@ WeighTrack
 - Device activation hanya dilakukan melalui custom API, bukan tombol manual di form device.
 - Endpoint pull master sudah aktif untuk mengambil data master offline.
 - Endpoint push weighing Cup Lump sudah aktif dan langsung membuat `wt.weighing.cup.lump`.
+- Master/config yang bisa diarsipkan memakai field standar `active`: Estate, Weather, Employee Role, Product, Shrinkage Tolerance, Receipt Rule, Division, Weighing Location, Foreman, dan Tapper.
+- Pull master hanya mengirim master/config aktif. Push tetap bisa membaca referensi archived untuk audit, tetapi menandainya sebagai `inactive_master`.
 - Pada beberapa form konfigurasi, field teknis `name` tetap tersimpan untuk display/search tetapi tidak ditampilkan sebagai title besar jika user lebih perlu mengisi field bisnis utama terlebih dahulu.
 
 ## Estate
@@ -78,6 +80,7 @@ Field:
 | `code` | `Char` | Ya | Ya | Kode estate. Diindeks untuk pencarian. |
 | `name` | `Char` | Ya | Ya | Nama estate. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company pemilik estate. Default mengikuti company user aktif. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Hanya record aktif yang dikirim pada pull master. |
 
 Urutan data:
 
@@ -87,12 +90,12 @@ code, name
 
 Validasi:
 
-- `code` wajib unik per `company_id`.
+- `code` wajib unik per `company_id` untuk record aktif.
 
 Constraint database:
 
 ```text
-unique(code, company_id)
+partial unique index (code, company_id) where active
 ```
 
 Pesan validasi:
@@ -119,6 +122,7 @@ Field:
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Ya | Ya | Nama cuaca. Diindeks untuk pencarian. |
 | `description` | `Text` | Tidak | Ya | Deskripsi cuaca. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. |
 
 Urutan data:
 
@@ -196,6 +200,7 @@ Field:
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat employee role berlaku. |
 | `role` | `Selection` | Ya | Ya | Role operasional: `operator`, `clerk`, `foreman`, `tapper`. |
 | `job_id` | `Many2one(hr.job)` | Ya | Ya | Job position yang diizinkan untuk role tersebut. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Helper employee role hanya memakai mapping aktif. |
 
 Urutan data:
 
@@ -205,7 +210,7 @@ company_id, role
 
 Validasi:
 
-- Kombinasi `company_id`, `role`, dan `job_id` wajib unik.
+- Kombinasi `company_id`, `role`, dan `job_id` wajib unik untuk record aktif.
 - `job_id` wajib dipilih.
 - Jika `job_id` punya company, company job position harus sama dengan `company_id` mapping.
 - Helper `get_allowed_employees()` dipakai untuk domain employee.
@@ -218,7 +223,7 @@ Validasi:
 Constraint database:
 
 ```text
-unique(company_id, role, job_id)
+partial unique index (company_id, role, job_id) where active
 ```
 
 Pesan validasi utama:
@@ -253,6 +258,7 @@ Field:
 | `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `cup_lump`. |
 | `product_id` | `Many2one(product.product)` | Ya | Ya | Produk Odoo yang dipakai untuk tipe produk tersebut. `ondelete="restrict"`. |
 | `uom_id` | `Many2one(uom.uom)` | Otomatis | Tidak | Related UoM dari `product_id.uom_id`, stored dan readonly. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Mapping aktif saja yang dipakai pull dan validasi konfigurasi. |
 
 Urutan data:
 
@@ -268,13 +274,13 @@ product_id: ['|', ('product_tmpl_id.company_id', '=', False), ('product_tmpl_id.
 
 Validasi:
 
-- Kombinasi `company_id` dan `product_type` wajib unik.
+- Kombinasi `company_id` dan `product_type` wajib unik untuk record aktif.
 - Produk harus milik company yang sama atau produk global tanpa company.
 
 Constraint database:
 
 ```text
-unique(company_id, product_type)
+partial unique index (company_id, product_type) where active
 ```
 
 Pesan validasi:
@@ -306,6 +312,7 @@ Field:
 | `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `cup_lump`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat toleransi berlaku. `ondelete="restrict"`. |
 | `shrinkage_tolerance_percentage` | `Float` | Ya | Ya | Persentase batas penyusutan produksi yang diizinkan. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Toleransi archived tidak dikirim pada pull master. |
 
 Catatan UI:
 
@@ -326,14 +333,14 @@ division_id: [('company_id', '=', company_id)]
 
 Validasi:
 
-- Kombinasi `company_id`, `product_type`, dan `division_id` wajib unik.
+- Kombinasi `company_id`, `product_type`, dan `division_id` wajib unik untuk record aktif.
 - Division harus berada pada company yang sama.
 - `shrinkage_tolerance_percentage` harus berada di antara 0 dan 100.
 
 Constraint database:
 
 ```text
-unique(company_id, product_type, division_id)
+partial unique index (company_id, product_type, division_id) where active
 ```
 
 Pesan validasi:
@@ -371,6 +378,7 @@ Field:
 | `warehouse_id` | `Many2one(stock.warehouse)` | Ya | Ya | Warehouse tujuan stok. |
 | `location_id` | `Many2one(stock.location)` | Ya | Ya | Stock Location tujuan. Boleh lokasi company yang sama atau shared location. |
 | `operation_type_id` | `Many2one(stock.picking.type)` | Ya | Ya | Operation Type stock yang dipakai. Harus milik warehouse terpilih. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Receipt rule archived tidak dikirim pada pull master. |
 
 Urutan data:
 
@@ -390,7 +398,7 @@ operation_type_id: [('warehouse_id', '=', warehouse_id)]
 
 Validasi:
 
-- Kombinasi `company_id`, `weighing_location_id`, `division_id`, dan `product_id` wajib unik. Secara database uniqueness dijaga oleh kombinasi weighing location, division, dan product; company mengikuti weighing location.
+- Kombinasi `company_id`, `weighing_location_id`, `division_id`, dan `product_id` wajib unik untuk record aktif. Secara database uniqueness dijaga oleh kombinasi weighing location, division, dan product yang masih aktif; company mengikuti weighing location.
 - Weighing Location, Division, Product, Warehouse, Location, dan Operation Type harus konsisten dengan company.
 - Division harus termasuk `allowed_division_ids` pada Weighing Location.
 - Product harus sudah terdaftar di konfigurasi `wt.product` pada company yang sama.
@@ -399,7 +407,7 @@ Validasi:
 Constraint database:
 
 ```text
-unique(weighing_location_id, division_id, product_id)
+partial unique index (weighing_location_id, division_id, product_id) where active
 ```
 
 Pesan validasi:
@@ -440,6 +448,7 @@ Field:
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
 | `clerk_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee Clerk/Kerani untuk divisi. Domain berdasarkan employee role `clerk`. |
 | `allowed_clerk_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Clerk. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Division archived tidak dikirim pada pull master. |
 
 Urutan data:
 
@@ -449,13 +458,13 @@ estate_id, code, name
 
 Validasi:
 
-- `code` wajib unik per `estate_id`.
+- `code` wajib unik per `estate_id` untuk record aktif.
 - Clerk harus valid menurut employee role `clerk` pada company division.
 
 Constraint database:
 
 ```text
-unique(code, estate_id)
+partial unique index (code, estate_id) where active
 ```
 
 Pesan validasi:
@@ -495,6 +504,7 @@ Field:
 | `operator_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee operator lokasi timbang. Domain berdasarkan employee role `operator`. |
 | `allowed_operator_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Operator. |
 | `allowed_division_ids` | `Many2many(wt.division)` | Tidak | Ya | Daftar divisi yang diizinkan menimbang di lokasi ini. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Weighing location archived tidak dikirim pada pull master. |
 
 Urutan data:
 
@@ -504,14 +514,14 @@ estate_id, code, name
 
 Validasi:
 
-- `code` wajib unik per `estate_id`.
+- `code` wajib unik per `estate_id` untuk record aktif.
 - Semua `allowed_division_ids` harus berasal dari estate yang sama dengan `estate_id`.
 - Operator harus valid menurut employee role `operator` pada company lokasi timbang.
 
 Constraint database:
 
 ```text
-unique(code, estate_id)
+partial unique index (code, estate_id) where active
 ```
 
 Pesan validasi:
@@ -566,6 +576,7 @@ Field:
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `division_id.company_id`, `store=True`, readonly. |
 | `tapper_ids` | `One2many(wt.tapper)` | Tidak | Tidak | Daftar Tapper yang dibawahi Foreman. |
 | `allowed_foreman_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Foreman. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Foreman archived tidak dikirim pada pull master. |
 
 Urutan data:
 
@@ -575,14 +586,14 @@ division_id, employee_id
 
 Validasi:
 
-- Kombinasi `employee_id` dan `division_id` wajib unik.
+- Kombinasi `employee_id` dan `division_id` wajib unik untuk record aktif.
 - Employee foreman harus valid menurut employee role `foreman` pada company division.
 - Tapper bisa dikelola langsung dari form Foreman melalui line `Tappers`.
 
 Constraint database:
 
 ```text
-unique(employee_id, division_id)
+partial unique index (employee_id, division_id) where active
 ```
 
 Pesan validasi:
@@ -616,6 +627,7 @@ Field:
 | `foreman_id` | `Many2one(wt.foreman)` | Tidak | Ya | Foreman/Mandor yang membawahi Tapper. Difilter berdasarkan division. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `division_id.company_id`, `store=True`, readonly. |
 | `allowed_tapper_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Tapper. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Tapper archived tidak dikirim pada pull master. |
 
 Urutan data:
 
@@ -625,14 +637,14 @@ division_id, foreman_id, employee_id
 
 Validasi:
 
-- Satu Tapper employee hanya boleh dibuat satu kali.
+- Satu Tapper employee hanya boleh dibuat satu kali untuk record aktif.
 - Employee Tapper harus valid menurut employee role `tapper` pada company division.
 - Jika `foreman_id` diisi, Foreman harus berada pada division yang sama dengan Tapper.
 
 Constraint database:
 
 ```text
-unique(employee_id)
+partial unique index (employee_id) where active
 ```
 
 Pesan validasi:
@@ -648,7 +660,7 @@ Tapper and foreman must belong to the same division.
 Aturan bisnis:
 
 - Satu Foreman bisa memiliki banyak Tapper.
-- Satu Tapper employee hanya boleh memiliki satu record Tapper.
+- Satu Tapper employee hanya boleh memiliki satu record Tapper aktif.
 - Division Tapper dipilih langsung.
 - Company Tapper otomatis mengikuti Division.
 - Foreman Tapper harus berasal dari Division yang sama.
@@ -829,7 +841,7 @@ Field utama:
 
 | Field | Type | Keterangan |
 | --- | --- | --- |
-| `name` | `Char` | Number computed. Format: `WH/PRODUCT_TYPE/YYYYMMDD/NNN`. |
+| `name` | `Char` | Stored number generated once at create from `ir.sequence` code `wt.weighing.cup.lump`. Default format: `WH/CUP_LUMP/YYYYMMDD/NNN`, using `production_date` as the sequence date. |
 | `data_source` | `Selection` | Sumber record: `api` atau `manual`. |
 | `local_id` | `Char` | ID lokal item aplikasi. Wajib untuk API dan null untuk data manual baru. |
 | `device_id` | `Char` | Device ID teknis. Wajib untuk API dan null untuk data manual baru. |
@@ -844,8 +856,9 @@ Field utama:
 | `state` | `Selection` | `draft`, `validated`. |
 | `has_data_problem` | `Boolean` | Flag konflik terhadap master Odoo atau aturan Cup Lump. |
 | `data_problem_code` | `Selection` | Kode problem utama atau `multiple_problem`. |
-| `data_problem_note` | `Text` | Catatan asli hasil evaluasi untuk audit. |
-| `data_problem_note_display` | `Text` computed | Catatan yang diterjemahkan saat ditampilkan sesuai bahasa user. |
+| `data_problem_note_en` | `Text` | Catatan asli hasil evaluasi dalam bahasa Inggris untuk audit/debug. |
+| `data_problem_note_idn` | `Text` | Catatan hasil evaluasi dalam bahasa Indonesia. |
+| `data_problem_note` | `Text` computed | Catatan display sesuai preferensi bahasa user; `id_ID` memakai `data_problem_note_idn`, bahasa lain memakai `data_problem_note_en`. |
 | `device_snapshot_json` | `Text` | Snapshot item payload dari aplikasi. |
 | `odoo_snapshot_json` | `Text` | Snapshot master Odoo saat pengecekan problem. |
 | `estate_id`, `weighing_location_id`, `division_id` | Relasi scope | Scope estate, lokasi timbang, dan division. |
@@ -915,6 +928,7 @@ Kode data problem:
 | `initial_weighing_date_mismatch` | The initial weighing date does not match the production date. | Tanggal initial weighing berbeda dari production date. |
 | `initial_weight_mismatch` | For cross-day weighing, production weight does not equal initial weight minus shrinkage tolerance weight. | Untuk penimbangan lintas hari, production weight tidak sama dengan initial weight dikurangi shrinkage tolerance weight. |
 | `shrinkage_tolerance_mismatch` | Shrinkage tolerance weight does not equal initial weight multiplied by the shrinkage percentage. | Shrinkage tolerance weight tidak sama dengan initial weight dikali persentase penyusutan. |
+| `inactive_master` | A referenced master record still exists but has been archived/inactivated. | Master yang direferensikan masih ada, tetapi sudah diarsipkan/nonaktif. |
 | `missing_master` | A referenced master record or initial device was not found, or the required initial device was not provided. | Master yang direferensikan atau initial device tidak ditemukan, atau initial device yang wajib tidak dikirim. |
 | `multiple_problem` | More than one data problem type was found; details are stored in the problem note. | Lebih dari satu jenis masalah data ditemukan; rinciannya tersimpan pada catatan masalah. |
 
@@ -1226,6 +1240,7 @@ Tanggung jawab:
 - Memastikan pull dibuka melalui `wt.api.pull_enabled`.
 - Mengambil bot user dari `wt.api.security.service`.
 - Menghitung scope data berdasarkan company, employee, dan role device.
+- Hanya mengambil master/config aktif untuk payload offline.
 - Memperbarui `last_pull`, `last_seen`, dan `app_version` jika dikirim.
 - Menyiapkan payload response berisi `meta`, `scope`, dan `masters`.
 
@@ -1319,6 +1334,7 @@ Catatan payload:
 - Payload company berada di `data.masters.company`.
 - Payload employee dipusatkan di `data.masters.employees`.
 - Payload role aplikasi berada di `data.masters.roles` dan hanya membawa role device yang sedang pull.
+- Master/config yang memiliki field `active` hanya dikirim jika masih aktif. Record archived dikeluarkan dari `scope` dan `masters`.
 - Weighing Location tidak lagi membawa payload warehouse.
 - Payload Receipt Rule hanya membawa rule scope dan `product_id`.
 - Payload Product membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`; `default_code` tidak dikirim.

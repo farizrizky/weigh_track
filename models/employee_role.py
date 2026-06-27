@@ -12,6 +12,7 @@ class EmployeeRole(models.Model):
 
     ROLE_SELECTION = Role.SELECTION
 
+    active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(compute="_compute_name", store=True)
     company_id = fields.Many2one(
         "res.company",
@@ -36,19 +37,24 @@ class EmployeeRole(models.Model):
         tracking=True,
     )
 
-    _sql_constraints = [
-        (
-            "company_role_job_uniq",
-            "unique(company_id, role, job_id)",
-            "Employee role must be unique per company, role, and job position.",
-        ),
-    ]
-
     def init(self):
         self.env.cr.execute(
             """
             ALTER TABLE wt_employee_role
             DROP CONSTRAINT IF EXISTS wt_employee_role_company_role_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_employee_role
+            DROP CONSTRAINT IF EXISTS wt_employee_role_company_role_job_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_employee_role_company_role_job_active_uniq
+            ON wt_employee_role (company_id, role, job_id)
+            WHERE active
             """
         )
         self.env.cr.execute(
@@ -86,6 +92,7 @@ class EmployeeRole(models.Model):
                             WHERE company_id = mapping_job.company_id
                                 AND role = mapping_job.role
                                 AND job_id = mapping_job.job_id
+                                AND active
                         ) THEN
                             INSERT INTO wt_employee_role (
                                 company_id,
@@ -121,6 +128,26 @@ class EmployeeRole(models.Model):
             if not mapping.job_id:
                 raise ValidationError(_("Job position must be selected."))
 
+    @api.constrains("company_id", "role", "job_id", "active")
+    def _check_unique_company_role_job(self):
+        for mapping in self:
+            if not (mapping.active and mapping.company_id and mapping.role and mapping.job_id):
+                continue
+            duplicate = self.with_context(active_test=False).search(
+                [
+                    ("id", "!=", mapping.id),
+                    ("company_id", "=", mapping.company_id.id),
+                    ("role", "=", mapping.role),
+                    ("job_id", "=", mapping.job_id.id),
+                    ("active", "=", True),
+                ],
+                limit=1,
+            )
+            if duplicate:
+                raise ValidationError(
+                    _("Employee role must be unique per company, role, and job position.")
+                )
+
     @api.depends("company_id", "role", "job_id")
     def _compute_name(self):
         role_labels = dict(self.ROLE_SELECTION)
@@ -148,6 +175,7 @@ class EmployeeRole(models.Model):
             [
                 ("company_id", "=", company.id),
                 ("role", "=", role),
+                ("active", "=", True),
             ]
         )
 

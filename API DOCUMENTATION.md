@@ -471,6 +471,12 @@ Jika pull master berhasil, Odoo akan:
 | `data.masters.foremen` | Daftar relasi foreman dalam scope, membawa `employee_id`. Detail employee ada di `masters.employees`. |
 | `data.masters.tappers` | Daftar relasi tapper dalam scope, membawa `employee_id`. Detail employee ada di `masters.employees`. |
 
+Catatan archive:
+
+- Pull master hanya mengirim master/config yang masih aktif.
+- Record yang sudah diarsipkan tidak masuk `scope` dan tidak dikirim di `masters`.
+- Jika aplikasi belum pull ulang dan masih mengirim ID lama yang sudah archived, push tetap diterima sebagai draft tetapi ditandai `inactive_master`.
+
 ## Push Weighing Cup Lump
 
 Endpoint ini digunakan aplikasi offline untuk mengirim data penimbangan Cup Lump ke Odoo. Setiap item yang belum pernah diterima langsung membentuk satu record draft:
@@ -560,6 +566,7 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
 - Jika initial weighing date terisi dan initial device ditemukan, initial weight wajib lebih dari 0.
 - Jika initial manual weighing aktif dan initial device ditemukan, manual weighing reason wajib diisi.
 - Initial device yang kosong/tidak ditemukan tidak menolak push; item diterima dengan problem `missing_master`.
+- Master payload yang masih ada tetapi sudah archived tidak menolak push; item diterima dengan problem `inactive_master`.
 - Idempotency API memakai kombinasi `device_id + product_type + local_id`.
 - Partial unique index database hanya berlaku untuk `data_source = api`; data manual tidak mengikuti idempotency API.
 - Odoo tetap menerima item sebagai draft walaupun ditemukan data problem.
@@ -586,6 +593,7 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
 | `initial_weighing_date_mismatch` | Tanggal pada `initial_weighing.weighing_date` tidak sama dengan `production_date`. Perbandingan tanggal menggunakan timezone context Odoo. |
 | `initial_weight_mismatch` | Untuk penimbangan lintas hari, `production_weight` tidak sama dengan `initial_weight - shrinkage_tolerance_weight`. |
 | `shrinkage_tolerance_mismatch` | `shrinkage_tolerance_weight` tidak sama dengan `initial_weight * shrinkage_tolerance_percentage / 100`. |
+| `inactive_master` | ID master payload masih ditemukan di Odoo, tetapi record tersebut sudah diarsipkan/nonaktif. Berlaku untuk estate, weighing location, division, product mapping, receipt rule, foreman, atau tapper. |
 | `missing_master` | ID master payload tidak ditemukan di Odoo. Berlaku untuk estate, weighing location, division, product, receipt rule, foreman, tapper, atau initial weighing device. Kode ini juga dipakai jika initial weighing date diisi tetapi device awal tidak dikirim. |
 | `multiple_problem` | Lebih dari satu jenis problem ditemukan pada item yang sama. Rincian masing-masing masalah terdapat pada `data_problem_note`. |
 
@@ -593,7 +601,9 @@ Catatan:
 
 - Rule lama `production_weight = initial_weight` untuk penimbangan pada tanggal produksi yang sama sudah tidak digunakan.
 - Jika initial weighing device tidak ditemukan, push tetap diterima sebagai draft dengan `missing_master`; API tidak gagal hanya karena field `By Device` kosong.
-- `data_problem_note` asli disimpan untuk audit. UI memakai field display terjemahan agar note mengikuti bahasa user.
+- `data_problem_note_en` menyimpan catatan masalah versi Inggris untuk audit/debug.
+- `data_problem_note_idn` menyimpan catatan masalah versi Indonesia.
+- `data_problem_note` adalah field display sesuai preferensi bahasa user; `id_ID` menampilkan versi Indonesia, bahasa lain menampilkan versi Inggris.
 
 ### Success Response
 

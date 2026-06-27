@@ -12,6 +12,7 @@ class ShrinkageTolerance(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "company_id, product_type, division_id"
 
+    active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
         compute="_compute_name",
         store=True,
@@ -47,13 +48,20 @@ class ShrinkageTolerance(models.Model):
         help="Maximum allowed production shrinkage percentage when production date differs from warehouse weighing date.",
     )
 
-    _sql_constraints = [
-        (
-            "company_product_type_division_uniq",
-            "unique(company_id, product_type, division_id)",
-            "Shrinkage tolerance must be unique per company, product type, and division.",
-        ),
-    ]
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_shrinkage_tolerance
+            DROP CONSTRAINT IF EXISTS wt_shrinkage_tolerance_company_product_type_division_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_shrinkage_tolerance_scope_active_uniq
+            ON wt_shrinkage_tolerance (company_id, product_type, division_id)
+            WHERE active
+            """
+        )
 
     @api.depends("company_id", "product_type", "division_id")
     def _compute_name(self):
@@ -85,11 +93,13 @@ class ShrinkageTolerance(models.Model):
         "company_id",
         "product_type",
         "division_id",
+        "active",
     )
     def _check_unique_company_product_type_division(self):
         for tolerance in self:
             if not (
-                tolerance.company_id
+                tolerance.active
+                and tolerance.company_id
                 and tolerance.product_type
                 and tolerance.division_id
             ):
@@ -100,6 +110,7 @@ class ShrinkageTolerance(models.Model):
                     ("company_id", "=", tolerance.company_id.id),
                     ("product_type", "=", tolerance.product_type),
                     ("division_id", "=", tolerance.division_id.id),
+                    ("active", "=", True),
                 ],
                 limit=1,
             )

@@ -14,6 +14,103 @@ class CupLumpService(models.AbstractModel):
     _description = "Cup Lump Service"
 
     WEIGHT_EPSILON = 0.0001
+    DATA_PROBLEM_LABEL_IDN = {
+        "Estate": "Estate",
+        "Weighing location": "Lokasi timbang",
+        "Division": "Divisi",
+        "Product": "Produk",
+        "Receipt rule": "Aturan penerimaan",
+        "Product mapping": "Mapping produk",
+        "Foreman": "Mandor",
+        "Tapper": "Tapper",
+    }
+    INACTIVE_MASTER_MESSAGE_EN = "%s is archived in master data."
+    INACTIVE_MASTER_MESSAGE_IDN = "%s sudah diarsipkan di master data."
+    DATA_PROBLEM_NOTE_IDN = {
+        "Payload company does not match weighing company.": (
+            "Perusahaan pada record penimbangan tidak sesuai dengan data master perusahaan."
+        ),
+        "Payload operator does not match device operator.": (
+            "Operator pada record penimbangan tidak sesuai dengan operator device."
+        ),
+        "Initial weighing device is required.": (
+            "Device penimbangan lapangan wajib diisi."
+        ),
+        "Initial weighing device was not found in Odoo.": (
+            "Device penimbangan lapangan tidak ditemukan di master data."
+        ),
+        "Estate does not belong to weighing company.": (
+            "Estate pada record penimbangan tidak sesuai dengan estate perusahaan."
+        ),
+        "Payload estate does not match weighing location estate.": (
+            "Estate pada record penimbangan tidak sesuai dengan estate lokasi timbang."
+        ),
+        "Weighing location does not belong to the weighing company.": (
+            "Lokasi timbang pada record penimbangan tidak sesuai dengan lokasi timbang perusahaan."
+        ),
+        "Weighing location operator does not match device operator.": (
+            "Operator lokasi timbang pada record penimbangan tidak sesuai dengan operator device."
+        ),
+        "Division does not belong to weighing company.": (
+            "Divisi pada record penimbangan tidak sesuai dengan dengan divisi perusahaan."
+        ),
+        "Division is not allowed in the weighing location.": (
+            "Divisi tidak diizinkan pada lokasi timbang."
+        ),
+        "Receipt rule company does not match.": (
+            "Perusahaan pada aturan penerimaan tidak sesuai."
+        ),
+        "Receipt rule weighing location does not match.": (
+            "Lokasi timbang pada aturan penerimaan tidak sesuai."
+        ),
+        "Receipt rule division does not match.": (
+            "Divisi pada aturan penerimaan tidak sesuai."
+        ),
+        "Receipt rule product does not match.": (
+            "Produk pada aturan penerimaan tidak sesuai."
+        ),
+        "Product is not configured as Cup Lump for the weighing company.": (
+            "Produk belum dikonfigurasi sebagai Cup Lump untuk perusahaan penimbangan."
+        ),
+        "Payload clerk does not match division clerk.": (
+            "Kerani pada record penimbangan tidak sesuai dengan kerani divisi."
+        ),
+        "Foreman employee is not assigned as foreman in the division.": (
+            "Karyawan mandor pada record penimbangan tidak ditugaskan sebagai mandor pada divisi tersebut."
+        ),
+        "Foreman does not belong to the division.": (
+            "Mandor pada record penimbangan tidak berada pada divisi tersebut."
+        ),
+        "Foreman employee does not match.": "Karyawan mandor tidak sesuai.",
+        "Tapper employee is not assigned as tapper.": (
+            "Karyawan tapper pada record penimbangan tidak ditugaskan sebagai tapper."
+        ),
+        "Tapper does not belong to the division.": (
+            "Tapper pada record penimbangan tidak berada pada divisi tersebut."
+        ),
+        "Tapper does not belong to the foreman.": (
+            "Tapper pada record penimbangan tidak berada di bawah mandor tersebut."
+        ),
+        "Tapper employee does not match.": (
+            "Karyawan tapper pada record penimbangan tidak sesuai."
+        ),
+        "Tapper foreman employee does not match weighing foreman.": (
+            "Mandor dari tapper pada record penimbangan tidak sesuai dengan mandor penimbangan."
+        ),
+        "Production weight must equal slab weight + reject weight + net weight.": (
+            "Berat produksi harus sama dengan berat slab + berat reject + berat net."
+        ),
+        "Shrinkage tolerance weight must equal initial weight * shrinkage percentage.": (
+            "Berat toleransi penyusutan harus sama dengan berat penimbangan lapangan * persentase penyusutan."
+        ),
+        "Production weight must equal initial weight minus shrinkage tolerance weight for cross-day weighing.": (
+            "Berat produksi harus sama dengan berat penimbangan lapangan dikurangi berat toleransi penyusutan untuk penimbangan lintas hari."
+        ),
+        "Production date must match initial weighing date.": (
+            "Tanggal produksi harus sama dengan tanggal penimbangan lapangan."
+        ),
+        INACTIVE_MASTER_MESSAGE_EN: INACTIVE_MASTER_MESSAGE_IDN,
+    }
 
     def _response(self):
         return self.env["wt.api.response.service"].sudo()
@@ -185,7 +282,8 @@ class CupLumpService(models.AbstractModel):
             "batch_local_id": payload.get("batch_local_id"),
             "has_data_problem": problem["has_data_problem"],
             "data_problem_code": problem["data_problem_code"],
-            "data_problem_note": problem["data_problem_note"],
+            "data_problem_note_en": problem["data_problem_note_en"],
+            "data_problem_note_idn": problem["data_problem_note_idn"],
             "device_snapshot_json": json.dumps(item, ensure_ascii=False),
             "odoo_snapshot_json": problem["odoo_snapshot_json"],
             "estate_id": records["estate"].id or False,
@@ -310,41 +408,64 @@ class CupLumpService(models.AbstractModel):
         production_date,
     ):
         issues = []
-        notes = []
+        notes_en = []
+        notes_idn = []
         company = device.company_id or records["company"]
         has_device = bool(device)
 
-        def add(code, note):
+        def add(code, note_en, note_idn=None):
             issues.append(code)
-            notes.append(note)
+            notes_en.append(note_en)
+            notes_idn.append(note_idn or self._data_problem_note_idn(note_en))
 
         payload_company_id = self._nested_id(item, "company")
         if payload_company_id and company and payload_company_id != company.id:
-            add("company_mismatch", _("Payload company does not match weighing company."))
+            add(
+                "company_mismatch",
+                "Payload company does not match weighing company.",
+            )
 
         operator_employee_id = self._nested_employee_id(item, "operator")
         if has_device and operator_employee_id and operator_employee_id != device.employee_id.id:
-            add("operator_mismatch", _("Payload operator does not match device operator."))
+            add(
+                "operator_mismatch",
+                "Payload operator does not match device operator.",
+            )
 
         for key, label in (
-            ("estate", _("Estate")),
-            ("weighing_location", _("Weighing location")),
-            ("division", _("Division")),
-            ("product", _("Product")),
-            ("receipt_rule", _("Receipt rule")),
-            ("foreman", _("Foreman")),
-            ("tapper", _("Tapper")),
+            ("estate", "Estate"),
+            ("weighing_location", "Weighing location"),
+            ("division", "Division"),
+            ("product", "Product"),
+            ("receipt_rule", "Receipt rule"),
+            ("foreman", "Foreman"),
+            ("tapper", "Tapper"),
         ):
             if self._nested_id(item, key) and not records[key]:
-                add("missing_master", _("%s was not found in Odoo.") % label)
+                add(
+                    "missing_master",
+                    "%s was not found in Odoo." % label,
+                    "%s tidak ditemukan di master data."
+                    % self.DATA_PROBLEM_LABEL_IDN.get(label, label),
+                )
+            elif self._is_archived(records[key]):
+                add(
+                    "inactive_master",
+                    self.INACTIVE_MASTER_MESSAGE_EN % label,
+                    self.INACTIVE_MASTER_MESSAGE_IDN
+                    % self.DATA_PROBLEM_LABEL_IDN.get(label, label),
+                )
 
         initial = item.get("initial_weighing") or {}
         initial = initial if isinstance(initial, dict) else {}
         initial_device_id = initial.get("device_id")
         if initial.get("weighing_date") and not initial_device_id:
-            add("missing_master", _("Initial weighing device is required."))
+            add("missing_master", "Initial weighing device is required.")
         if initial_device_id and not self._initial_device(initial, company):
-            add("missing_master", _("Initial weighing device was not found in Odoo."))
+            add(
+                "missing_master",
+                "Initial weighing device was not found in Odoo.",
+            )
 
         estate = records["estate"]
         location = records["weighing_location"]
@@ -356,18 +477,21 @@ class CupLumpService(models.AbstractModel):
 
         if estate:
             if company and estate.company_id != company:
-                add("estate_mismatch", _("Estate does not belong to weighing company."))
+                add(
+                    "estate_mismatch",
+                    "Estate does not belong to weighing company.",
+                )
             if location and location.estate_id != estate:
                 add(
                     "estate_mismatch",
-                    _("Payload estate does not match weighing location estate."),
+                    "Payload estate does not match weighing location estate.",
                 )
 
         if location:
             if company and location.company_id != company:
                 add(
                     "weighing_location_mismatch",
-                    _("Weighing location does not belong to the weighing company."),
+                    "Weighing location does not belong to the weighing company.",
                 )
             if (
                 has_device
@@ -376,33 +500,47 @@ class CupLumpService(models.AbstractModel):
             ):
                 add(
                     "operator_mismatch",
-                    _("Weighing location operator does not match device operator."),
+                    "Weighing location operator does not match device operator.",
                 )
 
         if division:
             if company and division.company_id != company:
-                add("company_mismatch", _("Division does not belong to weighing company."))
+                add(
+                    "company_mismatch",
+                    "Division does not belong to weighing company.",
+                )
             if location and division not in location.allowed_division_ids:
                 add(
                     "division_not_allowed",
-                    _("Division is not allowed in the weighing location."),
+                    "Division is not allowed in the weighing location.",
                 )
 
         if receipt_rule:
             if company and receipt_rule.company_id != company:
-                add("receipt_rule_mismatch", _("Receipt rule company does not match."))
+                add(
+                    "receipt_rule_mismatch",
+                    "Receipt rule company does not match.",
+                )
             if location and receipt_rule.weighing_location_id != location:
                 add(
                     "receipt_rule_mismatch",
-                    _("Receipt rule weighing location does not match."),
+                    "Receipt rule weighing location does not match.",
                 )
             if division and receipt_rule.division_id != division:
-                add("receipt_rule_mismatch", _("Receipt rule division does not match."))
+                add(
+                    "receipt_rule_mismatch",
+                    "Receipt rule division does not match.",
+                )
             if product and receipt_rule.product_id != product:
-                add("receipt_rule_mismatch", _("Receipt rule product does not match."))
+                add(
+                    "receipt_rule_mismatch",
+                    "Receipt rule product does not match.",
+                )
 
         if product:
-            mapping = self.env["wt.product"].sudo().search(
+            mapping = self.env["wt.product"].sudo().with_context(
+                active_test=False
+            ).search(
                 [
                     ("company_id", "=", company.id if company else False),
                     ("product_type", "=", ProductType.CUP_LUMP),
@@ -413,12 +551,22 @@ class CupLumpService(models.AbstractModel):
             if not mapping:
                 add(
                     "product_mapping_mismatch",
-                    _("Product is not configured as Cup Lump for the weighing company."),
+                    "Product is not configured as Cup Lump for the weighing company.",
+                )
+            elif self._is_archived(mapping):
+                add(
+                    "inactive_master",
+                    self.INACTIVE_MASTER_MESSAGE_EN % "Product mapping",
+                    self.INACTIVE_MASTER_MESSAGE_IDN
+                    % self.DATA_PROBLEM_LABEL_IDN["Product mapping"],
                 )
 
         clerk_employee_id = self._nested_employee_id(item, "clerk")
         if division and clerk_employee_id and division.clerk_id.id != clerk_employee_id:
-            add("clerk_mismatch", _("Payload clerk does not match division clerk."))
+            add(
+                "clerk_mismatch",
+                "Payload clerk does not match division clerk.",
+            )
 
         foreman_employee_id = self._nested_employee_id(item, "foreman")
         foreman_from_employee = self._foreman_from_employee_division(
@@ -429,33 +577,57 @@ class CupLumpService(models.AbstractModel):
         if foreman_employee_id and not foreman_from_employee:
             add(
                 "foreman_mismatch",
-                _("Foreman employee is not assigned as foreman in the division."),
+                "Foreman employee is not assigned as foreman in the division.",
             )
         if foreman:
             if division and foreman.division_id != division:
-                add("foreman_mismatch", _("Foreman does not belong to the division."))
+                add(
+                    "foreman_mismatch",
+                    "Foreman does not belong to the division.",
+                )
             if foreman_employee_id and foreman.employee_id.id != foreman_employee_id:
-                add("foreman_mismatch", _("Foreman employee does not match."))
+                add(
+                    "foreman_mismatch",
+                    "Foreman employee does not match.",
+                )
 
         tapper_employee_id = self._nested_employee_id(item, "tapper")
         tapper_from_employee = self._tapper_from_employee(tapper_employee_id)
         if tapper_employee_id and not tapper_from_employee:
-            add("tapper_mismatch", _("Tapper employee is not assigned as tapper."))
+            add(
+                "tapper_mismatch",
+                "Tapper employee is not assigned as tapper.",
+            )
         if tapper:
             if division and tapper.division_id != division:
-                add("tapper_mismatch", _("Tapper does not belong to the division."))
+                add(
+                    "tapper_mismatch",
+                    "Tapper does not belong to the division.",
+                )
             if effective_foreman and tapper.foreman_id != effective_foreman:
-                add("tapper_mismatch", _("Tapper does not belong to the foreman."))
+                add(
+                    "tapper_mismatch",
+                    "Tapper does not belong to the foreman.",
+                )
             if tapper_employee_id and tapper.employee_id.id != tapper_employee_id:
-                add("tapper_mismatch", _("Tapper employee does not match."))
+                add(
+                    "tapper_mismatch",
+                    "Tapper employee does not match.",
+                )
         if tapper_from_employee and tapper_from_employee != tapper:
             if division and tapper_from_employee.division_id != division:
-                add("tapper_mismatch", _("Tapper does not belong to the division."))
+                add(
+                    "tapper_mismatch",
+                    "Tapper does not belong to the division.",
+                )
             if (
                 effective_foreman
                 and tapper_from_employee.foreman_id != effective_foreman
             ):
-                add("tapper_mismatch", _("Tapper does not belong to the foreman."))
+                add(
+                    "tapper_mismatch",
+                    "Tapper does not belong to the foreman.",
+                )
         if (
             tapper_from_employee
             and not effective_foreman
@@ -465,7 +637,7 @@ class CupLumpService(models.AbstractModel):
         ):
             add(
                 "tapper_mismatch",
-                _("Tapper foreman employee does not match weighing foreman."),
+                "Tapper foreman employee does not match weighing foreman.",
             )
 
         self._evaluate_initial_weighing_date_rule(item, production_date, add)
@@ -475,7 +647,8 @@ class CupLumpService(models.AbstractModel):
         return {
             "has_data_problem": bool(unique_issues),
             "data_problem_code": self._data_problem_code(unique_issues),
-            "data_problem_note": "\n".join(notes),
+            "data_problem_note_en": "\n".join(notes_en),
+            "data_problem_note_idn": "\n".join(notes_idn),
             "odoo_snapshot_json": json.dumps(
                 self._odoo_snapshot(records, device),
                 ensure_ascii=False,
@@ -499,9 +672,7 @@ class CupLumpService(models.AbstractModel):
         if self._float_mismatch(production_weight, component_weight):
             add(
                 "weight_formula_mismatch",
-                _(
-                    "Production weight must equal slab weight + reject weight + net weight."
-                ),
+                "Production weight must equal slab weight + reject weight + net weight.",
             )
 
         if not self._has_initial_weighing(initial):
@@ -511,7 +682,7 @@ class CupLumpService(models.AbstractModel):
         if self._float_mismatch(shrinkage_weight, expected_shrinkage_weight):
             add(
                 "shrinkage_tolerance_mismatch",
-                _("Shrinkage tolerance weight must equal initial weight * shrinkage percentage."),
+                "Shrinkage tolerance weight must equal initial weight * shrinkage percentage.",
             )
 
         if not self._is_after_production_date(production_date, weighing_date):
@@ -521,9 +692,7 @@ class CupLumpService(models.AbstractModel):
         if self._float_mismatch(production_weight, expected_production_weight):
             add(
                 "initial_weight_mismatch",
-                _(
-                    "Production weight must equal initial weight minus shrinkage tolerance weight for cross-day weighing."
-                ),
+                "Production weight must equal initial weight minus shrinkage tolerance weight for cross-day weighing.",
             )
 
     def _evaluate_initial_weighing_date_rule(self, item, production_date, add):
@@ -539,8 +708,11 @@ class CupLumpService(models.AbstractModel):
         ):
             add(
                 "initial_weighing_date_mismatch",
-                _("Production date must match initial weighing date."),
+                "Production date must match initial weighing date.",
             )
+
+    def _data_problem_note_idn(self, note_en):
+        return self.DATA_PROBLEM_NOTE_IDN.get(note_en, note_en)
 
     def _has_initial_weighing(self, initial):
         if not isinstance(initial, dict):
@@ -585,6 +757,7 @@ class CupLumpService(models.AbstractModel):
         return "multiple_problem"
 
     def _odoo_snapshot(self, records, device):
+        estate = records["estate"]
         location = records["weighing_location"]
         division = records["division"]
         product = records["product"]
@@ -604,26 +777,36 @@ class CupLumpService(models.AbstractModel):
                 else False
             ),
             "company": self._record_snapshot(records["company"], ["name"]),
+            "estate": self._record_snapshot(
+                estate,
+                ["code", "name", "active", "company_id"],
+            ),
             "weighing_location": self._record_snapshot(
                 location,
-                ["code", "name", "company_id", "operator_id"],
+                ["code", "name", "active", "company_id", "operator_id"],
             ),
             "division": self._record_snapshot(
                 division,
-                ["code", "name", "company_id", "estate_id", "clerk_id"],
+                ["code", "name", "active", "company_id", "estate_id", "clerk_id"],
             ),
-            "product": self._record_snapshot(product, ["display_name"]),
+            "product": self._record_snapshot(product, ["display_name", "active"]),
             "receipt_rule": self._record_snapshot(
                 receipt_rule,
-                ["company_id", "weighing_location_id", "division_id", "product_id"],
+                [
+                    "active",
+                    "company_id",
+                    "weighing_location_id",
+                    "division_id",
+                    "product_id",
+                ],
             ),
             "foreman": self._record_snapshot(
                 foreman,
-                ["employee_id", "division_id", "company_id"],
+                ["active", "employee_id", "division_id", "company_id"],
             ),
             "tapper": self._record_snapshot(
                 tapper,
-                ["employee_id", "division_id", "foreman_id", "company_id"],
+                ["active", "employee_id", "division_id", "foreman_id", "company_id"],
             ),
         }
 
@@ -648,6 +831,9 @@ class CupLumpService(models.AbstractModel):
     def _nested_employee_id(self, item, key):
         value = item.get(key) or {}
         return value.get("employee_id") if isinstance(value, dict) else False
+
+    def _is_archived(self, record):
+        return bool(record and "active" in record._fields and not record.active)
 
     def _foreman_from_employee_division(self, employee_id, division):
         if not employee_id or not division:
@@ -676,7 +862,9 @@ class CupLumpService(models.AbstractModel):
     def _browse(self, model, record_id):
         if not record_id:
             return self.env[model].browse()
-        return self.env[model].sudo().browse(record_id).exists()
+        return self.env[model].sudo().with_context(active_test=False).browse(
+            record_id
+        ).exists()
 
     def _initial_device(self, initial, company):
         if not isinstance(initial, dict) or not initial.get("device_id"):
