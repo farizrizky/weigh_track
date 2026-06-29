@@ -56,6 +56,17 @@ class Tapper(models.Model):
         string="Allowed Tapper Employees",
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            self._set_division_from_foreman_vals(vals)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        vals = dict(vals)
+        self._set_division_from_foreman_vals(vals)
+        return super().write(vals)
+
     def init(self):
         self.env.cr.execute(
             """
@@ -124,6 +135,11 @@ class Tapper(models.Model):
             }
         }
 
+    @api.onchange("foreman_id")
+    def _onchange_foreman_id(self):
+        if self.foreman_id:
+            self.division_id = self.foreman_id.division_id
+
     @api.depends("company_id")
     def _compute_allowed_tapper_employee_ids(self):
         mapping_model = self.env["wt.employee.role"]
@@ -132,3 +148,8 @@ class Tapper(models.Model):
                 tapper.company_id,
                 Role.TAPPER,
             )
+
+    def _set_division_from_foreman_vals(self, vals):
+        if vals.get("foreman_id"):
+            foreman = self.env["wt.foreman"].browse(vals["foreman_id"])
+            vals["division_id"] = foreman.division_id.id

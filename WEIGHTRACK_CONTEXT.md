@@ -49,11 +49,12 @@ Scope aktif saat ini:
 - Custom API device activation.
 - API pull master untuk data offline penimbangan.
 - API push weighing cup lump untuk data timbang cup lump dari aplikasi offline.
+- Production Receipt Cup Lump untuk menggabungkan data timbang per division dan production date sampai validasi dokumen.
 
 Scope yang belum aktif:
 
 - Push data timbang selain cup_lump.
-- Pembuatan inbound/receipt stock resmi dari data weighing cup lump.
+- Pembuatan Inventory Receipt/stock picking resmi dari Production Receipt.
 
 Custom API yang aktif saat ini:
 
@@ -121,6 +122,8 @@ Model database:
 - `wt.tapper`
 - `wt.device`
 - `wt.weighing.cup.lump`
+- `wt.production.receipt`
+- `wt.production.receipt.line`
 
 Transient model:
 
@@ -148,7 +151,8 @@ WeighTrack
 |   |-- Foremen
 |   `-- Tappers
 |-- Operations
-|   `-- Weighing Cup Lump
+|   |-- Weighing Cup Lump
+|   `-- Production Receipt
 |-- Device
 `-- Configuration
     |-- API
@@ -182,6 +186,7 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 - Data cuaca saat ini belum diekspos melalui custom API dan belum masuk payload pull master.
 - `Weighing Location` wajib terhubung ke `Estate`.
 - `company_id` pada `Division`, `Weighing Location`, `Foreman`, dan `Tapper` mengikuti parent operasional.
+- Form Foreman memakai add line natural Odoo pada `tapper_ids`. Jika `foreman_id` terisi, `division_id` Tapper otomatis mengikuti division Foreman.
 - Pengaturan divisi yang boleh menimbang hanya dilakukan dari `Weighing Location` melalui `allowed_division_ids`.
 - `Division` tidak perlu menampilkan atau mengatur relasi balik ke `Weighing Location`.
 - `wt.product` memetakan `company_id` + `product_type` ke produk Odoo `product.product` yang dipakai untuk proses timbang.
@@ -191,10 +196,12 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 - Kombinasi Company, Product Type, dan Division pada `wt.shrinkage.tolerance` tidak boleh berulang.
 - Division pada `wt.shrinkage.tolerance` wajib berasal dari company yang sama.
 - `wt.receipt.rule` menegaskan produk yang boleh ditimbang pada kombinasi Weighing Location dan Division tertentu, sekaligus menentukan Warehouse, Location, dan Operation Type untuk proses receipt stok.
+- `wt.receipt.rule` otomatis membawa Estate dari Weighing Location; pemilihan Warehouse dibatasi pada company dan estate yang sama.
 - Pilihan Product pada `wt.receipt.rule` dibatasi dari product yang sudah dikonfigurasi di `wt.product` untuk company Weighing Location.
 - Division pada `wt.receipt.rule` wajib termasuk `allowed_division_ids` pada Weighing Location.
 - Kombinasi Company, Weighing Location, Division, dan Product pada `wt.receipt.rule` tidak boleh berulang. Validasi duplicate menampilkan nilai company, lokasi timbang, divisi, dan produk yang sudah ada.
 - Pengaturan Warehouse tidak berada di Weighing Location; Warehouse, Location, dan Operation Type ditentukan pada Receipt Rule.
+- `stock.warehouse` di-extend dengan field Estate untuk memastikan warehouse tujuan stok berada pada estate yang benar.
 - Employee operasional memakai model Odoo bawaan `hr.employee`.
 - `wt.employee.role` menentukan job position yang boleh dipilih untuk role:
   - `operator`
@@ -613,17 +620,16 @@ Data problem:
 - Data push tetap diterima sebagai `draft` walaupun `has_data_problem = True`.
 - Data manual otomatis menjalankan pengecekan data problem saat create.
 - Save record draft, baik sumber API maupun manual, otomatis menjalankan recheck jika field pemicu berubah.
-- Data tidak boleh divalidasi selama `has_data_problem = True`.
-- Admin dapat memperbaiki master atau data draft, lalu menjalankan `Recheck Data Problem`.
-- Tombol validate menjalankan validasi form/backend, menjalankan ulang `Recheck Data Problem`, lalu menolak validate jika masih ada problem.
-- Tombol cancel validate mengembalikan data validated ke draft.
+  - Data timbang tidak lagi divalidasi langsung dari form Cup Lump; validasi resmi dilakukan dari Production Receipt.
+  - Admin dapat memperbaiki master atau data draft, lalu menjalankan `Recheck Data Problem` selama Production Receipt belum validated.
+  - Setelah data timbang masuk Production Receipt yang sudah validated, data menjadi terkunci dan recheck problem ditolak.
 - Idempotency memakai kombinasi `device_id + product_type + local_id` dan hanya berlaku untuk `data_source = api`.
 - Database memakai partial unique index khusus API sebagai pengaman request paralel.
 
 Validasi form/backend:
 
-- Field wajib sebelum validate: production date, weighing date, company, estate, division, weighing location, product, UoM, receipt rule, operator, clerk, foreman, dan tapper.
-- `total_bag`, `production_weight`, dan `net_weight` wajib bernilai lebih dari 0 sebelum validate.
+- Field wajib sebelum validate Production Receipt: production date, weighing date, company, estate, division, weighing location, product, UoM, receipt rule, operator, clerk, foreman, dan tapper pada setiap line timbang.
+- `total_bag`, `production_weight`, dan `net_weight` wajib bernilai lebih dari 0 sebelum Production Receipt bisa validated.
 - `production_date` tidak boleh lebih besar dari tanggal pada `weighing_date`.
 - Jika `initial_weighing_date` terisi, maka `initial_weight` wajib terisi.
 - Untuk input manual, `initial_device_id` juga wajib. Untuk API, initial device yang kosong/tidak ditemukan menjadi `missing_master` dan tidak menggagalkan penerimaan push.
@@ -790,6 +796,92 @@ Idempotency push:
 - Response push mengembalikan summary dan daftar item response.
 - Summary response membawa `received`, `created`, `duplicates`, `with_data_problem`, dan `weighing_cup_lump_ids`.
 - Item response membawa `local_id`, `status` (`created` atau `duplicate`), `has_data_problem`, `data_problem_code`, dan `weighing_cup_lump_id`.
+
+## Production Receipt
+
+Production Receipt adalah dokumen penerimaan produksi untuk menggabungkan data timbang Cup Lump sebelum tahap Inventory.
+
+Model aktif:
+
+- `wt.production.receipt`
+- `wt.production.receipt.line`
+
+Konsep:
+
+- Production Receipt menggabungkan data penimbangan Cup Lump suatu division pada production date tertentu.
+- Scope awal hanya untuk product yang dipetakan sebagai `cup_lump`.
+- Data weighing Cup Lump menjadi sumber detail/line Production Receipt.
+- Production Receipt menjadi gate validasi resmi; validate pada data penimbangan Cup Lump ditiadakan dari UI dan ditolak di backend.
+- Data penimbangan tetap menyimpan hasil pengecekan `has_data_problem`, `data_problem_code`, dan `data_problem_note`.
+- Number Production Receipt dibuat sekali saat record dibuat melalui `ir.sequence` dengan code `wt.production.receipt`.
+- Format default sequence adalah `PR/CUP_LUMP/YYYYMMDD/NNN` dan tanggal pada nomor memakai `production_date`.
+- Tahap saat ini berhenti sampai validasi Production Receipt dan penguncian data timbang. Belum ada pembuatan stock picking atau stock move.
+
+Flow process:
+
+1. User membuat Production Receipt dengan memilih company, production date, dan division.
+2. User klik tombol `Process`.
+3. Sistem mengambil semua data `wt.weighing.cup.lump` Cup Lump yang sesuai company, division, production date, dan belum masuk Production Receipt aktif lain.
+4. Semua data timbang yang cocok masuk menjadi line, termasuk data yang masih memiliki data problem.
+5. Sistem menghitung total bag dari `total_bag`.
+6. Sistem menghitung total stock weight memakai field stock quantity dari constant product type. Untuk Cup Lump saat ini memakai `net_weight`.
+7. Total pada Production Receipt bersifat total review selama dokumen belum validated.
+8. Selama Production Receipt belum validated, line dapat dilepas; data timbang kembali ke `not_receipted` dan dapat diproses ulang oleh Production Receipt lain.
+
+Status keterikatan data timbang:
+
+- Data penimbangan perlu memiliki status keterikatan Production Receipt, misalnya:
+  - `not_receipted`: belum masuk Production Receipt.
+  - `in_production_receipt`: sudah masuk Production Receipt tetapi receipt belum validated.
+  - `receipt_validated`: Production Receipt sudah validated dan data timbang terkunci.
+  - `receipt_cancelled`: pernah masuk Production Receipt yang kemudian dibatalkan/reversed.
+- Saat status `receipt_validated`, data timbang tidak boleh lagi terpengaruh perubahan master data setelah receipt validated.
+- Saat status `receipt_validated`, tombol/action `Recheck Data Problem` pada data timbang ditiadakan atau ditolak di backend.
+- Auto recheck data problem saat save tidak boleh berjalan lagi untuk data timbang yang sudah `receipt_validated`.
+- Field penting data timbang harus dikunci setelah Production Receipt validated.
+
+Flow lepas line sebelum validate:
+
+1. User menghapus line pada tab `Weighing` di Production Receipt yang masih `draft` atau `processed`.
+2. Sistem menghapus line Production Receipt.
+3. Data timbang terkait dikembalikan ke `receipt_status = not_receipted` dan `production_receipt_id = False`.
+4. Data timbang tersebut dapat masuk lagi saat `Process` Production Receipt lain.
+5. Jika Production Receipt sudah `validated`, line tidak boleh dilepas; gunakan flow cancel Production Receipt.
+
+Flow validate Production Receipt:
+
+1. User klik tombol `Validate` pada Production Receipt.
+2. Sistem menjalankan ulang recheck data problem untuk semua line yang belum locked.
+3. Validate ditolak jika masih ada line dengan `has_data_problem = True`.
+4. Validate ditolak jika line kosong, ada line double, atau line tidak sesuai company/division/production date header.
+5. Sistem menghitung ulang total bag dan total stock weight.
+6. Production Receipt berubah menjadi `validated`.
+7. Data timbang pada line berubah menjadi `receipt_validated` dan terkunci dari perubahan/recheck problem.
+8. Belum ada stock picking, stock move, atau perubahan stock pada tahap ini.
+
+Flow cancel Production Receipt pada tahap saat ini:
+
+- Production Receipt yang sudah `validated` dapat dibatalkan dari dokumen receipt.
+- Karena tahap ini belum membuat stock picking, cancel hanya mengubah Production Receipt menjadi `cancelled`.
+- Data timbang pada line berubah menjadi `receipt_cancelled`, sehingga jejak receipt lama tetap ada tetapi data dapat diproses ulang oleh Production Receipt baru bila dibutuhkan.
+- Saat tahap stock sudah aktif nanti, cancel harus memakai reversal/return picking dan tidak boleh menghapus histori stock picking done.
+
+Catatan desain:
+
+- Production Receipt adalah snapshot final produksi setelah validated.
+- Production Receipt line sebaiknya menyimpan snapshot nilai penting seperti weighing reference, total bag, stock weight, data problem code/note, product, UoM, receipt rule, dan field grouping stock.
+- Stock resmi belum dibuat pada tahap ini. Nanti stock resmi hanya boleh lahir setelah Production Receipt validated.
+- Perubahan master data setelah Production Receipt validated tidak boleh mengubah status problem atau total receipt lama.
+- Untuk audit, jangan lepas histori line lama saat receipt dibatalkan; gunakan status cancelled/reversed dan relasi reverse picking.
+
+Tahap berikutnya untuk Inventory:
+
+- Validate Production Receipt akan membuat stock receipt berdasarkan `wt.receipt.rule`.
+- Line perlu digroup berdasarkan receipt rule karena receipt rule menentukan warehouse, destination location, operation type, product, dan UoM.
+- Satu receipt rule dapat membentuk satu stock picking Inventory Receipt.
+- Sistem akan mengisi done quantity berdasarkan total stock weight hasil group.
+- Sistem akan validate stock picking sehingga stock bertambah di Inventory.
+- Cancel setelah stock masuk wajib memakai reversal/return picking.
 
 ## Localization Notes
 

@@ -960,6 +960,16 @@ msgstr "Gudang harus berada di perusahaan yang sama."
 
 #. module: weightrack
 #: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Warehouse must belong to the same estate."
+msgstr "Gudang harus berada di estate yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_warehouse.py:0
+msgid "Warehouse estate must belong to the same company."
+msgstr "Estate gudang harus berada di perusahaan yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
 msgid "Location must belong to the same company or be a shared location."
 msgstr "Lokasi harus berada di perusahaan yang sama atau berupa lokasi bersama."
 
@@ -1881,3 +1891,163 @@ msgstr "Tipe produk tidak didukung: %s."
 #: code:addons/weightrack/models/weighing_cup_lump.py:0
 msgid "Weighing Cup Lump sequence is not configured."
 msgstr "Sequence Penimbangan Cup Lump belum dikonfigurasi."
+
+#. module: weightrack
+msgid "Production Receipt sequence is not configured."
+msgstr "Sequence Penerimaan Produksi belum dikonfigurasi."
+
+#. module: weightrack
+msgid "Production Receipt"
+msgstr "Penerimaan Produksi"
+
+#. module: weightrack
+msgid "Production Receipt Line"
+msgstr "Baris Penerimaan Produksi"
+
+#. module: weightrack
+msgid "Receipt Status"
+msgstr "Status Penerimaan"
+
+#. module: weightrack
+msgid "Not Receipted"
+msgstr "Belum Diterima"
+
+#. module: weightrack
+msgid "In Production Receipt"
+msgstr "Dalam Penerimaan Produksi"
+
+#. module: weightrack
+msgid "Receipt Validated"
+msgstr "Penerimaan Tervalidasi"
+
+#. module: weightrack
+msgid "Receipt Cancelled"
+msgstr "Penerimaan Dibatalkan"
+
+#. module: weightrack
+msgid "Processed"
+msgstr "Diproses"
+
+#. module: weightrack
+msgid "Line Count"
+msgstr "Jumlah Baris"
+
+#. module: weightrack
+msgid "Data Problem Lines"
+msgstr "Baris Bermasalah"
+
+#. module: weightrack
+msgid "Stock Quantity Field"
+msgstr "Field Kuantitas Stock"
+
+#. module: weightrack
+msgid "Total Weighing"
+msgstr "Total Penimbangan"
+
+#. module: weightrack
+msgid "Total Stock Weight"
+msgstr "Total Berat Stock"
+
+#. module: weightrack
+msgid "Stock Weight"
+msgstr "Berat Stock"
+
+#. module: weightrack
+msgid "Weighing Number"
+msgstr "Nomor Timbang"
+
+#. module: weightrack
+msgid "Weighing"
+msgstr "Penimbangan"
+
+#. module: weightrack
+msgid "Weight"
+msgstr "Berat"
+
+#. module: weightrack
+msgid "Process"
+msgstr "Proses"
+
+#. module: weightrack
+msgid "Validated At"
+msgstr "Divalidasi Pada"
+
+#. module: weightrack
+msgid "Validated By"
+msgstr "Divalidasi Oleh"
+
+#. module: weightrack
+msgid "Cancelled At"
+msgstr "Dibatalkan Pada"
+
+#. module: weightrack
+msgid "Cancelled By"
+msgstr "Dibatalkan Oleh"
+
+#. module: weightrack
+msgid "Cancel Reason"
+msgstr "Alasan Pembatalan"
+
+#. module: weightrack
+msgid "Validated Production Receipt cannot be changed."
+msgstr "Penerimaan Produksi yang sudah divalidasi tidak dapat diubah."
+
+#. module: weightrack
+msgid "Validated Production Receipt cannot be deleted."
+msgstr "Penerimaan Produksi yang sudah divalidasi tidak dapat dihapus."
+
+#. module: weightrack
+msgid "Only draft or processed Production Receipt can be processed."
+msgstr "Hanya Penerimaan Produksi draft atau diproses yang dapat diproses."
+
+#. module: weightrack
+msgid "Only Cup Lump Production Receipt is supported."
+msgstr "Hanya Penerimaan Produksi Cup Lump yang didukung."
+
+#. module: weightrack
+msgid "No weighing data found for this Production Receipt."
+msgstr "Tidak ada data penimbangan untuk Penerimaan Produksi ini."
+
+#. module: weightrack
+msgid "Only draft or processed Production Receipt can be validated."
+msgstr "Hanya Penerimaan Produksi draft atau diproses yang dapat divalidasi."
+
+#. module: weightrack
+msgid "Production Receipt must have at least one line."
+msgstr "Penerimaan Produksi harus memiliki minimal satu baris."
+
+#. module: weightrack
+msgid "Production Receipt still has weighing lines with data problem."
+msgstr "Penerimaan Produksi masih memiliki baris timbang yang bermasalah."
+
+#. module: weightrack
+msgid "Production Receipt lines must match the header scope."
+msgstr "Baris Penerimaan Produksi harus sesuai dengan scope header."
+
+#. module: weightrack
+msgid "Production Receipt cannot have duplicate lines."
+msgstr "Penerimaan Produksi tidak boleh memiliki baris ganda."
+
+#. module: weightrack
+msgid "Only validated Production Receipt can be cancelled."
+msgstr "Hanya Penerimaan Produksi tervalidasi yang dapat dibatalkan."
+
+#. module: weightrack
+msgid "Weighing Cup Lump already exists in an active Production Receipt."
+msgstr "Penimbangan Cup Lump sudah ada di Penerimaan Produksi aktif."
+
+#. module: weightrack
+msgid "Cannot release weighing from a validated Production Receipt."
+msgstr "Data timbang tidak dapat dilepas dari Penerimaan Produksi yang sudah divalidasi."
+
+#. module: weightrack
+msgid "Weighing detail is locked because its Production Receipt is validated."
+msgstr "Detail timbang terkunci karena Penerimaan Produksinya sudah divalidasi."
+
+#. module: weightrack
+msgid "Data problem cannot be rechecked because the Production Receipt is validated."
+msgstr "Data problem tidak dapat dicek ulang karena Penerimaan Produksinya sudah divalidasi."
+
+#. module: weightrack
+msgid "Weighing detail validation is handled from Production Receipt."
+msgstr "Validasi detail timbang dilakukan dari Penerimaan Produksi."

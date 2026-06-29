@@ -23,6 +23,14 @@ class ReceiptRule(models.Model):
         readonly=True,
         index=True,
     )
+    estate_id = fields.Many2one(
+        "wt.estate",
+        string="Estate",
+        related="weighing_location_id.estate_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     weighing_location_id = fields.Many2one(
         "wt.weighing.location",
         string="Weighing Location",
@@ -64,7 +72,7 @@ class ReceiptRule(models.Model):
         string="Warehouse",
         required=True,
         ondelete="restrict",
-        domain="[('company_id', '=', company_id)]",
+        domain="[('company_id', '=', company_id), ('estate_id', '=', estate_id)]",
         tracking=True,
     )
     location_id = fields.Many2one(
@@ -142,6 +150,7 @@ class ReceiptRule(models.Model):
 
     @api.constrains(
         "company_id",
+        "estate_id",
         "weighing_location_id",
         "division_id",
         "product_id",
@@ -187,6 +196,7 @@ class ReceiptRule(models.Model):
 
     @api.constrains(
         "company_id",
+        "estate_id",
         "weighing_location_id",
         "division_id",
         "product_id",
@@ -236,8 +246,17 @@ class ReceiptRule(models.Model):
                     _("Product must be configured in Product for the same company.")
                 )
 
-            if mapping.warehouse_id and mapping.warehouse_id.company_id != mapping.company_id:
+            if (
+                mapping.warehouse_id
+                and mapping.warehouse_id.company_id != mapping.company_id
+            ):
                 raise ValidationError(_("Warehouse must belong to the same company."))
+
+            if (
+                mapping.warehouse_id
+                and mapping.warehouse_id.estate_id != mapping.estate_id
+            ):
+                raise ValidationError(_("Warehouse must belong to the same estate."))
 
             location_company = mapping.location_id.company_id
             if location_company and location_company != mapping.company_id:

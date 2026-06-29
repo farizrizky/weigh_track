@@ -44,13 +44,7 @@
                     </group>
                     <notebook>
                         <page string="Tappers">
-                            <field name="tapper_ids" context="{'default_division_id': division_id}">
-                                <list create="false" delete="false">
-                                    <field name="employee_id"/>
-                                    <field name="division_id"/>
-                                    <field name="company_id" groups="base.group_multi_company"/>
-                                </list>
-                            </field>
+                            <field name="tapper_ids"/>
                         </page>
                     </notebook>
                 </sheet>

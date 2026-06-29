@@ -17,11 +17,14 @@
                 <field name="tapper_employee_id"/>
                 <field name="data_source"/>
                 <field name="state"/>
+                <field name="receipt_status"/>
                 <field name="data_problem_code"/>
                 <filter name="manual" string="Manual" domain="[('data_source', '=', 'manual')]"/>
                 <filter name="api" string="API" domain="[('data_source', '=', 'api')]"/>
                 <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
-                <filter name="validated" string="Validated" domain="[('state', '=', 'validated')]"/>
+                <filter name="not_receipted" string="Not Receipted" domain="[('receipt_status', '=', 'not_receipted')]"/>
+                <filter name="in_production_receipt" string="In Production Receipt" domain="[('receipt_status', '=', 'in_production_receipt')]"/>
+                <filter name="receipt_validated" string="Receipt Validated" domain="[('receipt_status', '=', 'receipt_validated')]"/>
                 <filter name="has_data_problem" string="Has Data Problem" domain="[('has_data_problem', '=', True)]"/>
             </search>
         </field>
@@ -48,6 +51,8 @@
                 <field name="net_weight" sum="Total"/>
                 <field name="has_data_problem"/>
                 <field name="data_problem_code"/>
+                <field name="receipt_status"/>
+                <field name="production_receipt_id"/>
                 <field name="state"/>
             </list>
         </field>
@@ -59,10 +64,8 @@
         <field name="arch" type="xml">
             <form string="Weighing Cup Lump">
                 <header>
-                    <button name="action_recheck_data_problem" type="object" string="Recheck Data Problem" invisible="state != 'draft'"/>
-                    <button name="action_validate" type="object" string="Validate" class="oe_highlight" invisible="state != 'draft' or has_data_problem"/>
-                    <button name="action_cancel_validate" type="object" string="Cancel Validate" invisible="state != 'validated'"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,validated"/>
+                    <button name="action_recheck_data_problem" type="object" string="Recheck Data Problem" invisible="receipt_status == 'receipt_validated'"/>
+                    <field name="receipt_status" widget="statusbar" statusbar_visible="not_receipted,in_production_receipt,receipt_validated,receipt_cancelled"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -77,10 +80,12 @@
                             <field name="local_id" readonly="1"/>
                             <field name="device_id" readonly="1"/>
                             <field name="batch_local_id" readonly="1"/>
+                            <field name="state" readonly="1"/>
+                            <field name="production_receipt_id" readonly="1"/>
                         </group>
                         <group string="Dates">
-                            <field name="production_date" readonly="state == 'validated'" required="1"/>
-                            <field name="weighing_date" readonly="state == 'validated'" required="1"/>
+                            <field name="production_date" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
+                            <field name="weighing_date" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
                             <field name="master_synced_at" readonly="1"/>
                             <field name="sent_at" readonly="1"/>
                             <field name="received_at" readonly="1"/>
@@ -88,14 +93,14 @@
                     </group>
                     <group>
                         <group string="Scope">
-                            <field name="company_id" readonly="state == 'validated'" required="1"/>
+                            <field name="company_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
                             <field name="allowed_division_ids" invisible="1"/>
-                            <field name="estate_id" readonly="state == 'validated'" required="1"/>
-                            <field name="weighing_location_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id), ('estate_id', '=', estate_id)]"/>
-                            <field name="division_id" readonly="state == 'validated'" required="1" domain="[('id', 'in', allowed_division_ids)]"/>
-                            <field name="product_id" readonly="state == 'validated'" required="1"/>
-                            <field name="uom_id" readonly="state == 'validated'" required="1"/>
-                            <field name="receipt_rule_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id), ('weighing_location_id', '=', weighing_location_id), ('division_id', '=', division_id), ('product_id', '=', product_id)]"/>
+                            <field name="estate_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
+                            <field name="weighing_location_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id), ('estate_id', '=', estate_id)]"/>
+                            <field name="division_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1" domain="[('id', 'in', allowed_division_ids)]"/>
+                            <field name="product_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
+                            <field name="uom_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
+                            <field name="receipt_rule_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id), ('weighing_location_id', '=', weighing_location_id), ('division_id', '=', division_id), ('product_id', '=', product_id)]"/>
                         </group>
                         <group string="Data Problem">
                             <field name="has_data_problem" readonly="1"/>
@@ -107,21 +112,21 @@
                         <page string="Employees">
                             <group>
                                 <group string="Operator">
-                                    <field name="operator_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="operator_employee_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
                                     <field name="operator_barcode" readonly="1"/>
                                 </group>
                                 <group string="Clerk">
-                                    <field name="clerk_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="clerk_employee_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
                                     <field name="clerk_barcode" readonly="1"/>
                                 </group>
                             </group>
                             <group>
                                 <group string="Foreman">
-                                    <field name="foreman_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="foreman_employee_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
                                     <field name="foreman_barcode" readonly="1"/>
                                 </group>
                                 <group string="Tapper">
-                                    <field name="tapper_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="tapper_employee_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
                                     <field name="tapper_barcode" readonly="1"/>
                                 </group>
                             </group>
@@ -129,35 +134,35 @@
                         <page string="Weights">
                             <group>
                                 <group>
-                                    <field name="total_bag" readonly="state == 'validated'" required="1"/>
-                                    <field name="production_weight" readonly="state == 'validated'" required="1"/>
-                                    <field name="reject_weight" readonly="state == 'validated'"/>
-                                    <field name="slab_weight" readonly="state == 'validated'"/>
-                                    <field name="net_weight" readonly="state == 'validated'" required="1"/>
+                                    <field name="total_bag" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
+                                    <field name="production_weight" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
+                                    <field name="reject_weight" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
+                                    <field name="slab_weight" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
+                                    <field name="net_weight" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="1"/>
                                 </group>
                                 <group>
-                                    <field name="shrinkage_tolerance_percentage" readonly="state == 'validated'"/>
-                                    <field name="shrinkage_tolerance_weight" readonly="state == 'validated'"/>
-                                    <field name="is_manual_weighing" readonly="state == 'validated'"/>
-                                    <field name="manual_weighing_reason" readonly="state == 'validated'" required="is_manual_weighing"/>
-                                    <field name="note" readonly="state == 'validated'"/>
+                                    <field name="shrinkage_tolerance_percentage" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
+                                    <field name="shrinkage_tolerance_weight" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
+                                    <field name="is_manual_weighing" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
+                                    <field name="manual_weighing_reason" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="is_manual_weighing"/>
+                                    <field name="note" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
                                 </group>
                             </group>
                         </page>
                         <page string="Initial Weighing">
                             <group>
                                 <group>
-                                    <field name="initial_weighing_date" readonly="state == 'validated'"/>
-                                    <field name="initial_device_id" readonly="state == 'validated'" required="initial_weighing_date" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="initial_weighing_date" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
+                                    <field name="initial_device_id" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="initial_weighing_date" domain="[('company_id', '=', company_id)]"/>
                                     <field name="initial_device_role" readonly="1"/>
                                     <field name="initial_device_employee_id" readonly="1"/>
                                     <field name="initial_device_employee_barcode" readonly="1"/>
                                 </group>
                                 <group>
-                                    <field name="initial_weight" readonly="state == 'validated'" required="initial_weighing_date"/>
-                                    <field name="initial_is_manual_weighing" readonly="state == 'validated'"/>
-                                    <field name="initial_manual_weighing_reason" readonly="state == 'validated'" required="initial_is_manual_weighing"/>
-                                    <field name="initial_note" readonly="state == 'validated'"/>
+                                    <field name="initial_weight" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="initial_weighing_date"/>
+                                    <field name="initial_is_manual_weighing" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
+                                    <field name="initial_manual_weighing_reason" readonly="state == 'validated' or receipt_status == 'receipt_validated'" required="initial_is_manual_weighing"/>
+                                    <field name="initial_note" readonly="state == 'validated' or receipt_status == 'receipt_validated'"/>
                                 </group>
                             </group>
                         </page>

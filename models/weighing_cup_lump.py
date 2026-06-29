@@ -21,6 +21,12 @@ class WeighingCupLump(models.Model):
         ("manual", "Manual"),
         ("api", "API"),
     ]
+    RECEIPT_STATUS_SELECTION = [
+        ("not_receipted", "Not Receipted"),
+        ("in_production_receipt", "In Production Receipt"),
+        ("receipt_validated", "Receipt Validated"),
+        ("receipt_cancelled", "Receipt Cancelled"),
+    ]
 
     DATA_PROBLEM_SELECTION = [
         ("none", "None"),
@@ -148,6 +154,23 @@ class WeighingCupLump(models.Model):
         default="draft",
         required=True,
         index=True,
+        tracking=True,
+    )
+    receipt_status = fields.Selection(
+        RECEIPT_STATUS_SELECTION,
+        string="Receipt Status",
+        default="not_receipted",
+        required=True,
+        index=True,
+        tracking=True,
+    )
+    production_receipt_id = fields.Many2one(
+        "wt.production.receipt",
+        string="Production Receipt",
+        ondelete="set null",
+        readonly=True,
+        index=True,
+        copy=False,
         tracking=True,
     )
     data_source = fields.Selection(
@@ -459,6 +482,17 @@ class WeighingCupLump(models.Model):
 
     def write(self, vals):
         vals = dict(vals)
+        if not self.env.context.get("allow_production_receipt_update"):
+            locked = self.filtered(
+                lambda record: record.receipt_status == "receipt_validated"
+            )
+            allowed_locked_fields = {"receipt_status", "production_receipt_id"}
+            if locked and (set(vals) - allowed_locked_fields):
+                raise ValidationError(
+                    _(
+                        "Weighing detail is locked because its Production Receipt is validated."
+                    )
+                )
         self._set_estate_from_location_vals(vals)
         result = super().write(vals)
         if set(vals) & {
@@ -477,8 +511,18 @@ class WeighingCupLump(models.Model):
         ):
             self.filtered(
                 lambda record: record.state == "draft"
+                and record.receipt_status != "receipt_validated"
             ).with_context(skip_auto_recheck_data_problem=True).action_recheck_data_problem()
         return result
+
+    def unlink(self):
+        if self.filtered(lambda record: record.receipt_status == "receipt_validated"):
+            raise ValidationError(
+                _(
+                    "Weighing detail is locked because its Production Receipt is validated."
+                )
+            )
+        return super().unlink()
 
     def _set_estate_from_location_vals(self, vals):
         location_id = vals.get("weighing_location_id")
@@ -711,6 +755,15 @@ class WeighingCupLump(models.Model):
         self.tapper_id = tapper
 
     def action_recheck_data_problem(self):
+        locked = self.filtered(
+            lambda detail: detail.receipt_status == "receipt_validated"
+        )
+        if locked:
+            raise ValidationError(
+                _(
+                    "Data problem cannot be rechecked because the Production Receipt is validated."
+                )
+            )
         service = self.env["wt.cup.lump.service"].sudo()
         for detail in self:
             result = service.evaluate_data_problem_from_record(detail)
@@ -725,19 +778,9 @@ class WeighingCupLump(models.Model):
             )
 
     def action_validate(self):
-        for detail in self:
-            if detail.state != "draft":
-                raise ValidationError(_("Only draft weighing detail can be validated."))
-
-        self._check_required_for_validate()
-        self.action_recheck_data_problem()
-
-        for detail in self:
-            if detail.has_data_problem:
-                raise ValidationError(
-                    _("Weighing detail still has data problem and cannot be validated.")
-                )
-        self.write({"state": "validated"})
+        raise ValidationError(
+            _("Weighing detail validation is handled from Production Receipt.")
+        )
 
     def _check_required_for_validate(self):
         for detail in self:
@@ -820,9 +863,6 @@ class WeighingCupLump(models.Model):
             )
 
     def action_cancel_validate(self):
-        for detail in self:
-            if detail.state != "validated":
-                raise ValidationError(
-                    _("Only validated weighing detail can be cancelled.")
-                )
-        self.write({"state": "draft"})
+        raise ValidationError(
+            _("Weighing detail validation is handled from Production Receipt.")
+        )

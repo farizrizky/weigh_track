@@ -574,11 +574,11 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
 
 ### Data Problem
 
-`has_data_problem = true` berarti item berhasil diterima, tetapi tidak boleh divalidasi sebelum masalahnya diselesaikan. Admin dapat memperbaiki master atau record draft, lalu memakai tombol `Recheck Data Problem`. Save record draft dan action Validate juga menjalankan pengecekan ulang.
+`has_data_problem = true` berarti item berhasil diterima, tetapi belum boleh menjadi Production Receipt yang valid sebelum masalahnya diselesaikan. Admin dapat memperbaiki master atau record draft, lalu memakai tombol `Recheck Data Problem` selama data timbang belum masuk Production Receipt yang sudah validated. Save record draft dan Validate pada Production Receipt juga menjalankan pengecekan ulang.
 
 | Code | Penjelasan dan kondisi pemicu |
 | --- | --- |
-| `none` | Tidak ditemukan masalah. Record dapat divalidasi jika seluruh field wajib sudah lengkap. |
+| `none` | Tidak ditemukan masalah. Record dapat masuk Production Receipt valid jika seluruh field wajib sudah lengkap. |
 | `company_mismatch` | Company pada payload tidak sama dengan company device, atau division yang dipilih bukan milik company penimbangan. |
 | `estate_mismatch` | Estate bukan milik company penimbangan, atau estate payload berbeda dari estate yang terikat pada weighing location. |
 | `operator_mismatch` | Employee operator payload berbeda dari employee pemilik device, atau operator pada weighing location berbeda dari operator device. |
