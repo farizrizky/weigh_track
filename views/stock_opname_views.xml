@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sequence for Stock Opname -->
+    <record id="seq_wt_stock_opname" model="ir.sequence">
+        <field name="name">Stock Opname Sequence</field>
+        <field name="code">wt.stock.opname</field>
+        <field name="prefix">SO/%(year)s%(month)s%(day)s/</field>
+        <field name="padding">3</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- Stock Opname List View -->
+    <record id="view_wt_stock_opname_list" model="ir.ui.view">
+        <field name="name">wt.stock.opname.list</field>
+        <field name="model">wt.stock.opname</field>
+        <field name="arch" type="xml">
+            <list string="Stock Opname">
+                <field name="name"/>
+                <field name="warehouse_id"/>
+                <field name="location_id"/>
+                <field name="division_id"/>
+                <field name="operator_employee_id"/>
+                <field name="date"/>
+                <field name="state" widget="badge" 
+                       decoration-info="state == 'draft'" 
+                       decoration-warning="state in ['assigned', 'in_progress']"
+                       decoration-success="state in ['completed', 'applied']"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Stock Opname Form View -->
+    <record id="view_wt_stock_opname_form" model="ir.ui.view">
+        <field name="name">wt.stock.opname.form</field>
+        <field name="model">wt.stock.opname</field>
+        <field name="arch" type="xml">
+            <form string="Stock Opname">
+                <header>
+                    <button name="action_assign" string="Process / Assign" type="object" class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_populate_lines" string="Load Lines" type="object" invisible="state != 'draft'" icon="fa-refresh"/>
+                    <button name="action_start" string="Start" type="object" class="oe_highlight" invisible="state != 'assigned'"/>
+                    <button name="action_apply_inventory" string="Apply Stock Adjustment" type="object" class="oe_highlight" invisible="state != 'completed'"/>
+                    <button name="action_cancel" string="Cancel" type="object" invisible="state not in ['draft', 'assigned', 'in_progress', 'completed']"/>
+                    <button name="action_draft" string="Set to Draft" type="object" invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,completed,applied"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="warehouse_id" readonly="state != 'draft'"/>
+                            <field name="location_id" readonly="state != 'draft'" domain="[('company_id', '=', company_id), ('usage', '=', 'internal')]"/>
+                            <field name="division_id" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="operator_employee_id" readonly="state != 'draft'"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Opname Lines" name="lines">
+                            <field name="line_ids" readonly="state in ['applied', 'cancelled']">
+                                <list editable="bottom" create="false" delete="false">
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="lot_id" readonly="1"/>
+                                    <field name="uom_id" readonly="1"/>
+                                    <field name="theoretical_qty" readonly="1"/>
+                                    <field name="physical_qty"/>
+                                    <field name="difference_qty"/>
+                                    <field name="stock_move_line_count" readonly="1" string="Move History"/>
+                                    <button
+                                        name="action_view_stock_move_lines"
+                                        type="object"
+                                        icon="fa-history"
+                                        title="View Stock Move History"
+                                        class="btn-link"
+                                    />
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Stock Opname Search View -->
+    <record id="view_wt_stock_opname_search" model="ir.ui.view">
+        <field name="name">wt.stock.opname.search</field>
+        <field name="model">wt.stock.opname</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="warehouse_id"/>
+                <field name="location_id"/>
+                <field name="division_id"/>
+                <field name="operator_employee_id"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Assigned" name="assigned" domain="[('state', '=', 'assigned')]"/>
+                <filter string="In Progress" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Completed" name="completed" domain="[('state', '=', 'completed')]"/>
+                <filter string="Applied" name="applied" domain="[('state', '=', 'applied')]"/>
+                <filter string="Warehouse" name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
+                <filter string="Location" name="group_location" context="{'group_by': 'location_id'}"/>
+                <filter string="Division" name="group_division" context="{'group_by': 'division_id'}"/>
+                <filter string="Operator" name="group_operator" context="{'group_by': 'operator_employee_id'}"/>
+                <filter string="Status" name="group_state" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_wt_stock_opname" model="ir.actions.act_window">
+        <field name="name">Stock Opname</field>
+        <field name="res_model">wt.stock.opname</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_stock_opname_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Stock Opname document.
+            </p>
+            <p>
+                Specify the warehouse, division, and operator. Odoo will populate the lines with matching Lots to be weighed by field devices.
+            </p>
+        </field>
+    </record>
+</odoo>

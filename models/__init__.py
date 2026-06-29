@@ -15,3 +15,6 @@ from . import weighing_location
 from . import foreman
 from . import tapper
 from . import device
+from . import stock_lot
+from . import stock_opname
+

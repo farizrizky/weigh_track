@@ -29,7 +29,10 @@
         "views/tapper_views.xml",
         "views/device_state_reason_wizard_views.xml",
         "views/device_views.xml",
+        "views/stock_lot_views.xml",
+        "views/stock_opname_views.xml",
         "views/menu.xml",
+
     ],
     "application": True,
     "installable": True,
