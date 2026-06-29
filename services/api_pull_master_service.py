@@ -92,13 +92,15 @@ class ApiPullMasterService(models.AbstractModel):
             [
                 ("company_id", "=", device.company_id.id),
                 ("employee_id", "=", device.employee_id.id),
+                ("active", "=", True),
             ]
         )
-        divisions = foremen.mapped("division_id")
+        divisions = self._active_records(foremen.mapped("division_id"))
         tappers = self.env["wt.tapper"].sudo().search(
             [
                 ("company_id", "=", device.company_id.id),
                 ("foreman_id", "in", foremen.ids),
+                ("active", "=", True),
             ]
         )
         locations = self._locations_for_divisions(device.company_id, divisions)
@@ -115,18 +117,21 @@ class ApiPullMasterService(models.AbstractModel):
             [
                 ("company_id", "=", device.company_id.id),
                 ("clerk_id", "=", device.employee_id.id),
+                ("active", "=", True),
             ]
         )
         foremen = self.env["wt.foreman"].sudo().search(
             [
                 ("company_id", "=", device.company_id.id),
                 ("division_id", "in", divisions.ids),
+                ("active", "=", True),
             ]
         )
         tappers = self.env["wt.tapper"].sudo().search(
             [
                 ("company_id", "=", device.company_id.id),
                 ("division_id", "in", divisions.ids),
+                ("active", "=", True),
             ]
         )
         locations = self._locations_for_divisions(device.company_id, divisions)
@@ -143,19 +148,22 @@ class ApiPullMasterService(models.AbstractModel):
             [
                 ("company_id", "=", device.company_id.id),
                 ("operator_id", "=", device.employee_id.id),
+                ("active", "=", True),
             ]
         )
-        divisions = locations.mapped("allowed_division_ids")
+        divisions = self._active_records(locations.mapped("allowed_division_ids"))
         foremen = self.env["wt.foreman"].sudo().search(
             [
                 ("company_id", "=", device.company_id.id),
                 ("division_id", "in", divisions.ids),
+                ("active", "=", True),
             ]
         )
         tappers = self.env["wt.tapper"].sudo().search(
             [
                 ("company_id", "=", device.company_id.id),
                 ("division_id", "in", divisions.ids),
+                ("active", "=", True),
             ]
         )
         return self._build_scope(
@@ -173,11 +181,18 @@ class ApiPullMasterService(models.AbstractModel):
             [
                 ("company_id", "=", company.id),
                 ("allowed_division_ids", "in", divisions.ids),
+                ("active", "=", True),
             ]
         )
 
     def _build_scope(self, device, divisions, foremen, tappers, locations):
-        estates = divisions.mapped("estate_id") | locations.mapped("estate_id")
+        divisions = self._active_records(divisions)
+        foremen = self._active_records(foremen)
+        tappers = self._active_records(tappers)
+        locations = self._active_records(locations)
+        estates = self._active_records(
+            divisions.mapped("estate_id") | locations.mapped("estate_id")
+        )
         clerks = divisions.mapped("clerk_id")
         operators = locations.mapped("operator_id")
         receipt_rules = self.env["wt.receipt.rule"].sudo().search(
@@ -185,16 +200,22 @@ class ApiPullMasterService(models.AbstractModel):
                 ("company_id", "=", device.company_id.id),
                 ("weighing_location_id", "in", locations.ids),
                 ("division_id", "in", divisions.ids),
+                ("active", "=", True),
             ]
         )
         if device.role == Role.OPERATOR:
             operators |= device.employee_id
-        products = receipt_rules.mapped("product_id")
-        uoms = products.mapped("uom_id")
+        products = self._active_records(receipt_rules.mapped("product_id"))
         product_type_by_product_id = self._product_type_by_product_id(
             device.company_id,
             products,
         )
+        receipt_rules = receipt_rules.filtered(
+            lambda rule: rule.product_id in products
+            and rule.product_id.id in product_type_by_product_id
+        )
+        products = self._active_records(receipt_rules.mapped("product_id"))
+        uoms = products.mapped("uom_id")
         product_type_codes = {
             product_type
             for product_type in product_type_by_product_id.values()
@@ -349,7 +370,9 @@ class ApiPullMasterService(models.AbstractModel):
             "company_id": location.company_id.id,
             "estate_id": location.estate_id.id,
             "operator_employee_id": location.operator_id.id or False,
-            "allowed_division_ids": location.allowed_division_ids.ids,
+            "allowed_division_ids": self._active_records(
+                location.allowed_division_ids
+            ).ids,
         }
 
     def _receipt_rule_payload(self, rule):
@@ -381,6 +404,7 @@ class ApiPullMasterService(models.AbstractModel):
             [
                 ("company_id", "=", company.id),
                 ("product_id", "in", products.ids),
+                ("active", "=", True),
             ]
         )
         for product_config in product_configs:
@@ -397,8 +421,14 @@ class ApiPullMasterService(models.AbstractModel):
                 ("company_id", "=", company.id),
                 ("division_id", "in", divisions.ids),
                 ("product_type", "in", list(product_type_codes)),
+                ("active", "=", True),
             ]
         )
+
+    def _active_records(self, records):
+        if not records or "active" not in records._fields:
+            return records
+        return records.filtered(lambda record: record.active)
 
     def _uom_payload(self, uom):
         return {

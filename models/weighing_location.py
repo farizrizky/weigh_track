@@ -10,6 +10,7 @@ class WeighingLocation(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "estate_id, code, name"
 
+    active = fields.Boolean(default=True, tracking=True)
     code = fields.Char(string="Code", required=True, index=True, tracking=True)
     name = fields.Char(string="Name", required=True, tracking=True)
     estate_id = fields.Many2one(
@@ -49,13 +50,20 @@ class WeighingLocation(models.Model):
         domain="[('estate_id', '=', estate_id)]",
         tracking=True,
     )
-    _sql_constraints = [
-        (
-            "code_estate_uniq",
-            "unique(code, estate_id)",
-            "Weighing location code must be unique per estate.",
-        ),
-    ]
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_weighing_location
+            DROP CONSTRAINT IF EXISTS wt_weighing_location_code_estate_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_weighing_location_code_estate_active_uniq
+            ON wt_weighing_location (code, estate_id)
+            WHERE active
+            """
+        )
 
     @api.constrains("code", "estate_id")
     def _check_unique_code_estate(self):
@@ -65,9 +73,10 @@ class WeighingLocation(models.Model):
                     ("id", "!=", location.id),
                     ("code", "=", location.code),
                     ("estate_id", "=", location.estate_id.id),
+                    ("active", "=", True),
                 ]
             )
-            if duplicate:
+            if location.active and duplicate:
                 raise ValidationError(
                     _("Weighing location code must be unique per estate.")
                 )

@@ -9,6 +9,7 @@ class Weather(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "name"
 
+    active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
         string="Name",
         required=True,

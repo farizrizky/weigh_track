@@ -8,6 +8,7 @@ class Estate(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "code, name"
 
+    active = fields.Boolean(default=True, tracking=True)
     code = fields.Char(string="Code", required=True, index=True, tracking=True)
     name = fields.Char(string="Name", required=True, tracking=True)
     company_id = fields.Many2one(
@@ -18,13 +19,20 @@ class Estate(models.Model):
         index=True,
         tracking=True,
     )
-    _sql_constraints = [
-        (
-            "code_company_uniq",
-            "unique(code, company_id)",
-            "Estate code must be unique per company.",
-        ),
-    ]
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_estate
+            DROP CONSTRAINT IF EXISTS wt_estate_code_company_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_estate_code_company_active_uniq
+            ON wt_estate (code, company_id)
+            WHERE active
+            """
+        )
 
     @api.constrains("code", "company_id")
     def _check_unique_code_company(self):
@@ -34,7 +42,8 @@ class Estate(models.Model):
                     ("id", "!=", estate.id),
                     ("code", "=", estate.code),
                     ("company_id", "=", estate.company_id.id),
+                    ("active", "=", True),
                 ]
             )
-            if duplicate:
+            if estate.active and duplicate:
                 raise ValidationError(_("Estate code must be unique per company."))

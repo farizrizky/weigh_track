@@ -10,6 +10,7 @@ class Foreman(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "division_id, employee_id"
 
+    active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
         string="Name",
         related="employee_id.name",
@@ -51,22 +52,32 @@ class Foreman(models.Model):
         compute="_compute_allowed_foreman_employee_ids",
         string="Allowed Foreman Employees",
     )
-    _sql_constraints = [
-        (
-            "employee_division_uniq",
-            "unique(employee_id, division_id)",
-            "Foreman employee must be unique per division.",
-        ),
-    ]
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_foreman
+            DROP CONSTRAINT IF EXISTS wt_foreman_employee_division_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_foreman_employee_division_active_uniq
+            ON wt_foreman (employee_id, division_id)
+            WHERE active
+            """
+        )
 
-    @api.constrains("employee_id", "division_id")
+    @api.constrains("employee_id", "division_id", "active")
     def _check_unique_employee_division(self):
         for foreman in self:
+            if not (foreman.active and foreman.employee_id and foreman.division_id):
+                continue
             duplicate = self.search_count(
                 [
                     ("id", "!=", foreman.id),
                     ("employee_id", "=", foreman.employee_id.id),
                     ("division_id", "=", foreman.division_id.id),
+                    ("active", "=", True),
                 ]
             )
             if duplicate:

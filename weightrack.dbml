@@ -56,10 +56,10 @@ Enum wt_inbound_state {
   validated
 }
 
-Enum wt_data_gap_code {
+Enum wt_data_problem_code {
   none
-  master_sync_expired
   company_mismatch
+  estate_mismatch
   operator_mismatch
   weighing_location_mismatch
   division_not_allowed
@@ -68,8 +68,13 @@ Enum wt_data_gap_code {
   clerk_mismatch
   foreman_mismatch
   tapper_mismatch
+  weight_formula_mismatch
+  initial_weighing_date_mismatch
+  initial_weight_mismatch
+  shrinkage_tolerance_mismatch
+  inactive_master
   missing_master
-  multiple_gap
+  multiple_problem
 }
 
 Table res_users {
@@ -153,6 +158,7 @@ Table wt_estate {
   code varchar [not null, note: "Indexed in Odoo"]
   name varchar [not null]
   company_id integer [not null]
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -161,16 +167,18 @@ Table wt_estate {
   indexes {
     code
     company_id
-    (code, company_id) [unique, name: "code_company_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (code, company_id) [unique, name: "wt_estate_code_company_active_uniq"]
   }
 
-  Note: "Odoo model: wt.estate. Order: code, name."
+  Note: "Odoo model: wt.estate. Order: code, name. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_weather {
   id integer [pk, increment]
   name varchar [not null, note: "Indexed in Odoo"]
   description text
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -180,7 +188,7 @@ Table wt_weather {
     name
   }
 
-  Note: "Odoo model: wt.weather. Simple weather master with name and description."
+  Note: "Odoo model: wt.weather. Simple weather master with name and description. Archive supported through active."
 }
 
 Table wt_weather_data {
@@ -212,6 +220,7 @@ Table wt_employee_role {
   company_id integer [not null]
   role wt_employee_role [not null]
   job_id integer [note: "Required by Python constraint"]
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -221,10 +230,11 @@ Table wt_employee_role {
     company_id
     role
     job_id
-    (company_id, role, job_id) [unique, name: "company_role_job_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (company_id, role, job_id) [unique, name: "wt_employee_role_company_role_job_active_uniq"]
   }
 
-  Note: "Odoo model: wt.employee.role. Role source for Operator, Clerk, Foreman, and Tapper employee validation."
+  Note: "Odoo model: wt.employee.role. Role source for Operator, Clerk, Foreman, and Tapper employee validation. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_product {
@@ -233,6 +243,7 @@ Table wt_product {
   company_id integer [not null]
   product_type wt_product_type [not null]
   product_id integer [not null]
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -242,10 +253,11 @@ Table wt_product {
     company_id
     product_type
     product_id
-    (company_id, product_type) [unique, name: "company_product_type_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (company_id, product_type) [unique, name: "wt_product_company_product_type_active_uniq"]
   }
 
-  Note: "Odoo model: wt.product. Company-level mapping from weighing product type to Odoo product.product. Product must belong to the same company or be global."
+  Note: "Odoo model: wt.product. Company-level mapping from weighing product type to Odoo product.product. Product must belong to the same company or be global. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_shrinkage_tolerance {
@@ -255,6 +267,7 @@ Table wt_shrinkage_tolerance {
   product_type wt_product_type [not null]
   division_id integer [not null]
   shrinkage_tolerance_percentage decimal [not null]
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -264,10 +277,11 @@ Table wt_shrinkage_tolerance {
     company_id
     product_type
     division_id
-    (company_id, product_type, division_id) [unique, name: "company_product_type_division_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (company_id, product_type, division_id) [unique, name: "wt_shrinkage_tolerance_scope_active_uniq"]
   }
 
-  Note: "Odoo model: wt.shrinkage.tolerance. Defines maximum production shrinkage tolerance per company, product type, and division when production date differs from warehouse weighing date. Form starts from company_id; computed name is hidden."
+  Note: "Odoo model: wt.shrinkage.tolerance. Defines maximum production shrinkage tolerance per company, product type, and division when production date differs from warehouse weighing date. Form starts from company_id; computed name is hidden. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_receipt_rule {
@@ -280,6 +294,7 @@ Table wt_receipt_rule {
   warehouse_id integer [not null]
   location_id integer [not null]
   operation_type_id integer [not null]
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -293,10 +308,11 @@ Table wt_receipt_rule {
     warehouse_id
     location_id
     operation_type_id
-    (weighing_location_id, division_id, product_id) [unique, name: "receipt_rule_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (weighing_location_id, division_id, product_id) [unique, name: "wt_receipt_rule_scope_active_uniq"]
   }
 
-  Note: "Odoo model: wt.receipt.rule. Defines which product can be weighed by which division at a weighing location and the stock warehouse/location/operation type destination."
+  Note: "Odoo model: wt.receipt.rule. Defines which product can be weighed by which division at a weighing location and the stock warehouse/location/operation type destination. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_inbound_weighing {
@@ -372,7 +388,7 @@ Table wt_inbound_weighing_product {
 
 Table wt_weighing_lump {
   id integer [pk, increment]
-  name varchar [note: "Number format: WH/PRODUCT_TYPE/YYYYMMDD/NNN"]
+  name varchar [note: "Stored number from ir.sequence wt.weighing.cup.lump; default format WH/CUP_LUMP/YYYYMMDD/NNN"]
   inbound_product_id integer [not null]
   inbound_weighing_id integer
   local_id varchar [not null]
@@ -387,9 +403,10 @@ Table wt_weighing_lump {
   received_at timestamp
   batch_local_id varchar
   state wt_inbound_state [not null, default: "draft"]
-  has_data_gap boolean
-  data_gap_code wt_data_gap_code
-  data_gap_note text
+  has_data_problem boolean
+  data_problem_code wt_data_problem_code
+  data_problem_note_en text [note: "Stored English audit/debug note"]
+  data_problem_note_idn text [note: "Stored Indonesian note. Non-stored ORM field data_problem_note displays this for id_ID users."]
   device_snapshot_json text
   odoo_snapshot_json text
   estate_id integer
@@ -448,8 +465,8 @@ Table wt_weighing_lump {
     production_date
     weighing_date
     state
-    has_data_gap
-    data_gap_code
+    has_data_problem
+    data_problem_code
     estate_id
     weighing_location_id
     division_id
@@ -532,6 +549,7 @@ Table wt_division {
   estate_id integer [not null]
   company_id integer [note: "Stored related field from estate_id.company_id"]
   clerk_id integer
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -542,10 +560,11 @@ Table wt_division {
     estate_id
     company_id
     clerk_id
-    (code, estate_id) [unique, name: "code_estate_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (code, estate_id) [unique, name: "wt_division_code_estate_active_uniq"]
   }
 
-  Note: "Odoo model: wt.division. Clerk must be allowed by wt_employee_role role clerk."
+  Note: "Odoo model: wt.division. Clerk must be allowed by wt_employee_role role clerk. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_weighing_location {
@@ -555,6 +574,7 @@ Table wt_weighing_location {
   estate_id integer [not null]
   company_id integer [note: "Stored related field from estate_id.company_id"]
   operator_id integer
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -565,10 +585,11 @@ Table wt_weighing_location {
     estate_id
     company_id
     operator_id
-    (code, estate_id) [unique, name: "code_estate_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (code, estate_id) [unique, name: "wt_weighing_location_code_estate_active_uniq"]
   }
 
-  Note: "Odoo model: wt.weighing.location. Operator must be allowed by wt_employee_role role operator."
+  Note: "Odoo model: wt.weighing.location. Operator must be allowed by wt_employee_role role operator. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_weighing_location_division_rel {
@@ -589,6 +610,7 @@ Table wt_foreman {
   employee_id integer [not null]
   division_id integer [not null]
   company_id integer [note: "Stored related field from division_id.company_id"]
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
@@ -598,10 +620,11 @@ Table wt_foreman {
     employee_id
     division_id
     company_id
-    (employee_id, division_id) [unique, name: "employee_division_uniq"]
+    // Partial unique index in PostgreSQL: WHERE active
+    (employee_id, division_id) [unique, name: "wt_foreman_employee_division_active_uniq"]
   }
 
-  Note: "Odoo model: wt.foreman. Employee must be allowed by wt_employee_role role foreman."
+  Note: "Odoo model: wt.foreman. Employee must be allowed by wt_employee_role role foreman. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_tapper {
@@ -611,19 +634,22 @@ Table wt_tapper {
   division_id integer [not null]
   foreman_id integer
   company_id integer [note: "Stored related field from division_id.company_id"]
+  active boolean [not null, default: true]
   create_uid integer
   create_date timestamp
   write_uid integer
   write_date timestamp
 
   indexes {
-    employee_id [unique, name: "employee_uniq"]
+    employee_id
     division_id
     foreman_id
     company_id
+    // Partial unique index in PostgreSQL: WHERE active
+    employee_id [unique, name: "wt_tapper_employee_active_uniq"]
   }
 
-  Note: "Odoo model: wt.tapper. Employee must be allowed by role tapper, and foreman must belong to the same division."
+  Note: "Odoo model: wt.tapper. Employee must be allowed by role tapper, and foreman must belong to the same division. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_device {

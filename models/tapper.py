@@ -10,6 +10,7 @@ class Tapper(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "division_id, foreman_id, employee_id"
 
+    active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
         string="Name",
         related="employee_id.name",
@@ -55,21 +56,31 @@ class Tapper(models.Model):
         string="Allowed Tapper Employees",
     )
 
-    _sql_constraints = [
-        (
-            "employee_uniq",
-            "unique(employee_id)",
-            "Tapper employee must be unique.",
-        ),
-    ]
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_tapper
+            DROP CONSTRAINT IF EXISTS wt_tapper_employee_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_tapper_employee_active_uniq
+            ON wt_tapper (employee_id)
+            WHERE active
+            """
+        )
 
-    @api.constrains("employee_id")
+    @api.constrains("employee_id", "active")
     def _check_unique_employee(self):
         for tapper in self:
+            if not (tapper.active and tapper.employee_id):
+                continue
             duplicate = self.search_count(
                 [
                     ("id", "!=", tapper.id),
                     ("employee_id", "=", tapper.employee_id.id),
+                    ("active", "=", True),
                 ]
             )
             if duplicate:

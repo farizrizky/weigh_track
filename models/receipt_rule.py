@@ -10,6 +10,7 @@ class ReceiptRule(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "weighing_location_id, division_id, product_id"
 
+    active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
         compute="_compute_name",
         store=True,
@@ -83,13 +84,20 @@ class ReceiptRule(models.Model):
         tracking=True,
     )
 
-    _sql_constraints = [
-        (
-            "receipt_rule_uniq",
-            "unique(weighing_location_id, division_id, product_id)",
-            "Receipt Rule must be unique per company, weighing location, division, and product.",
-        ),
-    ]
+    def init(self):
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_receipt_rule
+            DROP CONSTRAINT IF EXISTS wt_receipt_rule_receipt_rule_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_receipt_rule_scope_active_uniq
+            ON wt_receipt_rule (weighing_location_id, division_id, product_id)
+            WHERE active
+            """
+        )
 
     @api.depends("weighing_location_id", "division_id", "product_id")
     def _compute_name(self):
@@ -113,7 +121,7 @@ class ReceiptRule(models.Model):
                 mapping.allowed_product_ids = self.env["product.product"].browse()
                 continue
             mapping.allowed_product_ids = product_config.search(
-                [("company_id", "=", mapping.company_id.id)]
+                [("company_id", "=", mapping.company_id.id), ("active", "=", True)]
             ).mapped("product_id")
 
     @api.onchange("weighing_location_id")
@@ -137,11 +145,13 @@ class ReceiptRule(models.Model):
         "weighing_location_id",
         "division_id",
         "product_id",
+        "active",
     )
     def _check_unique_company_location_division_product(self):
         for mapping in self:
             if not (
-                mapping.company_id
+                mapping.active
+                and mapping.company_id
                 and mapping.weighing_location_id
                 and mapping.division_id
                 and mapping.product_id
@@ -155,6 +165,7 @@ class ReceiptRule(models.Model):
                     ("weighing_location_id", "=", mapping.weighing_location_id.id),
                     ("division_id", "=", mapping.division_id.id),
                     ("product_id", "=", mapping.product_id.id),
+                    ("active", "=", True),
                 ],
                 limit=1,
             )
@@ -217,6 +228,7 @@ class ReceiptRule(models.Model):
                     [
                         ("company_id", "=", mapping.company_id.id),
                         ("product_id", "=", mapping.product_id.id),
+                        ("active", "=", True),
                     ]
                 )
             if not product_configured:

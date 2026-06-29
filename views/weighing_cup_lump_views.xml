@@ -100,8 +100,7 @@
                         <group string="Data Problem">
                             <field name="has_data_problem" readonly="1"/>
                             <field name="data_problem_code" readonly="1"/>
-                            <field name="data_problem_note" invisible="1"/>
-                            <field name="data_problem_note_display" readonly="1"/>
+                            <field name="data_problem_note" readonly="1"/>
                         </group>
                     </group>
                     <notebook>
@@ -109,21 +108,21 @@
                             <group>
                                 <group string="Operator">
                                     <field name="operator_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
-                                    <field name="operator_barcode" readonly="state == 'validated'"/>
+                                    <field name="operator_barcode" readonly="1"/>
                                 </group>
                                 <group string="Clerk">
                                     <field name="clerk_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
-                                    <field name="clerk_barcode" readonly="state == 'validated'"/>
+                                    <field name="clerk_barcode" readonly="1"/>
                                 </group>
                             </group>
                             <group>
                                 <group string="Foreman">
                                     <field name="foreman_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
-                                    <field name="foreman_barcode" readonly="state == 'validated'"/>
+                                    <field name="foreman_barcode" readonly="1"/>
                                 </group>
                                 <group string="Tapper">
                                     <field name="tapper_employee_id" readonly="state == 'validated'" required="1" domain="[('company_id', '=', company_id)]"/>
-                                    <field name="tapper_barcode" readonly="state == 'validated'"/>
+                                    <field name="tapper_barcode" readonly="1"/>
                                 </group>
                             </group>
                         </page>
@@ -140,7 +139,7 @@
                                     <field name="shrinkage_tolerance_percentage" readonly="state == 'validated'"/>
                                     <field name="shrinkage_tolerance_weight" readonly="state == 'validated'"/>
                                     <field name="is_manual_weighing" readonly="state == 'validated'"/>
-                                    <field name="manual_weighing_reason" readonly="state == 'validated'"/>
+                                    <field name="manual_weighing_reason" readonly="state == 'validated'" required="is_manual_weighing"/>
                                     <field name="note" readonly="state == 'validated'"/>
                                 </group>
                             </group>
