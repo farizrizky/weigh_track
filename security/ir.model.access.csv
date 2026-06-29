@@ -23,3 +23,6 @@ access_uom_uom_weightrack_admin,access.uom.uom.weightrack.admin,uom.model_uom_uo
 access_stock_location_weightrack_admin,access.stock.location.weightrack.admin,stock.model_stock_location,group_admin,1,0,0,0
 access_stock_picking_type_weightrack_admin,access.stock.picking.type.weightrack.admin,stock.model_stock_picking_type,group_admin,1,0,0,0
 access_stock_warehouse_weightrack_admin,access.stock.warehouse.weightrack.admin,stock.model_stock_warehouse,group_admin,1,0,0,0
+access_wt_stock_opname_admin,access.wt.stock_opname.admin,model_wt_stock_opname,group_admin,1,1,1,1
+access_wt_stock_opname_line_admin,access.wt.stock_opname.line.admin,model_wt_stock_opname_line,group_admin,1,1,1,1
+
