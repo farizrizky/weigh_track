@@ -49,6 +49,7 @@ class ApiStockOpnameService(models.AbstractModel):
                     "product_name": line.product_id.display_name,
                     "lot_id": line.lot_id.id,
                     "lot_name": line.lot_id.name,
+                    "lot_production_date": str(line.lot_id.production_date) if line.lot_id.production_date else None,
                     "uom_id": line.uom_id.id,
                     "uom_name": line.uom_id.name,
                     "theoretical_qty": line.theoretical_qty,
