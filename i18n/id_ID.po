@@ -73,6 +73,8 @@ msgstr "Aktif"
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -172,6 +174,8 @@ msgstr "Nama Cuaca"
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__division_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__division_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__division_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_division_form
 msgid "Division"
 msgstr "Divisi"
@@ -491,8 +495,19 @@ msgstr "Aturan Penerimaan"
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Scope"
 msgstr "Lingkup"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+msgid "Summary"
+msgstr "Ringkasan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+msgid "Validation"
+msgstr "Validasi"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
@@ -579,8 +594,11 @@ msgstr "Produk yang Diizinkan"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_foreman_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_foreman__employee_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__foreman_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__foreman_employee_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__foreman_employee_id
 #: code:addons/weightrack/constants/roles.py:0
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Foreman"
 msgstr "Mandor"
 
@@ -675,6 +693,7 @@ msgstr "Penugasan"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__status
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__state
 msgid "Status"
 msgstr "Status"
 
@@ -736,6 +755,7 @@ msgstr "Konfirmasi"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Cancel"
 msgstr "Batal"
 
@@ -1214,18 +1234,24 @@ msgstr "Service API Push Inbound Penimbangan"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__state__draft
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__draft
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_search
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_search
 msgid "Draft"
 msgstr "Draft"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_cup_lump__state__validated
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__validated
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_search
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_search
 msgid "Validated"
 msgstr "Tervalidasi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__production_date
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__production_date
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__production_date
 msgid "Production Date"
 msgstr "Tanggal Produksi"
 
@@ -1236,6 +1262,7 @@ msgid "Has Data Problem"
 msgstr "Ada Masalah Data"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__data_problem_count
 msgid "Data Problem Count"
 msgstr "Jumlah Masalah Data"
 
@@ -1281,6 +1308,7 @@ msgstr "Manual"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_cup_lump_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Validate"
 msgstr "Validasi"
 
@@ -1365,11 +1393,14 @@ msgstr "Stok Inbound"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__name
 msgid "Number"
 msgstr "Nomor"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__total_bag
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__total_bag
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__total_bag
 msgid "Total Bag"
 msgstr "Total Karung"
 
@@ -1897,10 +1928,19 @@ msgid "Production Receipt sequence is not configured."
 msgstr "Sequence Penerimaan Produksi belum dikonfigurasi."
 
 #. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_production_receipt
+#: model:ir.model.fields,field_description:weightrack.field_stock_picking__production_receipt_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_cup_lump__production_receipt_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__receipt_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_list
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model:ir.actions.act_window,name:weightrack.action_wt_production_receipt
+#: model:ir.ui.menu,name:weightrack.menu_wt_production_receipt
 msgid "Production Receipt"
 msgstr "Penerimaan Produksi"
 
 #. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_production_receipt_line
 msgid "Production Receipt Line"
 msgstr "Baris Penerimaan Produksi"
 
@@ -1925,8 +1965,15 @@ msgid "Receipt Cancelled"
 msgstr "Penerimaan Dibatalkan"
 
 #. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__processed
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_search
 msgid "Processed"
 msgstr "Diproses"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__cancelled
+msgid "Cancelled"
+msgstr "Dibatalkan"
 
 #. module: weightrack
 msgid "Line Count"
@@ -1941,10 +1988,12 @@ msgid "Stock Quantity Field"
 msgstr "Field Kuantitas Stock"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__total_weighing
 msgid "Total Weighing"
 msgstr "Total Penimbangan"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__total_stock_weight
 msgid "Total Stock Weight"
 msgstr "Total Berat Stock"
 
@@ -1953,18 +2002,23 @@ msgid "Stock Weight"
 msgstr "Berat Stock"
 
 #. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Weighing Number"
 msgstr "Nomor Timbang"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__line_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Weighing"
 msgstr "Penimbangan"
 
 #. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Weight"
 msgstr "Berat"
 
 #. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Process"
 msgstr "Proses"
 
@@ -1987,6 +2041,38 @@ msgstr "Dibatalkan Oleh"
 #. module: weightrack
 msgid "Cancel Reason"
 msgstr "Alasan Pembatalan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__stock_picking_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+msgid "Inventory Receipts"
+msgstr "Penerimaan Inventory"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__reverse_picking_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+msgid "Inventory Reversals"
+msgstr "Reversal Inventory"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__stock_picking_count
+msgid "Inventory Receipt Count"
+msgstr "Jumlah Penerimaan Inventory"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__reverse_picking_count
+msgid "Inventory Reversal Count"
+msgstr "Jumlah Reversal Inventory"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_stock_picking__production_receipt_reverse_id
+msgid "Production Receipt Reversal"
+msgstr "Reversal Penerimaan Produksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_stock_picking__receive_from_employee_id
+msgid "Receive From"
+msgstr "Diterima Dari"
 
 #. module: weightrack
 msgid "Validated Production Receipt cannot be changed."
@@ -2031,6 +2117,74 @@ msgstr "Penerimaan Produksi tidak boleh memiliki baris ganda."
 #. module: weightrack
 msgid "Only validated Production Receipt can be cancelled."
 msgstr "Hanya Penerimaan Produksi tervalidasi yang dapat dibatalkan."
+
+#. module: weightrack
+msgid "Inventory Receipt already exists for this Production Receipt."
+msgstr "Penerimaan Inventory sudah ada untuk Penerimaan Produksi ini."
+
+#. module: weightrack
+msgid "Please configure Clerk on division '%s'."
+msgstr "Silakan konfigurasi Kerani pada divisi '%s'."
+
+#. module: weightrack
+msgid "Receipt Rule is missing on weighing '%s'."
+msgstr "Aturan Penerimaan belum terisi pada penimbangan '%s'."
+
+#. module: weightrack
+msgid "Product is missing on weighing '%s'."
+msgstr "Produk belum terisi pada penimbangan '%s'."
+
+#. module: weightrack
+msgid "Stock Weight must be greater than zero on weighing '%s'."
+msgstr "Berat Stock harus lebih dari nol pada penimbangan '%s'."
+
+#. module: weightrack
+msgid "Product '%s' must use lot tracking before Production Receipt can create inventory lot."
+msgstr "Produk '%s' harus menggunakan pelacakan lot sebelum Penerimaan Produksi dapat membuat lot inventory."
+
+#. module: weightrack
+msgid "All weighing lines in one Receipt Rule must use the same product."
+msgstr "Semua baris penimbangan dalam satu Aturan Penerimaan harus menggunakan produk yang sama."
+
+#. module: weightrack
+msgid "Inventory move could not be created for product '%s'."
+msgstr "Pergerakan inventory tidak dapat dibuat untuk produk '%s'."
+
+#. module: weightrack
+msgid "Inventory Receipt '%s' could not be validated automatically."
+msgstr "Penerimaan Inventory '%s' tidak dapat divalidasi otomatis."
+
+#. module: weightrack
+msgid "Source Location is not configured on Operation Type '%s'."
+msgstr "Lokasi Sumber belum dikonfigurasi pada Tipe Operasi '%s'."
+
+#. module: weightrack
+msgid "Inventory Reversal already exists for this Production Receipt."
+msgstr "Reversal Inventory sudah ada untuk Penerimaan Produksi ini."
+
+#. module: weightrack
+msgid "Production Receipt cannot be cancelled because lot '%(lot)s' only has %(available)s %(uom)s available at '%(location)s', while %(required)s %(uom)s is required for reversal."
+msgstr "Penerimaan Produksi tidak dapat dibatalkan karena lot '%(lot)s' hanya memiliki %(available)s %(uom)s tersedia di '%(location)s', sedangkan %(required)s %(uom)s dibutuhkan untuk reversal."
+
+#. module: weightrack
+msgid "Inventory Receipt '%s' has no lot move line to reverse."
+msgstr "Penerimaan Inventory '%s' tidak memiliki baris pergerakan lot untuk direversal."
+
+#. module: weightrack
+msgid "Cancel %(receipt)s / Return of %(picking)s"
+msgstr "Pembatalan %(receipt)s / Return dari %(picking)s"
+
+#. module: weightrack
+msgid "Inventory Reversal '%s' could not be validated automatically."
+msgstr "Reversal Inventory '%s' tidak dapat divalidasi otomatis."
+
+#. module: weightrack
+msgid "Inventory reversal move is missing for product '%s'."
+msgstr "Pergerakan reversal inventory tidak ditemukan untuk produk '%s'."
+
+#. module: weightrack
+msgid "Inventory Receipt from Production Receipt cannot be returned manually. Please cancel it from the Production Receipt document."
+msgstr "Penerimaan Inventory dari Penerimaan Produksi tidak dapat direturn manual. Silakan batalkan dari dokumen Penerimaan Produksi."
 
 #. module: weightrack
 msgid "Weighing Cup Lump already exists in an active Production Receipt."

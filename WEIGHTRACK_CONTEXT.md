@@ -124,6 +124,8 @@ Model database:
 - `wt.weighing.cup.lump`
 - `wt.production.receipt`
 - `wt.production.receipt.line`
+- `wt.stock.opname`
+- `wt.stock.opname.line`
 
 Transient model:
 
@@ -152,7 +154,8 @@ WeighTrack
 |   `-- Tappers
 |-- Operations
 |   |-- Weighing Cup Lump
-|   `-- Production Receipt
+|   |-- Production Receipt
+|   `-- Stock Opname
 |-- Device
 `-- Configuration
     |-- API
@@ -799,7 +802,7 @@ Idempotency push:
 
 ## Production Receipt
 
-Production Receipt adalah dokumen penerimaan produksi untuk menggabungkan data timbang Cup Lump sebelum tahap Inventory.
+Production Receipt adalah dokumen penerimaan produksi untuk menggabungkan data timbang Cup Lump dan menjadi pintu pembuatan Inventory Receipt resmi.
 
 Model aktif:
 
@@ -815,7 +818,7 @@ Konsep:
 - Data penimbangan tetap menyimpan hasil pengecekan `has_data_problem`, `data_problem_code`, dan `data_problem_note`.
 - Number Production Receipt dibuat sekali saat record dibuat melalui `ir.sequence` dengan code `wt.production.receipt`.
 - Format default sequence adalah `PR/CUP_LUMP/YYYYMMDD/NNN` dan tanggal pada nomor memakai `production_date`.
-- Tahap saat ini berhenti sampai validasi Production Receipt dan penguncian data timbang. Belum ada pembuatan stock picking atau stock move.
+- Saat Production Receipt divalidasi, sistem membuat dan memvalidasi Inventory Receipt dari Receipt Rule tiap data timbang.
 
 Flow process:
 
@@ -857,20 +860,24 @@ Flow validate Production Receipt:
 5. Sistem menghitung ulang total bag dan total stock weight.
 6. Production Receipt berubah menjadi `validated`.
 7. Data timbang pada line berubah menjadi `receipt_validated` dan terkunci dari perubahan/recheck problem.
-8. Belum ada stock picking, stock move, atau perubahan stock pada tahap ini.
+8. Sistem membuat Inventory Receipt per Receipt Rule, memakai operation type dan destination location dari Receipt Rule.
+9. Receive From diisi dari clerk pada Division. Jika employee clerk memiliki partner terkait, contact receipt juga diisi.
+10. Sistem membuat atau memakai ulang lot dengan format `cup_lump-kode_divisi-YYYYMMDD`.
+11. Inventory Receipt otomatis divalidasi sehingga stock masuk ke destination location.
 
 Flow cancel Production Receipt pada tahap saat ini:
 
-- Production Receipt yang sudah `validated` dapat dibatalkan dari dokumen receipt.
-- Karena tahap ini belum membuat stock picking, cancel hanya mengubah Production Receipt menjadi `cancelled`.
-- Data timbang pada line berubah menjadi `receipt_cancelled`, sehingga jejak receipt lama tetap ada tetapi data dapat diproses ulang oleh Production Receipt baru bila dibutuhkan.
-- Saat tahap stock sudah aktif nanti, cancel harus memakai reversal/return picking dan tidak boleh menghapus histori stock picking done.
+- Return manual dari Inventory ditolak untuk Inventory Receipt dan Inventory Reversal yang berasal dari Production Receipt.
+- Saat user klik `Cancel`, sistem cek lot pada Inventory Receipt original.
+- Cancel ditolak jika available stock lot di destination location original tidak mencukupi untuk quantity reversal.
+- Jika stock masih mencukupi, sistem membuat Inventory Reversal otomatis dengan lokasi terbalik, lot yang sama, dan quantity yang sama.
+- Setelah Inventory Reversal berhasil divalidasi, Production Receipt menjadi `cancelled` dan data timbang menjadi `receipt_cancelled`.
 
 Catatan desain:
 
 - Production Receipt adalah snapshot final produksi setelah validated.
 - Production Receipt line sebaiknya menyimpan snapshot nilai penting seperti weighing reference, total bag, stock weight, data problem code/note, product, UoM, receipt rule, dan field grouping stock.
-- Stock resmi belum dibuat pada tahap ini. Nanti stock resmi hanya boleh lahir setelah Production Receipt validated.
+- Stock resmi lahir saat Production Receipt validated melalui Inventory Receipt otomatis.
 - Perubahan master data setelah Production Receipt validated tidak boleh mengubah status problem atau total receipt lama.
 - Untuk audit, jangan lepas histori line lama saat receipt dibatalkan; gunakan status cancelled/reversed dan relasi reverse picking.
 
@@ -881,7 +888,7 @@ Tahap berikutnya untuk Inventory:
 - Satu receipt rule dapat membentuk satu stock picking Inventory Receipt.
 - Sistem akan mengisi done quantity berdasarkan total stock weight hasil group.
 - Sistem akan validate stock picking sehingga stock bertambah di Inventory.
-- Cancel setelah stock masuk wajib memakai reversal/return picking.
+- Cancel setelah stock masuk dilakukan dari Production Receipt dan membuat reversal otomatis selama stock lot masih mencukupi di lokasi receipt original.
 
 ## Localization Notes
 

@@ -64,6 +64,8 @@
                             <field name="data_problem_count" readonly="1"/>
                             <field name="total_bag" readonly="1"/>
                             <field name="total_stock_weight" readonly="1"/>
+                            <field name="stock_picking_count" readonly="1"/>
+                            <field name="reverse_picking_count" readonly="1"/>
                         </group>
                     </group>
                     <notebook>
@@ -77,6 +79,33 @@
                                     <field name="total_bag" sum="Total"/>
                                     <field name="stock_weight" string="Weight" sum="Total"/>
                                     <field name="has_data_problem"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Inventory Receipts">
+                            <field name="stock_picking_ids" readonly="1">
+                                <list string="Inventory Receipts" create="0" edit="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="picking_type_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="receive_from_employee_id"/>
+                                    <field name="location_dest_id"/>
+                                    <field name="origin"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Inventory Reversals">
+                            <field name="reverse_picking_ids" readonly="1">
+                                <list string="Inventory Reversals" create="0" edit="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="picking_type_id"/>
+                                    <field name="partner_id"/>
+                                    <field name="receive_from_employee_id"/>
+                                    <field name="location_id"/>
+                                    <field name="location_dest_id"/>
+                                    <field name="origin"/>
+                                    <field name="state"/>
                                 </list>
                             </field>
                         </page>

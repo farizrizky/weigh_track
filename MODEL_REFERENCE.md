@@ -927,7 +927,7 @@ wt.production.receipt.line
 
 Deskripsi:
 
-Production Receipt adalah dokumen penerimaan produksi untuk menggabungkan data timbang Cup Lump berdasarkan company, production date, dan division. Tahap saat ini berhenti sampai validasi dokumen dan penguncian data timbang; belum membuat `stock.picking` atau `stock.move`.
+Production Receipt adalah dokumen penerimaan produksi untuk menggabungkan data timbang Cup Lump berdasarkan company, production date, dan division. Saat validate, sistem membuat dan memvalidasi Inventory Receipt (`stock.picking`) berdasarkan Receipt Rule, membuat lot otomatis, lalu mengunci data timbang.
 
 Field header utama:
 
@@ -938,6 +938,10 @@ Field header utama:
 | `production_date` | `Date` | Tanggal produksi yang digabungkan. |
 | `division_id` | `Many2one(wt.division)` | Division produksi. |
 | `line_ids` | `One2many(wt.production.receipt.line)` | Detail weighing Cup Lump yang masuk receipt. |
+| `stock_picking_ids` | `One2many(stock.picking)` | Inventory Receipt yang dibuat dari validate Production Receipt. |
+| `reverse_picking_ids` | `One2many(stock.picking)` | Inventory Reversal yang dibuat dari cancel Production Receipt. |
+| `stock_picking_count` | `Integer computed` | Jumlah Inventory Receipt terkait. |
+| `reverse_picking_count` | `Integer computed` | Jumlah Inventory Reversal terkait. |
 | `total_weighing` | `Integer` computed stored | Jumlah data timbang pada receipt. |
 | `data_problem_count` | `Integer` computed stored | Jumlah line bermasalah. |
 | `total_bag` | `Integer` computed stored | Total `total_bag` dari line. |
@@ -967,9 +971,15 @@ Flow:
 - Line dapat dilepas selama Production Receipt belum validated; data timbang kembali menjadi `receipt_status = not_receipted` dan `production_receipt_id` dikosongkan.
 - Tombol `Validate` menjalankan validasi wajib dan `Recheck Data Problem` untuk semua line.
 - Validate ditolak jika line kosong, ada line tidak sesuai header, ada duplicate, atau masih ada `has_data_problem = True`.
+- Saat validate, line digroup berdasarkan Receipt Rule. Setiap group membuat satu Inventory Receipt dengan operation type dan destination location dari Receipt Rule.
+- Inventory Receipt memakai clerk pada Division sebagai `receive_from_employee_id`; jika employee punya partner terkait, field contact receipt juga diisi.
+- Lot dibuat atau dipakai ulang dengan format `cup_lump-kode_divisi-YYYYMMDD`, misalnya `cup_lump-DIV01-20260629`.
 - Saat berhasil validate, Production Receipt menjadi `validated` dan semua data timbang line menjadi `receipt_status = receipt_validated`.
 - Setelah `receipt_validated`, data timbang terkunci dari edit normal dan action `Recheck Data Problem` ditolak.
-- Tombol `Cancel` pada tahap ini mengubah Production Receipt menjadi `cancelled` dan data timbang menjadi `receipt_cancelled`; belum ada reversal stock karena stock picking belum dibuat.
+- Return manual dari Inventory ditolak untuk Inventory Receipt dan Inventory Reversal yang berasal dari Production Receipt.
+- Tombol `Cancel` membuat Inventory Reversal otomatis dengan lokasi terbalik, lot yang sama, dan quantity yang sama.
+- Cancel ditolak jika stock lot di destination location original tidak mencukupi untuk dibalik.
+- Setelah reversal berhasil, Production Receipt menjadi `cancelled` dan data timbang menjadi `receipt_cancelled`.
 
 Kode data problem:
 

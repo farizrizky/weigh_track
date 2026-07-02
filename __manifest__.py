@@ -17,6 +17,7 @@
         "views/product_views.xml",
         "views/shrinkage_tolerance_views.xml",
         "views/stock_warehouse_views.xml",
+        "views/stock_picking_views.xml",
         "views/receipt_rule_views.xml",
         "views/weighing_cup_lump_views.xml",
         "views/production_receipt_views.xml",

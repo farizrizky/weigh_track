@@ -9,7 +9,7 @@
 
 Project WeighTrack {
   database_type: "PostgreSQL"
-  Note: "Generated from Odoo custom module models. Current API scope includes device activation, pull master, push weighing Cup Lump, and Production Receipt validation. Inventory stock picking from Production Receipt is not active yet."
+  Note: "Generated from Odoo custom module models. Current API scope includes device activation, pull master, push weighing Cup Lump, Production Receipt validation, and Inventory Receipt creation from validated Production Receipt."
 }
 
 Enum wt_employee_role {
@@ -537,7 +537,7 @@ Table wt_production_receipt {
     state
   }
 
-  Note: "Odoo model: wt.production.receipt. Aggregates Cup Lump weighing lines per company, production date, and division. Validation locks weighing data but does not create stock picking yet."
+  Note: "Odoo model: wt.production.receipt. Aggregates Cup Lump weighing lines per company, production date, and division. Validation creates Inventory Receipt; cancel creates Inventory Reversal only when the lot stock is still available at the original receipt destination location."
 }
 
 Table wt_production_receipt_line {

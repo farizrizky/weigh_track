@@ -55,6 +55,28 @@ class ProductionReceipt(models.Model):
         string="Weighing",
         copy=False,
     )
+    stock_picking_ids = fields.One2many(
+        "stock.picking",
+        "production_receipt_id",
+        string="Inventory Receipts",
+        readonly=True,
+        copy=False,
+    )
+    reverse_picking_ids = fields.One2many(
+        "stock.picking",
+        "production_receipt_reverse_id",
+        string="Inventory Reversals",
+        readonly=True,
+        copy=False,
+    )
+    stock_picking_count = fields.Integer(
+        string="Inventory Receipt Count",
+        compute="_compute_stock_picking_count",
+    )
+    reverse_picking_count = fields.Integer(
+        string="Inventory Reversal Count",
+        compute="_compute_stock_picking_count",
+    )
     total_weighing = fields.Integer(
         string="Total Weighing",
         compute="_compute_totals",
@@ -151,6 +173,11 @@ class ProductionReceipt(models.Model):
             receipt.total_stock_weight = sum(receipt.line_ids.mapped("stock_weight"))
             problem_lines = receipt.line_ids.filtered("has_data_problem")
             receipt.data_problem_count = len(problem_lines)
+
+    def _compute_stock_picking_count(self):
+        for receipt in self:
+            receipt.stock_picking_count = len(receipt.stock_picking_ids)
+            receipt.reverse_picking_count = len(receipt.reverse_picking_ids)
 
     def write(self, vals):
         locked = self.filtered(lambda receipt: receipt.state == "validated")
@@ -289,6 +316,7 @@ class ProductionReceipt(models.Model):
                 _("Production Receipt still has weighing lines with data problem.")
             )
         self._check_duplicate_lines()
+        self._create_inventory_receipts()
 
         now = fields.Datetime.now()
         self.with_context(allow_production_receipt_update=True).write(
@@ -323,6 +351,229 @@ class ProductionReceipt(models.Model):
         if len(weighing_ids) != len(set(weighing_ids)):
             raise ValidationError(_("Production Receipt cannot have duplicate lines."))
 
+    def _create_inventory_receipts(self):
+        self.ensure_one()
+        active_pickings = self.stock_picking_ids.filtered(
+            lambda picking: picking.state != "cancel"
+        )
+        if active_pickings:
+            raise ValidationError(
+                _("Inventory Receipt already exists for this Production Receipt.")
+            )
+
+        clerk = self.division_id.clerk_id
+        if not clerk:
+            raise ValidationError(
+                _("Please configure Clerk on division '%s'.")
+                % self.division_id.display_name
+            )
+
+        line_groups = self._get_inventory_receipt_line_groups()
+        pickings = self.env["stock.picking"]
+        for receipt_rule, lines in line_groups:
+            pickings |= self._create_inventory_receipt_for_rule(
+                receipt_rule,
+                lines,
+                clerk,
+            )
+        return pickings
+
+    def _get_inventory_receipt_line_groups(self):
+        self.ensure_one()
+        grouped_lines = {}
+        for line in self.line_ids:
+            if not line.receipt_rule_id:
+                raise ValidationError(
+                    _("Receipt Rule is missing on weighing '%s'.")
+                    % line.weighing_cup_lump_id.display_name
+                )
+            if not line.product_id:
+                raise ValidationError(
+                    _("Product is missing on weighing '%s'.")
+                    % line.weighing_cup_lump_id.display_name
+                )
+            if line.stock_weight <= 0:
+                raise ValidationError(
+                    _("Stock Weight must be greater than zero on weighing '%s'.")
+                    % line.weighing_cup_lump_id.display_name
+                )
+            receipt_rule_id = line.receipt_rule_id.id
+            if receipt_rule_id not in grouped_lines:
+                grouped_lines[receipt_rule_id] = {
+                    "receipt_rule": line.receipt_rule_id,
+                    "lines": self.env[line._name],
+                }
+            grouped_lines[receipt_rule_id]["lines"] |= line
+        return [
+            (values["receipt_rule"], values["lines"])
+            for values in grouped_lines.values()
+        ]
+
+    def _create_inventory_receipt_for_rule(self, receipt_rule, lines, clerk):
+        self.ensure_one()
+        product = receipt_rule.product_id
+        if product.tracking != "lot":
+            raise ValidationError(
+                _("Product '%s' must use lot tracking before Production Receipt can create inventory lot.")
+                % product.display_name
+            )
+        if any(line.product_id != product for line in lines):
+            raise ValidationError(
+                _("All weighing lines in one Receipt Rule must use the same product.")
+            )
+
+        picking_type = receipt_rule.operation_type_id
+        destination_location = receipt_rule.location_id
+        source_location = self._get_receipt_source_location(picking_type)
+        total_quantity = sum(lines.mapped("stock_weight"))
+        lot = self._get_or_create_inventory_lot(product)
+        partner = self._get_employee_partner(clerk)
+
+        picking_model = self.env["stock.picking"].sudo().with_company(self.company_id)
+        picking = picking_model.create(
+            {
+                "picking_type_id": picking_type.id,
+                "partner_id": partner.id if partner else False,
+                "receive_from_employee_id": clerk.id,
+                "location_id": source_location.id,
+                "location_dest_id": destination_location.id,
+                "origin": self.name,
+                "production_receipt_id": self.id,
+                "move_ids": [
+                    (
+                        0,
+                        0,
+                        {
+                            "product_id": product.id,
+                            "product_uom_qty": total_quantity,
+                            "product_uom": product.uom_id.id,
+                            "location_id": source_location.id,
+                            "location_dest_id": destination_location.id,
+                        },
+                    )
+                ],
+            }
+        )
+        picking.action_confirm()
+        move = picking.move_ids.filtered(
+            lambda stock_move: stock_move.product_id == product
+        )[:1]
+        if not move:
+            raise ValidationError(
+                _("Inventory move could not be created for product '%s'.")
+                % product.display_name
+            )
+        self._set_inventory_done_quantity(
+            picking,
+            move,
+            lot,
+            total_quantity,
+            source_location,
+            destination_location,
+        )
+        picking.with_context(skip_backorder=True).button_validate()
+        if picking.state != "done":
+            raise ValidationError(
+                _("Inventory Receipt '%s' could not be validated automatically.")
+                % picking.display_name
+            )
+        return picking
+
+    def _get_receipt_source_location(self, picking_type):
+        self.ensure_one()
+        source_location = picking_type.default_location_src_id
+        if source_location:
+            return source_location
+        source_location = self.env.ref(
+            "stock.stock_location_suppliers",
+            raise_if_not_found=False,
+        )
+        if not source_location:
+            raise ValidationError(
+                _("Source Location is not configured on Operation Type '%s'.")
+                % picking_type.display_name
+            )
+        return source_location
+
+    def _get_or_create_inventory_lot(self, product):
+        self.ensure_one()
+        lot_name = self._get_inventory_lot_name()
+        lot_model = self.env["stock.lot"].sudo().with_company(self.company_id)
+        lot = lot_model.search(
+            [
+                ("name", "=", lot_name),
+                ("product_id", "=", product.id),
+                ("company_id", "in", [False, self.company_id.id]),
+            ],
+            limit=1,
+        )
+        if lot:
+            return lot
+        return lot_model.create(
+            {
+                "name": lot_name,
+                "product_id": product.id,
+                "company_id": self.company_id.id,
+                "division_id": self.division_id.id,
+                "production_date": self.production_date,
+            }
+        )
+
+    def _get_inventory_lot_name(self):
+        self.ensure_one()
+        product_code = self._clean_lot_component(ProductType.CUP_LUMP)
+        division_code = self._clean_lot_component(self.division_id.code)
+        production_date = fields.Date.to_date(self.production_date).strftime("%Y%m%d")
+        return "%s-%s-%s" % (product_code, division_code, production_date)
+
+    def _clean_lot_component(self, value):
+        value = (value or "").strip()
+        return value.replace("/", "-").replace("\\", "-").replace(" ", "-")
+
+    def _get_employee_partner(self, employee):
+        self.ensure_one()
+        for field_name in ("work_contact_id", "address_home_id"):
+            if field_name in employee._fields and employee[field_name]:
+                return employee[field_name]
+        if "user_id" in employee._fields and employee.user_id.partner_id:
+            return employee.user_id.partner_id
+        return self.env["res.partner"]
+
+    def _set_inventory_done_quantity(
+        self,
+        picking,
+        move,
+        lot,
+        quantity,
+        source_location,
+        destination_location,
+    ):
+        move_line_model = self.env["stock.move.line"].sudo().with_company(
+            self.company_id
+        )
+        move.move_line_ids.filtered(
+            lambda line: line.state not in ("done", "cancel")
+        ).unlink()
+        quantity_field = (
+            "quantity"
+            if "quantity" in move_line_model._fields
+            else "qty_done"
+        )
+        move_line_values = {
+            "picking_id": picking.id,
+            "move_id": move.id,
+            "company_id": self.company_id.id,
+            "product_id": move.product_id.id,
+            "product_uom_id": move.product_uom.id,
+            "location_id": source_location.id,
+            "location_dest_id": destination_location.id,
+            "lot_id": lot.id,
+            quantity_field: quantity,
+        }
+        if "picked" in move_line_model._fields:
+            move_line_values["picked"] = True
+        move_line_model.create(move_line_values)
+
     def action_cancel(self):
         for receipt in self:
             if receipt.state == "cancelled":
@@ -331,6 +582,7 @@ class ProductionReceipt(models.Model):
                 raise ValidationError(
                     _("Only validated Production Receipt can be cancelled.")
                 )
+            receipt._create_inventory_reversals()
             receipt.line_ids.mapped("weighing_cup_lump_id").with_context(
                 allow_production_receipt_update=True
             ).write({"receipt_status": "receipt_cancelled"})
@@ -341,6 +593,207 @@ class ProductionReceipt(models.Model):
                     "cancelled_by_id": self.env.user.id,
                 }
             )
+
+    def _create_inventory_reversals(self):
+        self.ensure_one()
+        original_pickings = self.stock_picking_ids.filtered(
+            lambda picking: picking.state == "done"
+        )
+        if not original_pickings:
+            return self.env["stock.picking"]
+        active_reversals = self.reverse_picking_ids.filtered(
+            lambda picking: picking.state != "cancel"
+        )
+        if active_reversals:
+            raise ValidationError(
+                _("Inventory Reversal already exists for this Production Receipt.")
+            )
+        self._check_inventory_reversal_stock_available(original_pickings)
+
+        reversals = self.env["stock.picking"]
+        for picking in original_pickings:
+            reversals |= self._create_inventory_reversal_for_picking(picking)
+        return reversals
+
+    def _check_inventory_reversal_stock_available(self, original_pickings):
+        self.ensure_one()
+        original_lines = original_pickings.move_line_ids.filtered(
+            lambda line: line.state == "done" and line.lot_id and line.quantity > 0
+        )
+        if not original_lines:
+            return
+
+        grouped_lines = {}
+        for line in original_lines:
+            location = line.location_dest_id
+            key = (line.product_id.id, line.lot_id.id, location.id)
+            grouped_lines.setdefault(
+                key,
+                {
+                    "product": line.product_id,
+                    "lot": line.lot_id,
+                    "location": location,
+                    "quantity": 0.0,
+                },
+            )
+            grouped_lines[key]["quantity"] += line.product_uom_id._compute_quantity(
+                line.quantity,
+                line.product_id.uom_id,
+                round=False,
+            )
+
+        quant_model = self.env["stock.quant"].sudo()
+        for values in grouped_lines.values():
+            product = values["product"]
+            lot = values["lot"]
+            location = values["location"]
+            required_quantity = values["quantity"]
+            available_quantity = quant_model._get_available_quantity(
+                product,
+                location,
+                lot_id=lot,
+                strict=True,
+            )
+            if product.uom_id.compare(available_quantity, required_quantity) < 0:
+                raise ValidationError(
+                    _(
+                        "Production Receipt cannot be cancelled because lot '%(lot)s' "
+                        "only has %(available)s %(uom)s available at '%(location)s', "
+                        "while %(required)s %(uom)s is required for reversal."
+                    )
+                    % {
+                        "lot": lot.display_name,
+                        "available": available_quantity,
+                        "required": required_quantity,
+                        "uom": product.uom_id.display_name,
+                        "location": location.display_name,
+                    }
+                )
+
+    def _create_inventory_reversal_for_picking(self, picking):
+        self.ensure_one()
+        reversal_lines = picking.move_line_ids.filtered(
+            lambda line: line.state == "done" and line.lot_id and line.quantity > 0
+        )
+        if not reversal_lines:
+            raise ValidationError(
+                _("Inventory Receipt '%s' has no lot move line to reverse.")
+                % picking.display_name
+            )
+
+        picking_type = picking.picking_type_id.return_picking_type_id or picking.picking_type_id
+        source_location = picking.location_dest_id
+        destination_location = picking.location_id
+        partner = picking.partner_id
+        picking_model = self.env["stock.picking"].sudo().with_company(self.company_id)
+        reversal = picking_model.create(
+            {
+                "picking_type_id": picking_type.id,
+                "partner_id": partner.id if partner else False,
+                "receive_from_employee_id": picking.receive_from_employee_id.id,
+                "location_id": source_location.id,
+                "location_dest_id": destination_location.id,
+                "origin": _("Cancel %(receipt)s / Return of %(picking)s")
+                % {"receipt": self.name, "picking": picking.name},
+                "return_id": picking.id,
+                "production_receipt_reverse_id": self.id,
+                "move_ids": self._prepare_inventory_reversal_move_commands(
+                    reversal_lines,
+                    picking_type,
+                    source_location,
+                    destination_location,
+                ),
+            }
+        )
+        reversal.action_confirm()
+        self._set_inventory_reversal_done_quantities(
+            reversal,
+            reversal_lines,
+            source_location,
+            destination_location,
+        )
+        reversal.with_context(skip_backorder=True).button_validate()
+        if reversal.state != "done":
+            raise ValidationError(
+                _("Inventory Reversal '%s' could not be validated automatically.")
+                % reversal.display_name
+            )
+        return reversal
+
+    def _prepare_inventory_reversal_move_commands(
+        self,
+        reversal_lines,
+        picking_type,
+        source_location,
+        destination_location,
+    ):
+        commands = []
+        grouped_lines = {}
+        for line in reversal_lines:
+            key = (line.product_id.id, line.product_uom_id.id)
+            grouped_lines.setdefault(key, self.env[line._name])
+            grouped_lines[key] |= line
+        for lines in grouped_lines.values():
+            product = lines[0].product_id
+            uom = lines[0].product_uom_id
+            commands.append(
+                (
+                    0,
+                    0,
+                    {
+                        "product_id": product.id,
+                        "product_uom_qty": sum(lines.mapped("quantity")),
+                        "product_uom": uom.id,
+                        "location_id": source_location.id,
+                        "location_dest_id": destination_location.id,
+                        "picking_type_id": picking_type.id,
+                    },
+                )
+            )
+        return commands
+
+    def _set_inventory_reversal_done_quantities(
+        self,
+        reversal,
+        original_lines,
+        source_location,
+        destination_location,
+    ):
+        move_line_model = self.env["stock.move.line"].sudo().with_company(
+            self.company_id
+        )
+        quantity_field = (
+            "quantity"
+            if "quantity" in move_line_model._fields
+            else "qty_done"
+        )
+        reversal.move_ids.move_line_ids.filtered(
+            lambda line: line.state not in ("done", "cancel")
+        ).unlink()
+        for original_line in original_lines:
+            move = reversal.move_ids.filtered(
+                lambda stock_move: stock_move.product_id == original_line.product_id
+                and stock_move.product_uom == original_line.product_uom_id
+            )[:1]
+            if not move:
+                raise ValidationError(
+                    _("Inventory reversal move is missing for product '%s'.")
+                    % original_line.product_id.display_name
+                )
+            move_line_values = {
+                "picking_id": reversal.id,
+                "move_id": move.id,
+                "company_id": self.company_id.id,
+                "product_id": original_line.product_id.id,
+                "product_uom_id": original_line.product_uom_id.id,
+                "location_id": source_location.id,
+                "location_dest_id": destination_location.id,
+                "lot_id": original_line.lot_id.id,
+                quantity_field: original_line.quantity,
+            }
+            if "picked" in move_line_model._fields:
+                move_line_values["picked"] = True
+            move_line_model.create(move_line_values)
 
 
 class ProductionReceiptLine(models.Model):
