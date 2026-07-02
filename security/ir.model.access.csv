@@ -33,7 +33,7 @@ access_wt_stock_opname_apply_wizard_admin,access.wt.stock_opname.apply.wizard.ad
 access_wt_stock_opname_apply_wizard_line_admin,access.wt.stock_opname.apply.wizard.line.admin,model_wt_stock_opname_apply_wizard_line,group_admin,1,1,1,1
 access_wt_stock_opname_apply_wizard_allocation_admin,access.wt.stock_opname.apply.wizard.allocation.admin,model_wt_stock_opname_apply_wizard_allocation,group_admin,1,1,1,1
 access_wt_delivery_admin,access.wt.delivery.admin,model_wt_delivery,group_admin,1,1,1,1
-access_wt_delivery_line_admin,access.wt.delivery.line.admin,model_wt_delivery_line,group_admin,1,1,1,1
+access_wt_delivery_line_allocation_admin,access.wt.delivery.line.allocation.admin,model_wt_delivery_line_allocation,group_admin,1,1,1,1
 access_wt_delivery_do_wizard_admin,access.wt.delivery.do.wizard.admin,model_wt_delivery_do_wizard,group_admin,1,1,1,1
 access_stock_picking_weightrack_admin,access.stock.picking.weightrack.admin,stock.model_stock_picking,group_admin,1,1,0,0
 access_stock_move_line_weightrack_admin,access.stock.move.line.weightrack.admin,stock.model_stock_move_line,group_admin,1,1,0,0

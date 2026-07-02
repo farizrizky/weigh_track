@@ -54,12 +54,12 @@ class Delivery(models.Model):
         string="Jumlah DO",
         compute="_compute_picking_count",
     )
-    # Baris detail penimbangan (dipopulate dari move lines DO)
-    line_ids = fields.One2many(
-        "wt.delivery.line",
-        "delivery_id",
+    # Detail timbang: move lines dari semua DO yang terhubung
+    # (via related field wt_delivery_id pada stock.move.line)
+    move_line_ids = fields.One2many(
+        "stock.move.line",
+        "wt_delivery_id",
         string="Detail Timbang",
-        copy=False,
     )
     state = fields.Selection(
         STATE_SELECTION,
@@ -101,12 +101,21 @@ class Delivery(models.Model):
         tracking=True,
     )
 
-    @api.depends("line_ids.demand_qty", "line_ids.physical_qty", "line_ids.difference_qty")
+    @api.depends(
+        "move_line_ids.quantity",
+        "move_line_ids.wt_physical_qty",
+        "move_line_ids.wt_original_demand_qty",
+    )
     def _compute_totals(self):
         for rec in self:
-            rec.total_demand_qty = sum(rec.line_ids.mapped("demand_qty"))
-            rec.total_physical_qty = sum(rec.line_ids.mapped("physical_qty"))
-            rec.total_difference_qty = sum(rec.line_ids.mapped("difference_qty"))
+            active_lines = rec.move_line_ids.filtered(lambda l: l.quantity > 0 or l.wt_original_demand_qty > 0)
+            # Gunakan demand asli jika sudah tersimpan (setelah validasi)
+            rec.total_demand_qty = sum(
+                l.wt_original_demand_qty if l.wt_original_demand_qty > 0.001 else l.quantity
+                for l in active_lines
+            )
+            rec.total_physical_qty = sum(active_lines.mapped("wt_physical_qty"))
+            rec.total_difference_qty = rec.total_physical_qty - rec.total_demand_qty
 
     def _compute_picking_count(self):
         for rec in self:
@@ -157,55 +166,22 @@ class Delivery(models.Model):
 
     # ─────────────────────────────────── Workflow ───
 
-    def action_populate_lines(self):
-        """Muat baris detail penimbangan dari move lines semua DO yang terhubung."""
-        for delivery in self:
-            if delivery.state not in ("draft", "confirmed"):
-                raise ValidationError(_("Baris hanya bisa dimuat saat status Draft atau Confirmed."))
-            if not delivery.picking_ids:
-                raise ValidationError(_("Belum ada DO yang terhubung. Tambahkan DO terlebih dahulu."))
-
-            ready_pickings = delivery.picking_ids.filtered(lambda p: p.state == "assigned")
-            if not ready_pickings:
-                raise ValidationError(_(
-                    "Tidak ada DO dengan status Ready. "
-                    "Konfirmasi dan lakukan reservasi DO terlebih dahulu."
-                ))
-
-            # Hapus baris yang belum punya physical_qty
-            delivery.line_ids.filtered(lambda l: l.physical_qty == 0.0).unlink()
-            existing_move_line_ids = delivery.line_ids.mapped("move_line_id").ids
-
-            line_vals = []
-            for picking in ready_pickings:
-                for move_line in picking.move_line_ids.filtered(
-                    lambda ml: ml.reserved_qty > 0 and ml.id not in existing_move_line_ids
-                ):
-                    line_vals.append({
-                        "delivery_id": delivery.id,
-                        "picking_id": picking.id,
-                        "move_line_id": move_line.id,
-                        "product_id": move_line.product_id.id,
-                        "lot_id": move_line.lot_id.id if move_line.lot_id else False,
-                        "uom_id": move_line.product_uom_id.id,
-                        "demand_qty": move_line.reserved_qty,
-                        "physical_qty": 0.0,
-                    })
-
-            if not line_vals and not delivery.line_ids:
-                raise ValidationError(_(
-                    "Tidak ada baris yang dapat dimuat. "
-                    "Pastikan DO sudah Ready dan memiliki reservasi stok."
-                ))
-            if line_vals:
-                self.env["wt.delivery.line"].create(line_vals)
-
     def action_confirm(self):
         for delivery in self:
             if delivery.state != "draft":
                 raise ValidationError(_("Hanya Draft yang bisa dikonfirmasi."))
             if not delivery.picking_ids:
                 raise ValidationError(_("Tambahkan minimal satu DO sebelum konfirmasi."))
+            # Validasi: semua DO harus punya operator
+            pickings_without_operator = delivery.picking_ids.filtered(
+                lambda p: not p.wt_operator_id
+            )
+            if pickings_without_operator:
+                names = ", ".join(pickings_without_operator.mapped("name"))
+                raise ValidationError(_(
+                    "Semua Delivery Order harus memiliki operator sebelum dikonfirmasi.\n"
+                    "DO tanpa operator: %s"
+                ) % names)
             delivery.write({"state": "confirmed"})
 
     def action_start(self):
@@ -214,11 +190,6 @@ class Delivery(models.Model):
                 raise ValidationError(_("Hanya Confirmed yang bisa dimulai."))
             delivery.write({"state": "in_progress"})
 
-    def action_complete(self):
-        for delivery in self:
-            if delivery.state not in ("confirmed", "in_progress"):
-                raise ValidationError(_("Status tidak valid untuk diselesaikan."))
-            delivery.write({"state": "completed"})
 
     def action_validate(self):
         for delivery in self:
@@ -229,36 +200,103 @@ class Delivery(models.Model):
         if self.state != "completed":
             raise ValidationError(_("Hanya Completed yang bisa divalidasi."))
 
-        unset_lines = self.line_ids.filtered(
-            lambda l: l.physical_qty == 0.0 and not l.skip_line
+        # Move lines aktif (quantity > 0, tidak diskip)
+        active_lines = self.move_line_ids.filtered(
+            lambda l: l.quantity > 0 and not l.wt_skip_line
         )
+
+        # Cek semua baris sudah punya berat fisik
+        unset_lines = active_lines.filtered(lambda l: l.wt_physical_qty == 0.0)
         if unset_lines:
+            lots = ", ".join(
+                l.lot_id.name or l.product_id.display_name
+                for l in unset_lines
+            )
             raise ValidationError(_(
-                "Beberapa baris belum memiliki berat fisik.\n"
+                "Beberapa baris belum memiliki berat fisik:\n%s\n\n"
                 "Isi berat fisik atau centang 'Lewati' terlebih dahulu."
-            ))
+            ) % lots)
 
-        pickings_to_validate = self.line_ids.mapped("picking_id")
-        for picking in pickings_to_validate:
-            lines_for_picking = self.line_ids.filtered(lambda l: l.picking_id == picking)
-            for line in lines_for_picking:
-                if line.skip_line:
-                    continue
-                line._apply_weighing_to_do()
+        # Cek semua selisih sudah teralokasi penuh
+        lines_with_diff = active_lines.filtered(
+            lambda l: abs(l.wt_difference_qty) > 0.001
+        )
+        unallocated = lines_with_diff.filtered(lambda l: not l.wt_is_fully_allocated)
+        if unallocated:
+            lots = ", ".join(
+                "%s (sisa: %.4f kg)" % (
+                    l.lot_id.name or l.product_id.display_name,
+                    l.wt_unallocated_qty,
+                )
+                for l in unallocated
+            )
+            raise ValidationError(_(
+                "Selisih belum teralokasi penuh pada:\n%s\n\n"
+                "Buka 'Alokasi' pada tab Detail Timbang untuk mengisi alokasi selisih."
+            ) % lots)
 
+        # Kumpulkan data scrap SEBELUM quantity berubah
+        # (wt_difference_qty = wt_physical_qty - quantity; shortage = quantity - wt_physical_qty)
+        scraps_to_create = []
+        for line in active_lines:
+            if abs(line.wt_difference_qty) <= 0.001:
+                continue
+            for alloc in line.wt_allocation_ids:
+                scraps_to_create.append({
+                    "product_id": line.product_id.id,
+                    "product_uom_id": line.product_uom_id.id,
+                    "scrap_qty": alloc.qty,
+                    "lot_id": line.lot_id.id if line.lot_id else False,
+                    "location_id": line.location_id.id,
+                    "scrap_location_id": alloc.location_dest_id.id,
+                    "company_id": line.company_id.id,
+                    "picking_id": line.picking_id.id,
+                    "origin": "%s / %s / %s" % (
+                        self.name, line.picking_id.name, alloc.reason_id.name
+                    ),
+                })
+
+        # Step 1: Set quantity = berat fisik di setiap move line
+        for line in self.move_line_ids.filtered(lambda l: l.quantity > 0):
+            line._apply_wt_weighing()
+
+        # Step 1b: Update demand (product_uom_qty) setiap move ke jumlah fisik
+        # agar Odoo tidak membuat backorder/split line untuk selisih susut.
+        # Selisih sudah ditangani oleh scrap (Step 3).
+        for picking in self.picking_ids:
+            for move in picking.move_ids.filtered(
+                lambda m: m.state not in ("done", "cancel")
+            ):
+                total_physical = sum(
+                    ml.wt_physical_qty
+                    for ml in move.move_line_ids
+                    if not ml.wt_skip_line
+                )
+                if total_physical < move.product_uom_qty:
+                    move.sudo().write({"product_uom_qty": total_physical})
+
+        # Step 2: Validasi setiap picking (DO)
+        for picking in self.picking_ids:
             if picking.state not in ("done", "cancel"):
                 picking.with_context(skip_immediate=True)._action_done()
+                # Cancel backorder (sisa demand yang tidak terpenuhi)
                 backorder_pickings = self.env["stock.picking"].search([
                     ("backorder_id", "=", picking.id),
                     ("state", "!=", "done"),
                 ])
                 backorder_pickings.action_cancel()
 
+        # Step 3: Buat scrap SETELAH DO selesai
+        # (stok yang tidak terdeliver masih tersedia di source untuk di-scrap)
+        for scrap_vals in scraps_to_create:
+            self.env["stock.scrap"].sudo().create(scrap_vals).action_validate()
+
         self.write({
             "state": "validated",
             "validated_at": fields.Datetime.now(),
             "validated_by_id": self.env.user.id,
         })
+
 
     def action_cancel(self):
         for delivery in self:
@@ -271,159 +309,3 @@ class Delivery(models.Model):
             if delivery.state != "cancelled":
                 raise ValidationError(_("Hanya yang dibatalkan yang bisa dikembalikan ke Draft."))
             delivery.write({"state": "draft"})
-
-
-class DeliveryLine(models.Model):
-    _name = "wt.delivery.line"
-    _description = "Detail Timbang Pengiriman"
-    _order = "delivery_id, picking_id, id"
-
-    delivery_id = fields.Many2one(
-        "wt.delivery",
-        string="Tugas Pengiriman",
-        required=True,
-        ondelete="cascade",
-        index=True,
-    )
-    delivery_state = fields.Selection(
-        related="delivery_id.state",
-        store=True,
-        readonly=True,
-    )
-    picking_id = fields.Many2one(
-        "stock.picking",
-        string="Delivery Order (DO)",
-        required=True,
-        ondelete="restrict",
-        index=True,
-        readonly=True,
-    )
-    picking_name = fields.Char(
-        string="Nomor DO",
-        related="picking_id.name",
-        store=True,
-        readonly=True,
-    )
-    operator_employee_id = fields.Many2one(
-        "hr.employee",
-        string="Operator Tujuan",
-        index=True,
-    )
-    move_line_id = fields.Many2one(
-        "stock.move.line",
-        string="Move Line DO",
-        ondelete="restrict",
-        index=True,
-        readonly=True,
-    )
-    product_id = fields.Many2one(
-        "product.product",
-        string="Produk",
-        required=True,
-        readonly=True,
-    )
-    lot_id = fields.Many2one(
-        "stock.lot",
-        string="Lot/No. Seri",
-        readonly=True,
-    )
-    uom_id = fields.Many2one(
-        "uom.uom",
-        string="Satuan",
-        required=True,
-        readonly=True,
-    )
-    demand_qty = fields.Float(
-        string="Demand (kg)",
-        digits="Product Unit of Measure",
-        readonly=True,
-    )
-    physical_qty = fields.Float(
-        string="Berat Fisik (kg)",
-        digits="Product Unit of Measure",
-    )
-    difference_qty = fields.Float(
-        string="Selisih (kg)",
-        compute="_compute_difference_qty",
-        store=True,
-        digits="Product Unit of Measure",
-    )
-    reason_id = fields.Many2one(
-        "wt.stock.opname.difference.reason",
-        string="Alasan Selisih",
-        domain="[('active', '=', True)]",
-    )
-    note = fields.Char(
-        string="Catatan",
-    )
-    skip_line = fields.Boolean(
-        string="Lewati",
-        default=False,
-        help="Centang untuk melewati baris ini saat validasi.",
-    )
-
-    @api.depends("physical_qty", "demand_qty")
-    def _compute_difference_qty(self):
-        for line in self:
-            line.difference_qty = line.physical_qty - line.demand_qty
-
-    @api.constrains("physical_qty", "demand_qty")
-    def _check_physical_qty(self):
-        for line in self:
-            if line.skip_line:
-                continue
-            if line.physical_qty < 0:
-                raise ValidationError(_("Berat fisik tidak boleh negatif."))
-            if line.physical_qty > line.demand_qty:
-                raise ValidationError(_(
-                    "Berat fisik (%.4f) tidak boleh melebihi demand (%.4f)."
-                ) % (line.physical_qty, line.demand_qty))
-
-    @api.constrains("difference_qty", "reason_id")
-    def _check_reason_required(self):
-        for line in self:
-            if line.skip_line:
-                continue
-            has_diff = abs(line.difference_qty) > 0.001
-            if has_diff and not line.reason_id:
-                raise ValidationError(_(
-                    "Alasan selisih wajib diisi (selisih: %.4f kg)."
-                ) % abs(line.difference_qty))
-
-    def _apply_weighing_to_do(self):
-        """Update qty_done pada move_line DO dan buat scrap untuk selisih."""
-        self.ensure_one()
-        if self.skip_line:
-            return
-
-        move_line = self.move_line_id
-        if not move_line:
-            move_line = self.picking_id.move_line_ids.filtered(
-                lambda ml: ml.product_id == self.product_id
-                and (not self.lot_id or ml.lot_id == self.lot_id)
-            )[:1]
-            if move_line:
-                self.write({"move_line_id": move_line.id})
-
-        if not move_line:
-            raise ValidationError(_(
-                "Move Line tidak ditemukan pada DO %s."
-            ) % self.picking_id.name)
-
-        move_line.sudo().write({"quantity": self.physical_qty})
-
-        diff = abs(self.difference_qty)
-        if diff > 0.001 and self.reason_id and self.reason_id.location_dest_id:
-            picking = self.picking_id
-            scrap = self.env["stock.scrap"].sudo().create({
-                "product_id": self.product_id.id,
-                "product_uom_id": self.uom_id.id,
-                "scrap_qty": diff,
-                "lot_id": self.lot_id.id if self.lot_id else False,
-                "location_id": picking.location_id.id,
-                "scrap_location_id": self.reason_id.location_dest_id.id,
-                "company_id": self.delivery_id.company_id.id,
-                "picking_id": picking.id,
-                "origin": "%s / %s" % (self.delivery_id.name, picking.name),
-            })
-            scrap.action_validate()

@@ -41,20 +41,11 @@
                             type="object"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
-                    <button name="action_populate_lines"
-                            string="Muat Baris Timbang"
-                            type="object"
-                            invisible="state not in ('draft','confirmed')"/>
                     <button name="action_start"
                             string="Mulai"
                             type="object"
                             class="btn-primary"
                             invisible="state != 'confirmed'"/>
-                    <button name="action_complete"
-                            string="Selesai Timbang"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state not in ('confirmed','in_progress')"/>
                     <button name="action_validate"
                             string="Validasi &amp; Kirim"
                             type="object"
@@ -124,6 +115,10 @@
                                     <field name="location_id" string="Dari"/>
                                     <field name="location_dest_id" string="Ke"/>
                                     <field name="scheduled_date" string="Tgl Jadwal"/>
+                                    <field name="wt_push_done" string="Push Selesai" readonly="1"
+                                           widget="boolean_toggle"/>
+                                    <field name="wt_push_done_at" string="Waktu Push" readonly="1"
+                                           optional="show"/>
                                     <field name="state" widget="badge"
                                            decoration-info="state == 'draft'"
                                            decoration-warning="state == 'waiting'"
@@ -134,26 +129,43 @@
                             </field>
                         </page>
 
-                        <!-- Tab 2: Detail Timbang -->
+                        <!-- Tab 2: Detail Timbang (langsung dari stock.move.line) -->
                         <page string="Detail Timbang">
-                            <field name="line_ids" readonly="state in ('validated','cancelled')">
+                            <field name="move_line_ids"
+                                   readonly="state in ('validated','cancelled')"
+                                   domain="[('quantity', '>', 0)]"
+                                   context="{'show_original_demand': state == 'validated'}">
                                 <list string="Detail Timbang"
                                       editable="bottom"
-                                      decoration-danger="not skip_line and physical_qty == 0.0"
-                                      decoration-warning="difference_qty &lt; 0"
-                                      decoration-success="difference_qty == 0.0 and physical_qty &gt; 0.0">
-                                    <field name="picking_name" readonly="1" optional="show"/>
-                                    <field name="picking_id" readonly="1"/>
-                                    <field name="operator_employee_id" optional="show"/>
+                                      create="false"
+                                      delete="false"
+                                      decoration-danger="not wt_skip_line and wt_physical_qty == 0.0"
+                                      decoration-warning="wt_difference_qty &lt; -0.001 and not wt_is_fully_allocated"
+                                      decoration-success="wt_physical_qty &gt; 0.0 and (wt_difference_qty == 0.0 or wt_is_fully_allocated)">
+                                    <field name="picking_id" string="DO" readonly="1" optional="show"/>
                                     <field name="product_id" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
-                                    <field name="uom_id" readonly="1"/>
-                                    <field name="demand_qty" readonly="1"/>
-                                    <field name="physical_qty"/>
-                                    <field name="difference_qty" readonly="1"/>
-                                    <field name="reason_id"/>
-                                    <field name="note" optional="hide"/>
-                                    <field name="skip_line" optional="hide"/>
+                                    <field name="product_uom_id" readonly="1" optional="hide"/>
+                                    <field name="wt_original_demand_qty" string="Demand Awal (kg)" readonly="1"
+                                           optional="show"
+                                           decoration-muted="wt_original_demand_qty == 0"/>
+                                    <field name="quantity" string="Terkirim (kg)" readonly="1"/>
+                                    <field name="wt_physical_qty" string="Berat Fisik (kg)"/>
+                                    <field name="wt_difference_qty" string="Selisih (kg)" readonly="1"
+                                           decoration-danger="wt_difference_qty &lt; -0.001"
+                                           decoration-success="wt_difference_qty &gt;= -0.001"/>
+                                    <field name="wt_is_fully_allocated" column_invisible="1"/>
+                                    <field name="wt_unallocated_qty" string="Belum Teralokasi"
+                                           readonly="1" optional="show"
+                                           decoration-danger="wt_unallocated_qty &gt; 0.001"
+                                           decoration-success="wt_unallocated_qty &lt;= 0.001"/>
+                                    <button name="action_configure_allocation"
+                                            string="Alokasi"
+                                            type="object"
+                                            icon="fa-sliders"
+                                            invisible="wt_difference_qty == 0.0"/>
+                                    <field name="wt_note" string="Catatan" optional="hide"/>
+                                    <field name="wt_skip_line" string="Lewati" optional="hide"/>
                                 </list>
                             </field>
                         </page>
@@ -205,10 +217,12 @@
                 Buat Tugas Pengiriman Baru
             </p>
             <p>
-                Klik "+ Tambah DO Baru" untuk membuat Delivery Order menggunakan form standar Odoo.
-                Setelah DO siap, klik "Muat Baris Timbang" untuk mengisi detail penimbangan.
+                Klik "+ Tambah Pengiriman" untuk menambahkan Delivery Order.
+                Setelah DO berstatus Siap (Ready), konfirmasi dan mulai untuk
+                mengirim data ke aplikasi timbang via Pull API.
             </p>
         </field>
     </record>
+
 
 </odoo>

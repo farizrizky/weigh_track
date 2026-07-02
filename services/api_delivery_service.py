@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import _, models
+from odoo import _, fields, models
 from ..constants.roles import Role
 
 
@@ -14,7 +14,11 @@ class ApiDeliveryService(models.AbstractModel):
     # ─────────────────────────────────────────────────── PULL ───
 
     def pull_delivery(self, payload):
-        """Kirimkan daftar tugas pengiriman aktif untuk operator device."""
+        """Kirimkan daftar tugas pengiriman aktif untuk operator device.
+
+        Move lines dibaca langsung dari stock.move.line via wt_delivery_id,
+        tidak lagi melalui wt.delivery.line yang terpisah.
+        """
         response = self._response()
         auth = self.env["wt.api.security.service"].sudo().authenticate_device(
             payload,
@@ -31,37 +35,52 @@ class ApiDeliveryService(models.AbstractModel):
         if not pull_result["ok"]:
             return pull_result
 
+        # Cari delivery yang operatornya adalah employee device ini
+        # (via picking.wt_operator_id)
         deliveries = self.env["wt.delivery"].sudo().search([
             ("company_id", "=", device.company_id.id),
-            ("line_ids.operator_employee_id", "=", device.employee_id.id),
-            ("state", "in", ["assigned", "in_progress"]),
+            ("picking_ids.wt_operator_id", "=", device.employee_id.id),
+            ("state", "in", ["confirmed", "in_progress"]),
         ])
 
         deliveries_data = []
         for delivery in deliveries:
             # Auto-start saat di-pull
-            if delivery.state == "assigned":
+            if delivery.state == "confirmed":
                 delivery.write({"state": "in_progress"})
 
+            # Move lines milik operator ini (filter per picking.wt_operator_id)
             lines_data = []
-            for line in delivery.line_ids:
+            for ml in delivery.move_line_ids.filtered(
+                lambda l: l.quantity > 0
+                and l.picking_id.wt_operator_id == device.employee_id
+            ):
                 lines_data.append({
-                    "line_id": line.id,
-                    "picking_id": line.picking_id.id,
-                    "picking_name": line.picking_name,
-                    "operator_employee_id": line.operator_employee_id.id or False,
-                    "operator_employee_name": line.operator_employee_id.name or "",
-                    "product_id": line.product_id.id,
-                    "product_name": line.product_id.display_name,
-                    "lot_id": line.lot_id.id,
-                    "lot_name": line.lot_id.name,
-                    "uom_id": line.uom_id.id,
-                    "uom_name": line.uom_id.name,
-                    "demand_qty": line.demand_qty,
-                    "physical_qty": line.physical_qty,
-                    "difference_qty": line.difference_qty,
-                    "note": line.note or "",
-                    "skip_line": line.skip_line,
+                    "move_line_id": ml.id,
+                    "picking_id": ml.picking_id.id,
+                    "picking_name": ml.picking_id.name,
+                    "product_id": ml.product_id.id,
+                    "product_name": ml.product_id.display_name,
+                    "lot_id": ml.lot_id.id or False,
+                    "lot_name": ml.lot_id.name or "",
+                    "uom_id": ml.product_uom_id.id,
+                    "uom_name": ml.product_uom_id.name,
+                    "demand_qty": ml.quantity,
+                    "physical_qty": ml.wt_physical_qty,
+                    "difference_qty": ml.wt_difference_qty,
+                    "allocated_qty": ml.wt_allocated_qty,
+                    "unallocated_qty": ml.wt_unallocated_qty,
+                    "is_fully_allocated": ml.wt_is_fully_allocated,
+                    "allocations": [
+                        {
+                            "reason": a.reason_id.name,
+                            "qty": a.qty,
+                            "location": a.location_dest_id.complete_name,
+                        }
+                        for a in ml.wt_allocation_ids
+                    ],
+                    "note": ml.wt_note or "",
+                    "skip_line": ml.wt_skip_line,
                 })
 
             deliveries_data.append({
@@ -82,8 +101,8 @@ class ApiDeliveryService(models.AbstractModel):
     # ─────────────────────────────────────────────────── PUSH ───
 
     def push_delivery(self, payload):
-        """Terima hasil timbang dari aplikasi, update physical_qty & reason,
-        lalu tandai completed jika semua baris terisi."""
+        """Terima hasil timbang dari aplikasi, update wt_physical_qty pada
+        stock.move.line, lalu tandai completed jika semua baris terisi."""
         response = self._response()
         auth = self.env["wt.api.security.service"].sudo().authenticate_device(
             payload,
@@ -112,8 +131,8 @@ class ApiDeliveryService(models.AbstractModel):
         delivery = self.env["wt.delivery"].sudo().search([
             ("id", "=", delivery_id),
             ("company_id", "=", device.company_id.id),
-            ("operator_employee_id", "=", device.employee_id.id),
-            ("state", "in", ["assigned", "in_progress", "completed"]),
+            ("picking_ids.wt_operator_id", "=", device.employee_id.id),
+            ("state", "in", ["confirmed", "in_progress", "completed"]),
         ], limit=1)
 
         if not delivery:
@@ -131,57 +150,64 @@ class ApiDeliveryService(models.AbstractModel):
         updated = 0
         errors = []
         for item in lines_payload:
-            line_id = item.get("line_id")
+            move_line_id = item.get("move_line_id")
             physical_qty = item.get("physical_qty")
             reason_code = item.get("reason_code")
             note = item.get("note", "")
             skip_line = item.get("skip_line", False)
 
-            if line_id is None:
+            if move_line_id is None:
                 continue
 
-            line = self.env["wt.delivery.line"].sudo().search([
-                ("id", "=", line_id),
-                ("delivery_id", "=", delivery.id),
+            # Verifikasi move line milik delivery ini
+            ml = self.env["stock.move.line"].sudo().search([
+                ("id", "=", move_line_id),
+                ("wt_delivery_id", "=", delivery.id),
             ], limit=1)
 
-            if not line:
-                errors.append(_("Line ID %s tidak ditemukan.") % line_id)
+            if not ml:
+                errors.append(_("Move Line ID %s tidak ditemukan.") % move_line_id)
                 continue
 
-            write_vals = {"skip_line": bool(skip_line)}
+            write_vals = {"wt_skip_line": bool(skip_line)}
 
             if physical_qty is not None:
                 try:
-                    write_vals["physical_qty"] = float(physical_qty)
+                    qty = float(physical_qty)
                 except (ValueError, TypeError):
-                    errors.append(_("Nilai physical_qty tidak valid pada line %s.") % line_id)
+                    errors.append(_("Nilai physical_qty tidak valid pada move line %s.") % move_line_id)
                     continue
-
-            if reason_code:
-                reason = self.env["wt.stock.opname.difference.reason"].sudo().search([
-                    ("code", "=", reason_code),
-                    "|",
-                    ("company_id", "=", device.company_id.id),
-                    ("company_id", "=", False),
-                ], limit=1)
-                if reason:
-                    write_vals["reason_id"] = reason.id
-                else:
-                    errors.append(_("Kode alasan '%s' tidak ditemukan pada line %s.") % (reason_code, line_id))
+                write_vals["wt_physical_qty"] = qty
 
             if note:
-                write_vals["note"] = note
+                write_vals["wt_note"] = note
 
-            line.write(write_vals)
+            ml.write(write_vals)
             updated += 1
 
-        # Tandai completed jika semua baris sudah punya physical_qty atau skip_line
-        all_done = all(
-            l.skip_line or l.physical_qty > 0.0
-            for l in delivery.line_ids
+        # Tandai picking milik operator ini sebagai done jika semua move line-nya terisi
+        now = fields.Datetime.now()
+        operator_pickings = delivery.picking_ids.filtered(
+            lambda p: p.wt_operator_id == device.employee_id
         )
-        if all_done and delivery.state in ["assigned", "in_progress"]:
+        for picking in operator_pickings:
+            picking_lines = picking.move_line_ids.filtered(lambda l: l.quantity > 0)
+            picking_done = all(
+                l.wt_skip_line or l.wt_physical_qty > 0.0
+                for l in picking_lines
+            )
+            if picking_done and not picking.wt_push_done:
+                picking.sudo().write({
+                    "wt_push_done": True,
+                    "wt_push_done_at": now,
+                })
+
+        # Delivery completed hanya jika SEMUA picking sudah wt_push_done
+        # (semua operator sudah selesai push)
+        all_pickings_done = delivery.picking_ids and all(
+            p.wt_push_done for p in delivery.picking_ids
+        )
+        if all_pickings_done and delivery.state in ["confirmed", "in_progress"]:
             delivery.write({"state": "completed"})
 
         result_data = {
