@@ -11,6 +11,7 @@
         "security/access_groups.xml",
         "security/ir.model.access.csv",
         "data/weighing_cup_lump_sequence.xml",
+        "data/delivery_sequence.xml",
         "views/api_views.xml",
         "views/api_request_log_views.xml",
         "views/employee_role_views.xml",
@@ -34,6 +35,9 @@
         "views/stock_opname_apply_wizard_views.xml",
         "views/stock_opname_line_views.xml",
         "views/stock_opname_views.xml",
+        "views/delivery_do_wizard_views.xml",
+        "views/delivery_views.xml",
+
         "views/menu.xml",
     ],
     "application": True,

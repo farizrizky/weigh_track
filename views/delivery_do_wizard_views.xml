@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- FORM VIEW: Wizard Buat Delivery Order -->
+    <record id="view_wt_delivery_do_wizard_form" model="ir.ui.view">
+        <field name="name">wt.delivery.do.wizard.form</field>
+        <field name="model">wt.delivery.do.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Buat Delivery Order (DO)">
+                <sheet>
+                    <group>
+                        <group string="Informasi Pengiriman">
+                            <field name="delivery_id" readonly="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="picking_type_id"
+                                   options="{'no_create': True, 'no_open': True}"
+                                   help="Hanya menampilkan tipe operasi pengiriman (outgoing)."/>
+                            <field name="operator_id"
+                                   options="{'no_create': True}"
+                                   help="Pilih operator yang bertanggung jawab atas DO ini."/>
+                        </group>
+                        <group string="Lokasi &amp; Jadwal">
+                            <field name="location_id"
+                                   options="{'no_create': True}"/>
+                            <field name="location_dest_id"
+                                   options="{'no_create': True}"/>
+                            <field name="scheduled_date"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_create_do"
+                            string="Buat DO"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Batal"
+                            class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

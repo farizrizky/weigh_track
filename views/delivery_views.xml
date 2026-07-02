@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- LIST VIEW -->
+    <record id="view_wt_delivery_list" model="ir.ui.view">
+        <field name="name">wt.delivery.list</field>
+        <field name="model">wt.delivery</field>
+        <field name="arch" type="xml">
+            <list string="Tugas Pengiriman"
+                  decoration-info="state == 'draft'"
+                  decoration-primary="state in ('confirmed','in_progress')"
+                  decoration-success="state == 'validated'"
+                  decoration-warning="state == 'completed'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="picking_count" string="Jumlah DO"/>
+                <field name="total_demand_qty" string="Total Demand (kg)"/>
+                <field name="total_physical_qty" string="Total Fisik (kg)"/>
+                <field name="total_difference_qty" string="Total Selisih (kg)"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-primary="state in ('confirmed','in_progress')"
+                       decoration-warning="state == 'completed'"
+                       decoration-success="state == 'validated'"
+                       decoration-danger="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- FORM VIEW -->
+    <record id="view_wt_delivery_form" model="ir.ui.view">
+        <field name="name">wt.delivery.form</field>
+        <field name="model">wt.delivery</field>
+        <field name="arch" type="xml">
+            <form string="Tugas Pengiriman">
+                <header>
+                    <button name="action_confirm"
+                            string="Konfirmasi"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'draft'"/>
+                    <button name="action_populate_lines"
+                            string="Muat Baris Timbang"
+                            type="object"
+                            invisible="state not in ('draft','confirmed')"/>
+                    <button name="action_start"
+                            string="Mulai"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'confirmed'"/>
+                    <button name="action_complete"
+                            string="Selesai Timbang"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state not in ('confirmed','in_progress')"/>
+                    <button name="action_validate"
+                            string="Validasi &amp; Kirim"
+                            type="object"
+                            class="btn-success"
+                            invisible="state != 'completed'"
+                            confirm="Aksi ini akan mengupdate DO dan membuat dokumen Scrap susut secara otomatis. Lanjutkan?"/>
+                    <button name="action_cancel"
+                            string="Batalkan"
+                            type="object"
+                            class="btn-danger"
+                            invisible="state in ('validated','cancelled')"
+                            confirm="Yakin ingin membatalkan tugas pengiriman ini?"/>
+                    <button name="action_draft"
+                            string="Set ke Draft"
+                            type="object"
+                            invisible="state != 'cancelled'"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed,in_progress,completed,validated"/>
+                </header>
+                <sheet>
+                    <!-- Smart Button -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_pickings"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-truck"
+                                invisible="picking_count == 0">
+                            <field name="picking_count" widget="statinfo" string="DO"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"
+                                   readonly="state != 'draft'"/>
+                            <field name="date" readonly="state != 'draft'"/>
+                        </group>
+                        <group>
+                            <field name="total_demand_qty" readonly="1"/>
+                            <field name="total_physical_qty" readonly="1"/>
+                            <field name="total_difference_qty" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- Tab 1: Daftar DO -->
+                        <page string="Delivery Orders (DO)">
+                            <div class="mb-2" invisible="state not in ('draft','confirmed')">
+                                <button name="action_new_picking"
+                                        string="Tambah Pengiriman"
+                                        type="object"
+                                        class="btn btn-secondary"
+                                        icon="fa-plus"/>
+                            </div>
+                            <field name="picking_ids"
+                                   readonly="state not in ('draft','confirmed')"
+                                   context="{'default_wt_delivery_id': id, 'default_origin': name, 'default_company_id': company_id}">
+                                <list string="Delivery Orders" create="false">
+                                    <field name="name"/>
+                                    <field name="picking_type_id" string="Tipe Operasi"/>
+                                    <field name="wt_operator_id" string="Operator"/>
+                                    <field name="location_id" string="Dari"/>
+                                    <field name="location_dest_id" string="Ke"/>
+                                    <field name="scheduled_date" string="Tgl Jadwal"/>
+                                    <field name="state" widget="badge"
+                                           decoration-info="state == 'draft'"
+                                           decoration-warning="state == 'waiting'"
+                                           decoration-primary="state == 'confirmed'"
+                                           decoration-success="state in ('assigned','done')"
+                                           decoration-danger="state == 'cancel'"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Tab 2: Detail Timbang -->
+                        <page string="Detail Timbang">
+                            <field name="line_ids" readonly="state in ('validated','cancelled')">
+                                <list string="Detail Timbang"
+                                      editable="bottom"
+                                      decoration-danger="not skip_line and physical_qty == 0.0"
+                                      decoration-warning="difference_qty &lt; 0"
+                                      decoration-success="difference_qty == 0.0 and physical_qty &gt; 0.0">
+                                    <field name="picking_name" readonly="1" optional="show"/>
+                                    <field name="picking_id" readonly="1"/>
+                                    <field name="operator_employee_id" optional="show"/>
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="lot_id" readonly="1"/>
+                                    <field name="uom_id" readonly="1"/>
+                                    <field name="demand_qty" readonly="1"/>
+                                    <field name="physical_qty"/>
+                                    <field name="difference_qty" readonly="1"/>
+                                    <field name="reason_id"/>
+                                    <field name="note" optional="hide"/>
+                                    <field name="skip_line" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Tab 3: Catatan -->
+                        <page string="Catatan">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+
+                    <group string="Informasi Validasi" invisible="state != 'validated'">
+                        <field name="validated_at" readonly="1"/>
+                        <field name="validated_by_id" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- SEARCH VIEW -->
+    <record id="view_wt_delivery_search" model="ir.ui.view">
+        <field name="name">wt.delivery.search</field>
+        <field name="model">wt.delivery</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="date"/>
+                <filter string="Draft"       name="draft"       domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmed"   name="confirmed"   domain="[('state', '=', 'confirmed')]"/>
+                <filter string="In Progress" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Completed"   name="completed"   domain="[('state', '=', 'completed')]"/>
+                <filter string="Validated"   name="validated"   domain="[('state', '=', 'validated')]"/>
+                <filter string="Cancelled"   name="cancelled"   domain="[('state', '=', 'cancelled')]"/>
+                <filter string="Status"  name="group_state" context="{'group_by': 'state'}"/>
+                <filter string="Tanggal" name="group_date"  context="{'group_by': 'date'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- WINDOW ACTION -->
+    <record id="action_wt_delivery" model="ir.actions.act_window">
+        <field name="name">Tugas Pengiriman</field>
+        <field name="res_model">wt.delivery</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_delivery_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Buat Tugas Pengiriman Baru
+            </p>
+            <p>
+                Klik "+ Tambah DO Baru" untuk membuat Delivery Order menggunakan form standar Odoo.
+                Setelah DO siap, klik "Muat Baris Timbang" untuk mengisi detail penimbangan.
+            </p>
+        </field>
+    </record>
+
+</odoo>

@@ -32,3 +32,17 @@ class PullApiController(http.Controller):
             "pull_stock_opname",
         )
 
+    @http.route(
+        "/weightrack/api/v1/pull/delivery",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        csrf=False,
+    )
+    def pull_delivery(self, **kwargs):
+        return ApiHandler().handle(
+            "pull.delivery",
+            "wt.api.delivery.service",
+            "pull_delivery",
+        )
+

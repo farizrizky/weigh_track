@@ -32,3 +32,17 @@ class PushApiController(http.Controller):
             "push_stock_opname",
         )
 
+    @http.route(
+        "/weightrack/api/v1/push/delivery",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        csrf=False,
+    )
+    def push_delivery(self, **kwargs):
+        return ApiHandler().handle(
+            "push.delivery",
+            "wt.api.delivery.service",
+            "push_delivery",
+        )
+
