@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================
+         Stock Opname Difference Reason — Views
+    ============================================================ -->
+
+    <!-- List View -->
+    <record id="view_wt_stock_opname_difference_reason_list" model="ir.ui.view">
+        <field name="name">wt.stock.opname.difference.reason.list</field>
+        <field name="model">wt.stock.opname.difference.reason</field>
+        <field name="arch" type="xml">
+            <list string="Alasan Selisih">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="location_dest_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_wt_stock_opname_difference_reason_form" model="ir.ui.view">
+        <field name="name">wt.stock.opname.difference.reason.form</field>
+        <field name="model">wt.stock.opname.difference.reason</field>
+        <field name="arch" type="xml">
+            <form string="Alasan Selisih">
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Nama Alasan…"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="location_dest_id"
+                                   domain="[('usage', 'not in', ['view'])]"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Keterangan">
+                        <field name="description" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_wt_stock_opname_difference_reason" model="ir.actions.act_window">
+        <field name="name">Alasan Selisih</field>
+        <field name="res_model">wt.stock.opname.difference.reason</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{"active_test": False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Buat Alasan Selisih
+            </p>
+            <p>
+                Tentukan alasan selisih stok (misal: Susut, Hilang, Rusak)
+                dan set lokasi tujuan default untuk setiap alasan.
+            </p>
+        </field>
+    </record>
+</odoo>

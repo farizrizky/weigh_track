@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================
+         Stock Opname Line — Popup Form View (Alokasi Selisih)
+         Harus dimuat SEBELUM stock_opname_views.xml supaya
+         action_configure_line_difference tervalidasi dengan benar.
+    ============================================================ -->
+    <record id="view_wt_stock_opname_line_allocation_popup" model="ir.ui.view">
+        <field name="name">wt.stock.opname.line.allocation.popup</field>
+        <field name="model">wt.stock.opname.line</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <form string="Alokasi Selisih">
+                <sheet>
+                    <!-- State (hidden, untuk kontrol readonly) -->
+                    <field name="state" invisible="1"/>
+
+                    <!-- Banner: sudah applied — tidak bisa diubah -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state not in ['applied', 'cancelled']">
+                        <i class="fa fa-lock me-1"/>
+                        Stock opname sudah di-apply — alokasi tidak dapat diubah lagi.
+                    </div>
+
+                    <!-- Info identitas lot -->
+                    <group>
+                        <group string="Informasi Lot">
+                            <field name="product_id" readonly="1"/>
+                            <field name="lot_id"     readonly="1"/>
+                            <field name="uom_id"     readonly="1"/>
+                        </group>
+                        <group string="Qty">
+                            <field name="theoretical_qty" readonly="1"/>
+                            <field name="physical_qty"    readonly="1"/>
+                            <field name="difference_qty"  readonly="1"/>
+                            <field name="allocated_qty"   readonly="1"/>
+                            <field name="unallocated_qty" readonly="1"
+                                   decoration-danger="unallocated_qty != 0"
+                                   decoration-success="unallocated_qty == 0"/>
+                        </group>
+                    </group>
+
+                    <!-- Peringatan jika tidak ada selisih -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="difference_qty != 0">
+                        <i class="fa fa-lock me-1"/>
+                        Lot ini tidak memiliki selisih — alokasi tidak diperlukan.
+                    </div>
+
+                    <!-- Info progres alokasi -->
+                    <div class="alert alert-success" role="alert"
+                         invisible="not is_fully_allocated or difference_qty == 0">
+                        <i class="fa fa-check-circle me-1"/>
+                        Selisih sudah teralokasi penuh.
+                    </div>
+                    <div class="alert alert-info" role="alert"
+                         invisible="is_fully_allocated or difference_qty == 0">
+                        <i class="fa fa-info-circle me-1"/>
+                        Tambahkan baris alokasi hingga Unallocated = 0.
+                    </div>
+
+                    <!-- Tabel alokasi -->
+                    <field name="is_fully_allocated" invisible="1"/>
+                    <field name="allocation_ids"
+                           readonly="difference_qty == 0 or state in ['applied', 'cancelled']"
+                           context="{'default_line_id': id}"
+                           nolabel="1">
+                        <list editable="bottom">
+                            <field name="reason_id"/>
+                            <field name="qty" string="Qty Alokasi"/>
+                            <field name="uom_id" readonly="1" string="Satuan"/>
+                            <field name="location_dest_id" string="Lokasi Tujuan"
+                                   domain="[('usage', 'not in', ['view'])]"/>
+                            <field name="note" optional="hide"/>
+                        </list>
+                    </field>
+                </sheet>
+                <footer>
+                    <!-- Tombol Simpan hanya tampil jika belum applied -->
+                    <button string="Simpan" class="btn-primary" special="save"
+                            invisible="state in ['applied', 'cancelled']"/>
+                    <button string="Tutup"  class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
+

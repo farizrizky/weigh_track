@@ -21,4 +21,5 @@
             <menuitem id="menu_wt_product" name="Product" parent="menu_wt_configuration" action="action_wt_product" sequence="30" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_shrinkage_tolerance" name="Shrinkage Tolerance" parent="menu_wt_configuration" action="action_wt_shrinkage_tolerance" sequence="35" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_receipt_rule" name="Receipt Rule" parent="menu_wt_configuration" action="action_wt_receipt_rule" sequence="40" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_stock_opname_difference_reason" name="Difference Reasons" parent="menu_wt_configuration" action="action_wt_stock_opname_difference_reason" sequence="45" groups="weightrack.group_admin"/>
 </odoo>

@@ -17,4 +17,6 @@ from . import tapper
 from . import device
 from . import stock_lot
 from . import stock_opname
+from . import stock_opname_difference_reason
+from . import stock_opname_line_allocation
 
