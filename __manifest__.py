@@ -38,6 +38,7 @@
         "views/delivery_do_wizard_views.xml",
         "views/delivery_line_allocation_views.xml",
         "views/delivery_views.xml",
+        "views/stock_picking_views.xml",
 
         "views/menu.xml",
     ],

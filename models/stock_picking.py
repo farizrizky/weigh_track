@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class StockPicking(models.Model):
@@ -32,3 +32,23 @@ class StockPicking(models.Model):
         copy=False,
         help="Waktu operator menyelesaikan push data timbang.",
     )
+
+    # ── Alokasi Selisih (via move lines) ─────────────────────────────────────
+    wt_allocation_ids = fields.Many2many(
+        "wt.delivery.line.allocation",
+        string="Alokasi Selisih",
+        compute="_compute_wt_allocation_ids",
+        help="Semua alokasi selisih timbang dari move lines pengiriman ini.",
+    )
+    wt_has_allocation = fields.Boolean(
+        string="Ada Alokasi",
+        compute="_compute_wt_allocation_ids",
+        help="True jika terdapat alokasi selisih pada pengiriman ini.",
+    )
+
+    @api.depends("move_line_ids.wt_allocation_ids")
+    def _compute_wt_allocation_ids(self):
+        for picking in self:
+            allocs = picking.move_line_ids.mapped("wt_allocation_ids")
+            picking.wt_allocation_ids = allocs
+            picking.wt_has_allocation = bool(allocs)
