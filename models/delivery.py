@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class Delivery(models.Model):
@@ -59,6 +59,15 @@ class Delivery(models.Model):
     move_line_ids = fields.One2many(
         "stock.move.line",
         "wt_delivery_id",
+        string="Semua Detail Timbang",
+    )
+    # Detail timbang yang sudah di-pull oleh operator (tampil di tab Detail Timbang).
+    # Lot yang baru di-reserve Odoo (belum di-pull) TIDAK tampil di sini,
+    # sehingga admin bebas mengubah perincian DO sebelum operator pull ulang.
+    pulled_move_line_ids = fields.One2many(
+        "stock.move.line",
+        "wt_delivery_id",
+        domain=[("wt_is_pulled", "=", True), ("quantity", ">", 0)],
         string="Detail Timbang",
     )
     state = fields.Selection(
@@ -87,6 +96,12 @@ class Delivery(models.Model):
         store=True,
         digits="Product Unit of Measure",
     )
+    has_adjustable_lines = fields.Boolean(
+        string="Ada Baris Bisa Di-Adjust",
+        compute="_compute_has_adjustable_lines",
+        help="True jika ada minimal 1 baris dengan selisih yang sudah teralokasi penuh "
+             "dan belum diterapkan adjustment-nya.",
+    )
     validated_at = fields.Datetime(
         string="Divalidasi Pada",
         readonly=True,
@@ -105,10 +120,14 @@ class Delivery(models.Model):
         "move_line_ids.quantity",
         "move_line_ids.wt_physical_qty",
         "move_line_ids.wt_original_demand_qty",
+        "move_line_ids.wt_is_pulled",
     )
     def _compute_totals(self):
         for rec in self:
-            active_lines = rec.move_line_ids.filtered(lambda l: l.quantity > 0 or l.wt_original_demand_qty > 0)
+            # Hanya hitung baris yang sudah di-pull operator
+            active_lines = rec.move_line_ids.filtered(
+                lambda l: l.wt_is_pulled and (l.quantity > 0 or l.wt_original_demand_qty > 0)
+            )
             # Gunakan demand asli jika sudah tersimpan (setelah validasi)
             rec.total_demand_qty = sum(
                 l.wt_original_demand_qty if l.wt_original_demand_qty > 0.001 else l.quantity
@@ -116,6 +135,23 @@ class Delivery(models.Model):
             )
             rec.total_physical_qty = sum(active_lines.mapped("wt_physical_qty"))
             rec.total_difference_qty = rec.total_physical_qty - rec.total_demand_qty
+
+    @api.depends(
+        "move_line_ids.wt_difference_qty",
+        "move_line_ids.wt_is_fully_allocated",
+        "move_line_ids.wt_adjustment_applied",
+        "move_line_ids.wt_is_pulled",
+    )
+    def _compute_has_adjustable_lines(self):
+        for rec in self:
+            # Tombol Apply Adjustment hanya muncul untuk baris yang sudah di-pull
+            rec.has_adjustable_lines = any(
+                abs(l.wt_difference_qty) > 0.001
+                and l.wt_is_fully_allocated
+                and not l.wt_adjustment_applied
+                and l.wt_is_pulled
+                for l in rec.move_line_ids
+            )
 
     def _compute_picking_count(self):
         for rec in self:
@@ -164,6 +200,100 @@ class Delivery(models.Model):
             },
         }
 
+    # ─────────────────────────────────── Apply Adjustment ───
+
+    def action_apply_adjustment(self):
+        """Terapkan koreksi stok (susut) untuk semua baris Detail Timbang yang:
+        - Memiliki selisih (wt_difference_qty != 0)
+        - Sudah teralokasi penuh (wt_is_fully_allocated = True)
+        - Belum pernah di-apply (wt_adjustment_applied = False)
+
+        Stock move dibuat TANPA picking_id agar tidak muncul sebagai baris
+        tambahan di dalam DO. Pola move mengikuti stock_opname._apply_line_with_allocations.
+
+        Setelah apply, baris ditandai wt_adjustment_applied = True sehingga saat
+        action_validate tidak double-scrap.
+        """
+        for delivery in self:
+            delivery._apply_adjustment_one()
+
+    def _apply_adjustment_one(self):
+        self.ensure_one()
+        if self.state not in ("in_progress", "completed"):
+            raise UserError(_(
+                "Apply Adjustment hanya bisa dilakukan saat status In Progress atau Completed."
+            ))
+
+        # Cari baris yang siap di-adjust
+        adjustable_lines = self.move_line_ids.filtered(
+            lambda l: abs(l.wt_difference_qty) > 0.001
+            and l.wt_is_fully_allocated
+            and not l.wt_adjustment_applied
+        )
+        if not adjustable_lines:
+            raise UserError(_(
+                "Tidak ada baris dengan selisih yang sudah teralokasi penuh.\n"
+                "Pastikan alokasi selisih sudah diisi untuk setiap baris yang punya selisih."
+            ))
+
+        company = self.company_id
+        move_vals_list = []
+        for line in adjustable_lines:
+            for alloc in line.wt_allocation_ids:
+                # Selisih negatif (susut): stok keluar dari gudang ke lokasi susut
+                # Selisih positif (lebih): stok masuk dari lokasi virtual ke gudang
+                if line.wt_difference_qty < 0:
+                    location_src = line.location_id
+                    location_dest = alloc.location_dest_id
+                else:
+                    location_src = alloc.location_dest_id
+                    location_dest = line.location_id
+
+                move_vals_list.append({
+                    "state": "confirmed",
+                    "picked": True,
+                    "is_inventory": True,
+                    "product_id": line.product_id.id,
+                    "product_uom": line.product_uom_id.id,
+                    "product_uom_qty": alloc.qty,
+                    "location_id": location_src.id,
+                    "location_dest_id": location_dest.id,
+                    "company_id": company.id,
+                    "origin": "%s / %s / %s" % (
+                        self.name, line.picking_id.name, alloc.reason_id.name
+                    ),
+                    "move_line_ids": [(0, 0, {
+                        "product_id": line.product_id.id,
+                        "product_uom_id": line.product_uom_id.id,
+                        "quantity": alloc.qty,
+                        "lot_id": line.lot_id.id if line.lot_id else False,
+                        "location_id": location_src.id,
+                        "location_dest_id": location_dest.id,
+                        "company_id": company.id,
+                    })],
+                })
+
+        if move_vals_list:
+            moves = self.env["stock.move"].sudo().with_context(
+                inventory_mode=False
+            ).create(move_vals_list)
+            moves.with_context(ignore_dest_packages=True)._action_done()
+
+        # Tandai baris sebagai sudah di-adjust
+        adjustable_lines.sudo().write({"wt_adjustment_applied": True})
+
+        # Catat di chatter
+        lots = ", ".join(
+            l.lot_id.name or l.product_id.display_name
+            for l in adjustable_lines
+        )
+        self.message_post(
+            body=_(
+                "<b>Apply Adjustment</b> diterapkan oleh %s.<br/>"
+                "Lot/Produk yang diproses: %s"
+            ) % (self.env.user.name, lots)
+        )
+
     # ─────────────────────────────────── Workflow ───
 
     def action_confirm(self):
@@ -190,6 +320,12 @@ class Delivery(models.Model):
                 raise ValidationError(_("Hanya Confirmed yang bisa dimulai."))
             delivery.write({"state": "in_progress"})
 
+    def action_complete(self):
+        for delivery in self:
+            if delivery.state != "in_progress":
+                raise ValidationError(_("Hanya In Progress yang bisa diselesaikan."))
+            delivery.write({"state": "completed"})
+
 
     def action_validate(self):
         for delivery in self:
@@ -200,9 +336,9 @@ class Delivery(models.Model):
         if self.state != "completed":
             raise ValidationError(_("Hanya Completed yang bisa divalidasi."))
 
-        # Move lines aktif (quantity > 0, tidak diskip)
+        # Move lines aktif: sudah di-pull operator, quantity > 0, tidak diskip
         active_lines = self.move_line_ids.filtered(
-            lambda l: l.quantity > 0 and not l.wt_skip_line
+            lambda l: l.quantity > 0 and not l.wt_skip_line and l.wt_is_pulled
         )
 
         # Cek semua baris sudah punya berat fisik
@@ -235,25 +371,46 @@ class Delivery(models.Model):
                 "Buka 'Alokasi' pada tab Detail Timbang untuk mengisi alokasi selisih."
             ) % lots)
 
-        # Kumpulkan data scrap SEBELUM quantity berubah
-        # (wt_difference_qty = wt_physical_qty - quantity; shortage = quantity - wt_physical_qty)
-        scraps_to_create = []
+        # Kumpulkan data stock move adjustment SEBELUM quantity berubah.
+        # Baris yang sudah di-apply via tombol Apply Adjustment (wt_adjustment_applied=True)
+        # di-skip agar tidak double-adjust.
+        # Stock move dibuat TANPA picking_id agar tidak muncul sebagai baris
+        # tambahan di dalam DO.
+        adjustments_to_create = []
         for line in active_lines:
             if abs(line.wt_difference_qty) <= 0.001:
                 continue
+            if line.wt_adjustment_applied:
+                continue  # Sudah di-apply sebelumnya, skip
             for alloc in line.wt_allocation_ids:
-                scraps_to_create.append({
+                if line.wt_difference_qty < 0:
+                    location_src = line.location_id
+                    location_dest = alloc.location_dest_id
+                else:
+                    location_src = alloc.location_dest_id
+                    location_dest = line.location_id
+                adjustments_to_create.append({
+                    "state": "confirmed",
+                    "picked": True,
+                    "is_inventory": True,
                     "product_id": line.product_id.id,
-                    "product_uom_id": line.product_uom_id.id,
-                    "scrap_qty": alloc.qty,
-                    "lot_id": line.lot_id.id if line.lot_id else False,
-                    "location_id": line.location_id.id,
-                    "scrap_location_id": alloc.location_dest_id.id,
+                    "product_uom": line.product_uom_id.id,
+                    "product_uom_qty": alloc.qty,
+                    "location_id": location_src.id,
+                    "location_dest_id": location_dest.id,
                     "company_id": line.company_id.id,
-                    "picking_id": line.picking_id.id,
                     "origin": "%s / %s / %s" % (
                         self.name, line.picking_id.name, alloc.reason_id.name
                     ),
+                    "move_line_ids": [(0, 0, {
+                        "product_id": line.product_id.id,
+                        "product_uom_id": line.product_uom_id.id,
+                        "quantity": alloc.qty,
+                        "lot_id": line.lot_id.id if line.lot_id else False,
+                        "location_id": location_src.id,
+                        "location_dest_id": location_dest.id,
+                        "company_id": line.company_id.id,
+                    })],
                 })
 
         # Step 1: Set quantity = berat fisik di setiap move line
@@ -286,10 +443,13 @@ class Delivery(models.Model):
                 ])
                 backorder_pickings.action_cancel()
 
-        # Step 3: Buat scrap SETELAH DO selesai
-        # (stok yang tidak terdeliver masih tersedia di source untuk di-scrap)
-        for scrap_vals in scraps_to_create:
-            self.env["stock.scrap"].sudo().create(scrap_vals).action_validate()
+        # Step 3: Buat stock move adjustment SETELAH DO selesai
+        # (hanya untuk baris yang belum di-apply sebelumnya)
+        if adjustments_to_create:
+            moves = self.env["stock.move"].sudo().with_context(
+                inventory_mode=False
+            ).create(adjustments_to_create)
+            moves.with_context(ignore_dest_packages=True)._action_done()
 
         self.write({
             "state": "validated",

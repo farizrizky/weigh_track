@@ -51,6 +51,7 @@ class ApiDeliveryService(models.AbstractModel):
 
             # Move lines milik operator ini (filter per picking.wt_operator_id)
             lines_data = []
+            pulled_line_ids = []
             for ml in delivery.move_line_ids.filtered(
                 lambda l: l.quantity > 0
                 and l.picking_id.wt_operator_id == device.employee_id
@@ -81,6 +82,15 @@ class ApiDeliveryService(models.AbstractModel):
                     ],
                     "note": ml.wt_note or "",
                     "skip_line": ml.wt_skip_line,
+                })
+                pulled_line_ids.append(ml.id)
+
+            # Tandai semua baris yang dikirim ke operator sebagai sudah di-pull.
+            # Hanya baris dengan wt_is_pulled=True yang tampil di Detail Timbang
+            # sehingga admin bebas mengubah perincian DO sebelum operator pull ulang.
+            if pulled_line_ids:
+                self.env["stock.move.line"].sudo().browse(pulled_line_ids).write({
+                    "wt_is_pulled": True,
                 })
 
             deliveries_data.append({
@@ -202,13 +212,10 @@ class ApiDeliveryService(models.AbstractModel):
                     "wt_push_done_at": now,
                 })
 
-        # Delivery completed hanya jika SEMUA picking sudah wt_push_done
-        # (semua operator sudah selesai push)
-        all_pickings_done = delivery.picking_ids and all(
-            p.wt_push_done for p in delivery.picking_ids
-        )
-        if all_pickings_done and delivery.state in ["confirmed", "in_progress"]:
-            delivery.write({"state": "completed"})
+        # Catatan: state delivery TIDAK otomatis berubah ke 'completed'.
+        # Admin harus secara manual mengubah state via tombol di form delivery.
+        # Ini memungkinkan lot tambahan untuk ditambahkan dan ditimbang
+        # setelah Apply Adjustment dilakukan.
 
         result_data = {
             "delivery_id": delivery.id,
@@ -219,3 +226,4 @@ class ApiDeliveryService(models.AbstractModel):
             result_data["warnings"] = errors
 
         return response.success(result_data, device=device)
+

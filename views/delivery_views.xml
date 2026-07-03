@@ -46,6 +46,11 @@
                             type="object"
                             class="btn-primary"
                             invisible="state != 'confirmed'"/>
+                    <button name="action_complete"
+                            string="Selesai Timbang"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'in_progress'"/>
                     <button name="action_validate"
                             string="Validasi &amp; Kirim"
                             type="object"
@@ -131,9 +136,18 @@
 
                         <!-- Tab 2: Detail Timbang (langsung dari stock.move.line) -->
                         <page string="Detail Timbang">
-                            <field name="move_line_ids"
+                            <div class="mb-2 d-flex gap-2"
+                                 invisible="not has_adjustable_lines or state not in ('in_progress', 'completed')">
+                                <button name="action_apply_adjustment"
+                                        string="Apply Adjustment"
+                                        type="object"
+                                        class="btn btn-warning"
+                                        icon="fa-check-circle"
+                                        confirm="Aksi ini akan mengkoreksi stok sesuai alokasi selisih yang sudah diatur. Stok lot terdampak akan disesuaikan sekarang. Lanjutkan?"/>
+                            </div>
+                            <field name="pulled_move_line_ids"
                                    readonly="state in ('validated','cancelled')"
-                                   domain="[('quantity', '>', 0)]"
+                                   domain="[]"
                                    context="{'show_original_demand': state == 'validated'}">
                                 <list string="Detail Timbang"
                                       editable="bottom"

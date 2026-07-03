@@ -49,6 +49,22 @@ class StockMoveLineWeighing(models.Model):
         default=False,
         help="Centang untuk melewati baris ini saat validasi pengiriman.",
     )
+    wt_adjustment_applied = fields.Boolean(
+        string="Adjustment Diterapkan",
+        default=False,
+        readonly=True,
+        copy=False,
+        help="True jika stock adjustment (susut) sudah diterapkan sebelum validasi delivery "
+             "via tombol Apply Adjustment. Baris ini akan di-skip saat validasi agar tidak double-scrap.",
+    )
+    wt_is_pulled = fields.Boolean(
+        string="Sudah Di-Pull",
+        default=False,
+        copy=False,
+        help="True jika baris ini sudah pernah dikirim ke operator lewat Pull API. "
+             "Hanya baris yang sudah di-pull yang ditampilkan di tab Detail Timbang, "
+             "sehingga admin bebas mengubah perincian DO sebelum operator pull ulang.",
+    )
     wt_note = fields.Char(
         string="Catatan Timbang",
     )
