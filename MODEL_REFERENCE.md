@@ -56,7 +56,7 @@ WeighTrack
   - `Clerk` diterjemahkan menjadi `Kerani`.
 - Device activation hanya dilakukan melalui custom API, bukan tombol manual di form device.
 - Endpoint pull master sudah aktif untuk mengambil data master offline.
-- Endpoint push weighing Cup Lump sudah aktif dan langsung membuat `wt.weighing.cup.lump`.
+- Endpoint push weighing sudah aktif dan langsung membuat `wt.weighing`.
 - Master/config yang bisa diarsipkan memakai field standar `active`: Estate, Weather, Employee Role, Product, Shrinkage Tolerance, Receipt Rule, Division, Weighing Location, Foreman, dan Tapper.
 - Pull master hanya mengirim master/config aktif. Push tetap bisa membaca referensi archived untuk audit, tetapi menandainya sebagai `inactive_master`.
 - Pada beberapa form konfigurasi, field teknis `name` tetap tersimpan untuk display/search tetapi tidak ditampilkan sebagai title besar jika user lebih perlu mengisi field bisnis utama terlebih dahulu.
@@ -247,23 +247,22 @@ wt.product
 
 Deskripsi:
 
-Product adalah konfigurasi produk Odoo yang dipakai oleh WeighTrack untuk setiap tipe produk timbang pada company tertentu. Model ini bukan transaksi timbang; model ini hanya registry/mapping dari `product_type` teknis ke `product.product`.
+Product adalah konfigurasi satu produk Odoo yang dipakai oleh WeighTrack pada company tertentu. Model ini bukan transaksi timbang; model ini hanya menentukan produk penimbangan aktif untuk company.
 
 Field:
 
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
-| `name` | `Char` | Otomatis | Tidak | Computed name dari company, product type, dan product. |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari company dan product. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat mapping berlaku. Default mengikuti company user aktif. |
-| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `cup_lump`. |
-| `product_id` | `Many2one(product.product)` | Ya | Ya | Produk Odoo yang dipakai untuk tipe produk tersebut. `ondelete="restrict"`. |
+| `product_id` | `Many2one(product.product)` | Ya | Ya | Produk Odoo yang dipakai sebagai satu-satunya product weighing aktif untuk company tersebut. `ondelete="restrict"`. |
 | `uom_id` | `Many2one(uom.uom)` | Otomatis | Tidak | Related UoM dari `product_id.uom_id`, stored dan readonly. |
 | `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Mapping aktif saja yang dipakai pull dan validasi konfigurasi. |
 
 Urutan data:
 
 ```text
-company_id, product_type, product_id
+company_id, product_id
 ```
 
 Domain UI:
@@ -274,20 +273,19 @@ product_id: ['|', ('product_tmpl_id.company_id', '=', False), ('product_tmpl_id.
 
 Validasi:
 
-- Kombinasi `company_id` dan `product_type` wajib unik untuk record aktif.
+- Hanya boleh ada satu mapping product aktif per company.
 - Produk harus milik company yang sama atau produk global tanpa company.
 
 Constraint database:
 
 ```text
-partial unique index (company_id, product_type) where active
+partial unique index (company_id) where active
 ```
 
 Pesan validasi:
 
 ```text
-Product mapping must be unique per company and product type.
-Only one product mapping is allowed per company and product type.
+Only one weighing product is allowed per company.
 Product must belong to the same company or be a global product.
 ```
 
@@ -301,15 +299,14 @@ wt.shrinkage.tolerance
 
 Deskripsi:
 
-Shrinkage Tolerance adalah konfigurasi batas toleransi penyusutan produksi per company, product type, dan division. Konfigurasi ini dipakai sebagai nilai batas susut saat tanggal produksi tidak sama dengan tanggal penimbangan di gudang induk.
+Shrinkage Tolerance adalah konfigurasi batas toleransi penyusutan produksi per company dan division. Konfigurasi ini dipakai sebagai nilai batas susut saat tanggal produksi tidak sama dengan tanggal penimbangan di gudang induk.
 
 Field:
 
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
-| `name` | `Char` | Otomatis | Tidak | Computed name dari company, product type, dan division. |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari company dan division. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat toleransi berlaku. Default mengikuti company user aktif. |
-| `product_type` | `Selection` | Ya | Ya | Tipe produk timbang dari `constants/product_types.py`. Saat ini: `cup_lump`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat toleransi berlaku. `ondelete="restrict"`. |
 | `shrinkage_tolerance_percentage` | `Float` | Ya | Ya | Persentase batas penyusutan produksi yang diizinkan. |
 | `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Toleransi archived tidak dikirim pada pull master. |
@@ -322,7 +319,7 @@ Catatan UI:
 Urutan data:
 
 ```text
-company_id, product_type, division_id
+company_id, division_id
 ```
 
 Domain UI:
@@ -333,21 +330,20 @@ division_id: [('company_id', '=', company_id)]
 
 Validasi:
 
-- Kombinasi `company_id`, `product_type`, dan `division_id` wajib unik untuk record aktif.
+- Kombinasi `company_id` dan `division_id` wajib unik untuk record aktif.
 - Division harus berada pada company yang sama.
 - `shrinkage_tolerance_percentage` harus berada di antara 0 dan 100.
 
 Constraint database:
 
 ```text
-partial unique index (company_id, product_type, division_id) where active
+partial unique index (company_id, division_id) where active
 ```
 
 Pesan validasi:
 
 ```text
-Shrinkage tolerance must be unique per company, product type, and division.
-Shrinkage tolerance already exists for company '%(company)s', product type '%(product_type)s', and division '%(division)s'.
+Shrinkage tolerance already exists for company '%(company)s', and division '%(division)s'.
 Division must belong to the same company.
 Shrinkage tolerance percentage must be between 0 and 100.
 ```
@@ -362,69 +358,66 @@ wt.receipt.rule
 
 Deskripsi:
 
-Receipt Rule adalah konfigurasi aturan produk yang boleh ditimbang pada kombinasi Weighing Location dan Division tertentu. Record ini juga menentukan Warehouse, Location, dan Operation Type yang akan dipakai sebagai tujuan stok saat data timbang nanti diproses menjadi stock receipt.
+Receipt Rule adalah konfigurasi alur penerimaan stok untuk kombinasi Weighing Location dan Division tertentu. Record ini menentukan Warehouse, Receiving Location, dan Operation Type yang akan dipakai ketika data timbang diproses menjadi Production Receipt dan Inventory Receipt.
 
 Field:
 
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
-| `name` | `Char` | Otomatis | Tidak | Computed name dari weighing location, division, dan product. |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari weighing location dan division. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `weighing_location_id.company_id`, `store=True`, readonly. |
 | `estate_id` | `Many2one(wt.estate)` | Otomatis | Tidak | Related dari `weighing_location_id.estate_id`, `store=True`, readonly. |
 | `weighing_location_id` | `Many2one(wt.weighing.location)` | Ya | Ya | Lokasi timbang tempat aturan berlaku. `ondelete="restrict"`. |
 | `allowed_division_ids` | `Many2many(wt.division)` | Otomatis | Tidak | Computed helper dari `weighing_location_id.allowed_division_ids` untuk domain Division. |
-| `allowed_product_ids` | `Many2many(product.product)` | Otomatis | Tidak | Computed helper dari `wt.product` sesuai company Weighing Location untuk domain Product. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division yang boleh menimbang produk di lokasi tersebut. Wajib termasuk allowed division pada Weighing Location. |
-| `product_id` | `Many2one(product.product)` | Ya | Ya | Product Odoo yang boleh ditimbang. Pilihan dibatasi dari konfigurasi `wt.product` pada company Weighing Location. |
 | `warehouse_id` | `Many2one(stock.warehouse)` | Ya | Ya | Warehouse tujuan stok. |
-| `location_id` | `Many2one(stock.location)` | Ya | Ya | Stock Location tujuan. Boleh lokasi company yang sama atau shared location. |
+| `allowed_location_ids` | `Many2many(stock.location)` | Otomatis | Tidak | Computed helper untuk membatasi lokasi internal di bawah view location warehouse terpilih. |
+| `location_id` | `Many2one(stock.location)` | Ya | Ya | Receiving Location. Harus internal, company sama/shared, dan berada di bawah warehouse terpilih. |
 | `operation_type_id` | `Many2one(stock.picking.type)` | Ya | Ya | Operation Type stock yang dipakai. Harus milik warehouse terpilih. |
 | `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Receipt rule archived tidak dikirim pada pull master. |
 
 Urutan data:
 
 ```text
-weighing_location_id, division_id, product_id
+weighing_location_id, division_id
 ```
 
 Domain UI:
 
 ```text
 division_id: [('id', 'in', allowed_division_ids)]
-product_id: [('id', 'in', allowed_product_ids)]
 warehouse_id: [('company_id', '=', company_id), ('estate_id', '=', estate_id)]
-location_id: ['|', ('company_id', '=', False), ('company_id', '=', company_id)]
+location_id: [('id', 'in', allowed_location_ids)]
 operation_type_id: [('warehouse_id', '=', warehouse_id)]
 ```
 
 Validasi:
 
-- Kombinasi `company_id`, `weighing_location_id`, `division_id`, dan `product_id` wajib unik untuk record aktif. Secara database uniqueness dijaga oleh kombinasi weighing location, division, dan product yang masih aktif; company mengikuti weighing location.
-- Weighing Location, Division, Product, Warehouse, Location, dan Operation Type harus konsisten dengan company.
+- Kombinasi `company_id`, `weighing_location_id`, dan `division_id` wajib unik untuk record aktif. Secara database uniqueness dijaga oleh kombinasi weighing location dan division yang masih aktif; company mengikuti weighing location.
+- Weighing Location, Division, Warehouse, Receiving Location, dan Operation Type harus konsisten dengan company.
 - Estate Receipt Rule otomatis mengikuti estate Weighing Location.
 - Warehouse harus berasal dari company dan estate yang sama dengan Receipt Rule.
 - Division harus termasuk `allowed_division_ids` pada Weighing Location.
-- Product harus sudah terdaftar di konfigurasi `wt.product` pada company yang sama.
+- Receiving Location harus berupa internal location, boleh shared atau company yang sama, dan wajib berada di bawah view location warehouse terpilih.
 - Operation Type harus berasal dari Warehouse yang dipilih.
 
 Constraint database:
 
 ```text
-partial unique index (weighing_location_id, division_id, product_id) where active
+partial unique index (weighing_location_id, division_id) where active
 ```
 
 Pesan validasi:
 
 ```text
-Receipt Rule must be unique per company, weighing location, division, and product.
-Receipt Rule already exists for company '%(company)s', weighing location '%(location)s', division '%(division)s', and product '%(product)s'. Please use the existing rule or change one of those values.
+Receipt Rule already exists for company '%(company)s', weighing location '%(location)s', and division '%(division)s'. Please use the existing rule or change one of those values.
 Weighing location must belong to the same company.
 Division must belong to the same company.
 Division must be allowed in the selected weighing location.
-Product must belong to the same company or be a global product.
-Product must be configured in Product for the same company.
 Warehouse must belong to the same company.
 Location must belong to the same company or be a shared location.
+Location must be an internal location.
+Location must be under the selected warehouse.
 Operation type must belong to the same company.
 Operation type must belong to the selected warehouse.
 ```
@@ -467,13 +460,13 @@ Validasi:
 Constraint database:
 
 ```text
-partial unique index (code, estate_id) where active
+partial unique index (code, company_id) where active
 ```
 
 Pesan validasi:
 
 ```text
-Division code must be unique per estate.
+Division code must be unique per company.
 %s employee must belong to the same company.
 %s employee role has not been configured for this company.
 %s employee must use an allowed job position for this company.
@@ -695,7 +688,7 @@ Field:
 | `token` | `Char` | Otomatis | Tidak | Token enrollment. Dibuat otomatis saat create jika belum diisi. Unik. |
 | `actived_at` | `Datetime` | Tidak | Ya | Waktu aktivasi pertama. Nama field saat ini masih `actived_at`. |
 | `last_pull` | `Datetime` | Tidak | Ya | Waktu pull terakhir. Diperbarui saat pull master berhasil. |
-| `last_push` | `Datetime` | Tidak | Ya | Waktu push terakhir. Diperbarui saat push weighing Cup Lump berhasil. |
+| `last_push` | `Datetime` | Tidak | Ya | Waktu push terakhir. Diperbarui saat push weighing berhasil. |
 | `last_seen` | `Datetime` | Tidak | Ya | Waktu terakhir device terlihat oleh API. Terisi saat activation. |
 | `app_version` | `Char` | Tidak | Ya | Versi aplikasi lokal. Wajib dikirim saat activation. |
 | `device_type` | `Selection` | Tidak | Ya | Jenis device: `mobile`, `desktop`. Wajib dikirim saat activation. |
@@ -829,38 +822,36 @@ Alur:
 - Jika `action = revoke`, wizard memanggil `device_id.action_confirm_revoke(reason)`.
 - Setelah selesai, wizard ditutup dengan `ir.actions.act_window_close`.
 
-## Weighing Cup Lump
+## Weighing
 
 Model teknis:
 
 ```text
-wt.weighing.cup.lump
+wt.weighing
 ```
 
 Deskripsi:
 
-Weighing Cup Lump adalah transaksi raw penimbangan Cup Lump. Record dapat dibuat melalui push API atau secara manual dari Odoo. Model inbound/header tidak aktif; setiap item push langsung membentuk satu record model ini.
+Weighing adalah transaksi raw penimbangan. Record dapat dibuat melalui push API atau secara manual dari Odoo. Model inbound/header tidak aktif; setiap item push langsung membentuk satu record model ini.
 
 Field utama:
 
 | Field | Type | Keterangan |
 | --- | --- | --- |
-| `name` | `Char` | Stored number generated once at create from `ir.sequence` code `wt.weighing.cup.lump`. Default format: `WH/CUP_LUMP/YYYYMMDD/NNN`, using `production_date` as the sequence date. |
+| `name` | `Char` | Stored number generated once at create from `ir.sequence` code `wt.weighing`. Default format: `WG/YYYYMMDD/NNN`, using `production_date` as the sequence date. |
 | `data_source` | `Selection` | Sumber record: `api` atau `manual`. |
 | `local_id` | `Char` | ID lokal item aplikasi. Wajib untuk API dan null untuk data manual baru. |
 | `device_id` | `Char` | Device ID teknis. Wajib untuk API dan null untuk data manual baru. |
 | `device_record_id` | `Many2one(wt.device)` | Device pengirim API. Null untuk manual. |
 | `batch_local_id` | `Char` | ID batch aplikasi. Null untuk manual. |
 | `company_id` | `Many2one(res.company)` | Company device. |
-| `product_type` | `Selection` | Saat ini `cup_lump`. |
 | `production_date` | `Date` | Tanggal produksi. |
 | `weighing_date` | `Datetime` | Waktu timbang. |
 | `master_synced_at` | `Datetime` | Waktu sync master aplikasi; disimpan untuk audit dan bukan data problem. |
 | `sent_at`, `received_at` | `Datetime` | Waktu kirim aplikasi dan waktu terima Odoo. |
-| `state` | `Selection` | `draft`, `validated`. |
-| `receipt_status` | `Selection` | Status keterikatan Production Receipt: `not_receipted`, `in_production_receipt`, `receipt_validated`, `receipt_cancelled`. |
+| `state` | `Selection` | Status keterikatan Production Receipt: `not_receipted`, `in_production_receipt`, `receipt_validated`, `receipt_cancelled`. |
 | `production_receipt_id` | `Many2one(wt.production.receipt)` | Production Receipt terakhir/aktif yang mengikat data timbang. |
-| `has_data_problem` | `Boolean` | Flag konflik terhadap master Odoo atau aturan Cup Lump. |
+| `has_data_problem` | `Boolean` | Flag konflik terhadap master Odoo atau aturan Weighing. |
 | `data_problem_code` | `Selection` | Kode problem utama atau `multiple_problem`. |
 | `data_problem_note_en` | `Text` | Catatan asli hasil evaluasi dalam bahasa Inggris untuk audit/debug. |
 | `data_problem_note_idn` | `Text` | Catatan hasil evaluasi dalam bahasa Indonesia. |
@@ -868,7 +859,7 @@ Field utama:
 | `device_snapshot_json` | `Text` | Snapshot item payload dari aplikasi. |
 | `odoo_snapshot_json` | `Text` | Snapshot master Odoo saat pengecekan problem. |
 | `estate_id`, `weighing_location_id`, `division_id` | Relasi scope | Scope estate, lokasi timbang, dan division. |
-| `product_id`, `uom_id`, `receipt_rule_id` | Relasi product | Produk, satuan, dan aturan penerimaan. |
+| `product_id`, `uom_id`, `receipt_rule_id` | Relasi product | Produk dan satuan otomatis dari mapping aktif `wt.product` pada company; receipt rule menentukan alur penerimaan. |
 | `operator_employee_id`, `operator_name`, `operator_barcode` | Employee | Operator. Nama dan barcode related dari employee. |
 | `clerk_employee_id`, `clerk_name`, `clerk_barcode` | Employee | Clerk/Kerani. Nama dan barcode related dari employee. |
 | `foreman_employee_id`, `foreman_name`, `foreman_barcode` | Employee | Foreman/Mandor. Nama dan barcode related dari employee. |
@@ -888,8 +879,8 @@ Field utama:
 Index idempotency:
 
 ```sql
-CREATE UNIQUE INDEX wt_weighing_cup_lump_api_idempotency_uniq
-ON wt_weighing_cup_lump (device_id, product_type, local_id)
+CREATE UNIQUE INDEX wt_weighing_api_idempotency_uniq
+ON wt_weighing (device_id, local_id)
 WHERE data_source = 'api';
 ```
 
@@ -898,10 +889,11 @@ Aturan:
 - Idempotency hanya berlaku untuk data API.
 - Data manual baru menyimpan `local_id`, `device_id`, `device_record_id`, dan `batch_local_id` sebagai null.
 - Data API mewajibkan `local_id`, `device_id`, dan `device_record_id`.
-- Detail weighing tidak lagi divalidasi langsung dari form Cup Lump; validasi resmi dilakukan dari Production Receipt.
+- Product dan UoM pada input manual maupun API diprioritaskan dari mapping aktif `wt.product` berdasarkan company dan readonly pada UI.
+- Detail weighing tidak lagi divalidasi langsung dari form Weighing; validasi resmi dilakukan dari Production Receipt.
 - Save record draft manual maupun API menjalankan recheck jika field pemicu berubah.
 - Push menghitung problem dari payload sebelum create; Production Receipt Validate menjalankan recheck lagi.
-- Jika `receipt_status = receipt_validated`, data timbang terkunci dan action `Recheck Data Problem` ditolak.
+- Jika `state = receipt_validated`, data timbang terkunci dan action `Recheck Data Problem` ditolak.
 - Field petugas mengunci nama dan barcode pada `hr.employee` langsung, bukan pada struktur assignment foreman/tapper yang bisa berubah.
 - Reverse tracking foreman: employee -> `wt.foreman` -> division.
 - Reverse tracking tapper: employee -> `wt.tapper` -> division dan foreman -> employee foreman.
@@ -927,19 +919,28 @@ wt.production.receipt.line
 
 Deskripsi:
 
-Production Receipt adalah dokumen penerimaan produksi untuk menggabungkan data timbang Cup Lump berdasarkan company, production date, dan division. Saat validate, sistem membuat dan memvalidasi Inventory Receipt (`stock.picking`) berdasarkan Receipt Rule, membuat lot otomatis, lalu mengunci data timbang.
+Production Receipt adalah dokumen penerimaan produksi untuk menggabungkan data timbang Weighing berdasarkan company, production date, division, product, operation type, dan receiving location. Saat validate, sistem membuat satu lot dan satu Inventory Receipt (`stock.picking`) berdasarkan header Production Receipt, lalu mengunci data timbang.
 
 Field header utama:
 
 | Field | Type | Keterangan |
 | --- | --- | --- |
-| `name` | `Char` | Stored number generated once at create from `ir.sequence` code `wt.production.receipt`. Default format: `PR/CUP_LUMP/YYYYMMDD/NNN`, using `production_date` as the sequence date. |
+| `name` | `Char` | Stored number generated once at create from `ir.sequence` code `wt.production.receipt`. Default format: `PR/YYYYMMDD/NNN`, using `production_date` as the sequence date. |
 | `company_id` | `Many2one(res.company)` | Company receipt. |
 | `production_date` | `Date` | Tanggal produksi yang digabungkan. |
+| `received_date` | `Date` | Tanggal diterima. Wajib diisi dan tidak boleh sebelum `production_date`. |
 | `division_id` | `Many2one(wt.division)` | Division produksi. |
-| `line_ids` | `One2many(wt.production.receipt.line)` | Detail weighing Cup Lump yang masuk receipt. |
-| `stock_picking_ids` | `One2many(stock.picking)` | Inventory Receipt yang dibuat dari validate Production Receipt. |
-| `reverse_picking_ids` | `One2many(stock.picking)` | Inventory Reversal yang dibuat dari cancel Production Receipt. |
+| `clerk_employee_id` | `Many2one(hr.employee)` | Snapshot Clerk dari Division. Diisi otomatis dan tidak diedit manual. |
+| `product_id` | `Many2one(product.product)` | Product aktif dari mapping `wt.product` pada company. Diisi otomatis dan readonly pada view. |
+| `operation_type_id` | `Many2one(stock.picking.type)` | Operation Type penerimaan. Pilihan dibatasi dari Receipt Rule aktif sesuai company dan division. |
+| `location_id` | `Many2one(stock.location)` | Receiving Location. Pilihan dibatasi dari Receipt Rule aktif sesuai company, division, dan operation type. |
+| `warehouse_id` | `Many2one(stock.warehouse)` | Related dari `operation_type_id.warehouse_id`, readonly. |
+| `lot_id` | `Many2one(stock.lot)` | Lot yang dibuat/dipakai saat validate. Satu Production Receipt memakai satu lot. |
+| `stock_picking_id` | `Many2one(stock.picking)` | Inventory Receipt utama yang dibuat saat validate. |
+| `reverse_picking_id` | `Many2one(stock.picking)` | Inventory Reversal utama yang dibuat saat cancel. |
+| `line_ids` | `One2many(wt.production.receipt.line)` | Detail weighing yang masuk receipt. |
+| `stock_picking_ids` | `One2many(stock.picking)` | Relasi teknis/fallback Inventory Receipt yang dibuat dari Production Receipt. |
+| `reverse_picking_ids` | `One2many(stock.picking)` | Relasi teknis/fallback Inventory Reversal yang dibuat dari cancel Production Receipt. |
 | `stock_picking_count` | `Integer computed` | Jumlah Inventory Receipt terkait. |
 | `reverse_picking_count` | `Integer computed` | Jumlah Inventory Reversal terkait. |
 | `total_weighing` | `Integer` computed stored | Jumlah data timbang pada receipt. |
@@ -950,36 +951,42 @@ Field header utama:
 | `validated_at`, `validated_by_id` | Audit | Waktu dan user validate. |
 | `cancelled_at`, `cancelled_by_id`, `cancel_reason` | Audit | Informasi pembatalan. |
 
+Catatan inventory:
+
+- Inventory Receipt (`stock.picking`) yang dibuat dari Production Receipt memakai `received_date` sebagai Scheduled Date dan Effective Date.
+- Flow normal menghasilkan satu Inventory Receipt dan satu Inventory Reversal per Production Receipt.
+
 Field line utama:
 
 | Field | Type | Keterangan |
 | --- | --- | --- |
 | `receipt_id` | `Many2one(wt.production.receipt)` | Header Production Receipt. |
-| `weighing_cup_lump_id` | `Many2one(wt.weighing.cup.lump)` | Data timbang sumber. |
-| `company_id`, `production_date`, `division_id`, `product_type` | Related stored | Scope dari weighing source. |
+| `weighing_id` | `Many2one(wt.weighing)` | Data timbang sumber. |
+| `company_id`, `production_date`, `division_id` | Related stored | Scope dari weighing source. |
 | `estate_id`, `weighing_location_id` | Related stored | Scope lokasi timbang. |
 | `product_id`, `uom_id`, `receipt_rule_id` | Related stored | Product dan receipt rule dari weighing source. |
 | `operator_employee_id`, `clerk_employee_id`, `foreman_employee_id`, `tapper_employee_id` | Related stored | Employee pada data timbang. |
 | `total_bag` | Related stored | Jumlah karung dari weighing source. |
-| `stock_weight` | Computed stored | Berat stock dari field constant product type. |
+| `stock_weight` | Computed stored | Berat stock dari field constant product. |
 | `has_data_problem`, `data_problem_code`, `data_problem_note` | Related | Status problem dari weighing source. |
 
 Flow:
 
-- Tombol `Process` mengambil semua `wt.weighing.cup.lump` sesuai company, production date, division, product type `cup_lump`, dan belum berada pada Production Receipt aktif lain.
-- Data timbang yang masuk line berubah menjadi `receipt_status = in_production_receipt`.
-- Line dapat dilepas selama Production Receipt belum validated; data timbang kembali menjadi `receipt_status = not_receipted` dan `production_receipt_id` dikosongkan.
+- Tombol `Process` mengambil semua `wt.weighing` sesuai company, production date, division, product header, dan Receipt Rule aktif yang mengarah ke operation type serta receiving location header.
+- Beberapa Weighing Location dapat tergabung dalam satu Production Receipt bila Receipt Rule aktifnya mengarah ke operation type dan receiving location yang sama.
+- Data timbang yang masuk line berubah menjadi `state = in_production_receipt`.
+- Line dapat dilepas selama Production Receipt belum validated; data timbang kembali menjadi `state = not_receipted` dan `production_receipt_id` dikosongkan.
 - Tombol `Validate` menjalankan validasi wajib dan `Recheck Data Problem` untuk semua line.
-- Validate ditolak jika line kosong, ada line tidak sesuai header, ada duplicate, atau masih ada `has_data_problem = True`.
-- Saat validate, line digroup berdasarkan Receipt Rule. Setiap group membuat satu Inventory Receipt dengan operation type dan destination location dari Receipt Rule.
+- Validate ditolak jika line kosong, ada line tidak sesuai header product/operation type/receiving location, ada duplicate, atau masih ada `has_data_problem = True`.
+- Saat validate, sistem membuat satu Inventory Receipt dengan operation type dan receiving location dari header.
 - Inventory Receipt memakai clerk pada Division sebagai `receive_from_employee_id`; jika employee punya partner terkait, field contact receipt juga diisi.
-- Lot dibuat atau dipakai ulang dengan format `cup_lump-kode_divisi-YYYYMMDD`, misalnya `cup_lump-DIV01-20260629`.
-- Saat berhasil validate, Production Receipt menjadi `validated` dan semua data timbang line menjadi `receipt_status = receipt_validated`.
+- Lot dibuat otomatis satu kali per Production Receipt dengan format `LOT/kode_divisi/YYYYMMDD/NNN`, misalnya `LOT/DIV01/20260629/001`.
+- Saat berhasil validate, Production Receipt menjadi `validated` dan semua data timbang line menjadi `state = receipt_validated`.
 - Setelah `receipt_validated`, data timbang terkunci dari edit normal dan action `Recheck Data Problem` ditolak.
 - Return manual dari Inventory ditolak untuk Inventory Receipt dan Inventory Reversal yang berasal dari Production Receipt.
-- Tombol `Cancel` membuat Inventory Reversal otomatis dengan lokasi terbalik, lot yang sama, dan quantity yang sama.
-- Cancel ditolak jika stock lot di destination location original tidak mencukupi untuk dibalik.
-- Setelah reversal berhasil, Production Receipt menjadi `cancelled` dan data timbang menjadi `receipt_cancelled`.
+- Tombol `Cancel` membuka wizard alasan pembatalan. Setelah alasan dikonfirmasi, sistem membuat Inventory Reversal otomatis dengan lokasi terbalik, lot yang sama, dan quantity yang sama.
+- Cancel ditolak jika stock lot di receiving location original tidak mencukupi untuk dibalik.
+- Setelah reversal berhasil, Production Receipt menyimpan `cancel_reason`, menjadi `cancelled`, dan data timbang menjadi `receipt_cancelled`.
 
 Kode data problem:
 
@@ -991,8 +998,8 @@ Kode data problem:
 | `operator_mismatch` | The payload operator or weighing-location operator does not match the device operator. | Operator payload atau operator weighing location berbeda dari operator device. |
 | `weighing_location_mismatch` | The weighing location does not belong to the weighing company. | Weighing location bukan milik company penimbangan. |
 | `division_not_allowed` | The division is not included in the weighing location's allowed divisions. | Division tidak termasuk division yang diizinkan pada weighing location. |
-| `receipt_rule_mismatch` | The receipt rule does not match the company, weighing location, division, or product. | Receipt rule tidak sesuai company, weighing location, division, atau product. |
-| `product_mapping_mismatch` | The product is not configured as `cup_lump` for the weighing company. | Product tidak dipetakan sebagai `cup_lump` untuk company penimbangan. |
+| `receipt_rule_mismatch` | The receipt rule does not match the company, weighing location, or division. | Receipt rule tidak sesuai company, weighing location, atau division. |
+| `product_mapping_mismatch` | The product is not configured as `weighing` for the weighing company. | Product tidak dipetakan sebagai `weighing` untuk company penimbangan. |
 | `clerk_mismatch` | The clerk employee does not match the clerk assigned to the division. | Employee clerk berbeda dari clerk yang ditetapkan pada division. |
 | `foreman_mismatch` | The foreman employee is not assigned to the division, or the foreman ID and employee are inconsistent. | Employee foreman tidak memiliki assignment pada division, atau ID dan employee foreman tidak konsisten. |
 | `tapper_mismatch` | The tapper is not registered, belongs to another division, is not assigned to the selected foreman, or has an inconsistent employee. | Tapper tidak terdaftar, berada pada division lain, tidak berada di bawah foreman yang dipilih, atau employee tidak konsisten. |
@@ -1024,7 +1031,7 @@ Field:
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat konfigurasi berlaku. |
 | `bot_user_id` | `Many2one(res.users)` | Ya | Ya | User internal aktif yang dipakai untuk proses API. |
 | `pull_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint pull data untuk company ini ditutup. Default aktif. |
-| `push_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint push data untuk company ini ditutup. Default aktif. Saat ini dipakai oleh push weighing Cup Lump. |
+| `push_enabled` | `Boolean` | Tidak | Ya | Jika tidak aktif, endpoint push data untuk company ini ditutup. Default aktif. Saat ini dipakai oleh push weighing. |
 
 Urutan data:
 
@@ -1372,7 +1379,6 @@ division_ids
 weighing_location_ids
 receipt_rule_ids
 product_ids
-product_type_codes
 uom_ids
 shrinkage_tolerance_ids
 employee_ids
@@ -1392,7 +1398,6 @@ weighing_locations
 receipt_rules
 products
 uoms
-product_types
 shrinkage_tolerances
 foremen
 tappers
@@ -1408,28 +1413,28 @@ Catatan payload:
 - Payload role aplikasi berada di `data.masters.roles` dan hanya membawa role device yang sedang pull.
 - Master/config yang memiliki field `active` hanya dikirim jika masih aktif. Record archived dikeluarkan dari `scope` dan `masters`.
 - Weighing Location tidak lagi membawa payload warehouse.
-- Payload Receipt Rule hanya membawa rule scope dan `product_id`.
-- Payload Product membawa `id`, `name`, `company_id`, `uom_id`, dan `product_type`; `default_code` tidak dikirim.
+- Payload Receipt Rule hanya membawa rule scope company, weighing location, dan division.
+- Payload Product membawa `id`, `name`, `company_id`, dan `uom_id`; `default_code` dan product type tidak dikirim.
 - Payload UoM berada di `data.masters.uoms`.
-- Payload Product Type berada di `data.masters.product_types` dan hanya membawa tipe produk yang benar-benar berasal dari mapping `wt.product` untuk product dalam scope.
-- Payload Shrinkage Tolerance berada di `data.masters.shrinkage_tolerances` dan hanya membawa toleransi yang sesuai dengan division dan product type dalam scope.
+- Payload Product berada di `data.masters.products` dan hanya membawa product Odoo yang berasal dari mapping aktif `wt.product` untuk company dalam scope.
+- Payload Shrinkage Tolerance berada di `data.masters.shrinkage_tolerances` dan hanya membawa toleransi yang sesuai dengan division dalam scope.
 - Warehouse, stock location, dan operation type tetap tersimpan di model Receipt Rule, tetapi tidak dikirim pada response pull master.
 - Setiap data master minimal membawa `id` dan `name`.
 - Master yang memiliki `code`, seperti Estate, Division, dan Weighing Location, ikut membawa `code`.
 - Employee barcode dibawa di master terpusat `employees`; payload foreman dan tapper hanya membawa relasi seperti `employee_id`, `company_id`, dan division terkait.
 
-### API Push Weighing Cup Lump Service
+### API Push Weighing Service
 
 Model teknis:
 
 ```text
-wt.api.push.weighing.cup.lump.service
+wt.api.push.weighing.service
 ```
 
 File:
 
 ```text
-services/api_push_weighing_cup_lump_service.py
+services/api_push_weighing_service.py
 ```
 
 Tanggung jawab:
@@ -1438,16 +1443,16 @@ Tanggung jawab:
 - Memastikan role device adalah `operator`.
 - Memastikan push dibuka melalui `wt.api.push_enabled`.
 - Mengambil bot user dari `wt.api.security.service`.
-- Memvalidasi root payload: `product_type`, `items`, `master_synced_at`, dan `sent_at`.
-- Memanggil `wt.cup.lump.service` untuk validasi dan pemrosesan setiap item.
-- Menjalankan Cup Lump Service menggunakan user dan bahasa bot user.
+- Memvalidasi root payload: `product`, `items`, `master_synced_at`, dan `sent_at`.
+- Memanggil `wt.weighing.service` untuk validasi dan pemrosesan setiap item.
+- Menjalankan Weighing Service menggunakan user dan bahasa bot user.
 - Memperbarui `last_push`, `last_seen`, dan `app_version` pada device.
-- Membentuk summary response `received`, `created`, `duplicates`, `with_data_problem`, dan `weighing_cup_lump_ids`.
+- Membentuk summary response `received`, `created`, `duplicates`, `with_data_problem`, dan `weighing_ids`.
 
 Endpoint:
 
 ```text
-POST /weightrack/api/v1/push/weighing-cup-lump
+POST /weightrack/api/v1/push/weighing
 ```
 
 Payload wajib root:
@@ -1458,7 +1463,7 @@ token
 items
 ```
 
-Payload wajib per item cup lump:
+Payload wajib per item weighing:
 
 ```text
 local_id
@@ -1475,34 +1480,34 @@ items
 
 Catatan:
 
-- Jika `product_type` dikirim, nilainya harus `cup_lump`.
+- Jika `product` dikirim, nilainya harus `weighing`.
 - `master_synced_at` disimpan untuk audit, tetapi tidak menjadi data problem.
-- Push langsung membuat `wt.weighing.cup.lump` dan tidak membuat inbound/receipt.
+- Push langsung membuat `wt.weighing` dan tidak membuat inbound/receipt.
 
-### Cup Lump Service
+### Weighing Service
 
 Model teknis:
 
 ```text
-wt.cup.lump.service
+wt.weighing.service
 ```
 
 File:
 
 ```text
-services/cup_lump_service.py
+services/weighing_service.py
 ```
 
 Tanggung jawab:
 
 - Memvalidasi bentuk dan field wajib setiap item.
-- Melakukan pre-check duplicate berdasarkan `data_source = api`, `device_id`, `product_type`, dan `local_id`.
+- Melakukan pre-check duplicate berdasarkan `data_source = api`, `device_id`, `product`, dan `local_id`.
 - Menangani race condition idempotency melalui partial unique index dan savepoint database.
-- Memetakan object payload ke master Odoo dan membuat `wt.weighing.cup.lump`.
+- Memetakan object payload ke master Odoo dan membuat `wt.weighing`.
 - Melakukan reverse lookup assignment foreman dan tapper dari employee.
 - Mengevaluasi seluruh data problem, rumus berat, shrinkage, dan initial weighing.
 - Membentuk snapshot payload device dan snapshot master Odoo.
-- Dipakai juga oleh model `wt.weighing.cup.lump` untuk action `Recheck Data Problem`, sehingga service ini bukan endpoint HTTP.
+- Dipakai juga oleh model `wt.weighing` untuk action `Recheck Data Problem`, sehingga service ini bukan endpoint HTTP.
 
 Method penting:
 
@@ -1605,7 +1610,7 @@ Endpoint aktif:
 ```text
 POST /weightrack/api/v1/device/activate
 POST /weightrack/api/v1/pull/master
-POST /weightrack/api/v1/push/weighing-cup-lump
+POST /weightrack/api/v1/push/weighing
 ```
 
 File:
@@ -1640,11 +1645,11 @@ Route pull master:
 )
 ```
 
-Route push weighing Cup Lump:
+Route push weighing:
 
 ```python
 @http.route(
-    "/weightrack/api/v1/push/weighing-cup-lump",
+    "/weightrack/api/v1/push/weighing",
     type="http",
     auth="public",
     methods=["POST"],
@@ -1686,7 +1691,7 @@ Access CSV:
 | `wt.foreman` | Ya | Ya | Ya | Ya |
 | `wt.tapper` | Ya | Ya | Ya | Ya |
 | `wt.device` | Ya | Ya | Ya | Ya |
-| `wt.weighing.cup.lump` | Ya | Ya | Ya | Ya |
+| `wt.weighing` | Ya | Ya | Ya | Ya |
 | `wt.device.state.reason.wizard` | Ya | Ya | Ya | Ya |
 | `hr.employee` | Ya | Tidak | Tidak | Tidak |
 | `hr.job` | Ya | Tidak | Tidak | Tidak |
@@ -1708,7 +1713,7 @@ models/employee_role.py
 models/product.py
 models/shrinkage_tolerance.py
 models/receipt_rule.py
-models/weighing_cup_lump.py
+models/weighing.py
 models/division.py
 models/weighing_location.py
 models/foreman.py
@@ -1729,8 +1734,8 @@ Services:
 ```text
 services/api_device_service.py
 services/api_pull_master_service.py
-services/api_push_weighing_cup_lump_service.py
-services/cup_lump_service.py
+services/api_push_weighing_service.py
+services/weighing_service.py
 services/api_security_service.py
 services/api_response_service.py
 ```

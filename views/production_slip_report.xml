@@ -1,0 +1,612 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_production_slip" model="report.paperformat">
+        <field name="name">Production Slip A4 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="paperformat_production_receipt_slip" model="report.paperformat">
+        <field name="name">Production Receipt Slip A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">36</field>
+        <field name="margin_bottom">18</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">28</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_production_slip" model="ir.actions.report">
+        <field name="name">Production Slip</field>
+        <field name="model">wt.production.receipt</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_production_slip_document</field>
+        <field name="report_file">weightrack.report_production_slip_document</field>
+        <field name="paperformat_id" ref="paperformat_production_slip"/>
+        <field name="binding_model_id" ref="model_wt_production_receipt"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Production Slip - %s' % (object.name)</field>
+    </record>
+
+    <record id="action_report_production_receipt_slip" model="ir.actions.report">
+        <field name="name">Production Receipt Slip</field>
+        <field name="model">wt.production.receipt</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_production_receipt_slip_document</field>
+        <field name="report_file">weightrack.report_production_receipt_slip_document</field>
+        <field name="paperformat_id" ref="paperformat_production_receipt_slip"/>
+        <field name="binding_model_id" ref="model_wt_production_receipt"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Production Receipt Slip - %s' % (object.name)</field>
+    </record>
+
+    <template id="report_production_slip_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page wt-production-slip">
+                    <style>
+                        .wt-production-slip {
+                            font-family: Arial, Helvetica, sans-serif;
+                            color: #111;
+                            font-size: 12px;
+                        }
+                        .wt-production-slip .top-grid {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 10px;
+                        }
+                        .wt-production-slip .top-grid td {
+                            vertical-align: top;
+                        }
+                        .wt-production-slip .brand-cell {
+                            width: 36%;
+                        }
+                        .wt-production-slip .title-cell {
+                            width: 30%;
+                            text-align: center;
+                            padding-top: 34px;
+                        }
+                        .wt-production-slip .meta-cell {
+                            width: 34%;
+                            padding-left: 18px;
+                        }
+                        .wt-production-slip .company-logo {
+                            max-height: 118px;
+                            max-width: 390px;
+                        }
+                        .wt-production-slip .company-name {
+                            font-size: 28px;
+                            font-weight: 700;
+                            line-height: 1.1;
+                        }
+                        .wt-production-slip .company-subtitle {
+                            font-size: 14px;
+                            font-weight: 700;
+                            margin-left: 48px;
+                        }
+                        .wt-production-slip .slip-title {
+                            font-size: 22px;
+                            font-weight: 700;
+                            text-decoration: underline;
+                            letter-spacing: .5px;
+                        }
+                        .wt-production-slip .slip-number {
+                            margin-top: 2px;
+                            font-size: 15px;
+                        }
+                        .wt-production-slip .number-segment {
+                            display: inline-block;
+                            width: 54px;
+                            border-bottom: 1px dotted #333;
+                            vertical-align: bottom;
+                        }
+                        .wt-production-slip .form-meta {
+                            text-align: right;
+                            font-size: 11px;
+                            line-height: 1.25;
+                            margin-bottom: 12px;
+                        }
+                        .wt-production-slip .field-line {
+                            display: table;
+                            width: 100%;
+                            line-height: 1.8;
+                        }
+                        .wt-production-slip .field-label {
+                            display: table-cell;
+                            width: 110px;
+                            white-space: nowrap;
+                            padding-right: 8px;
+                        }
+                        .wt-production-slip .field-label:after {
+                            content: ":";
+                            float: right;
+                        }
+                        .wt-production-slip .field-value {
+                            display: table-cell;
+                            border-bottom: 1px dotted #333;
+                            min-height: 16px;
+                            padding-left: 4px;
+                        }
+                        .wt-production-slip .field-value.time-value {
+                            text-align: right;
+                            padding-right: 2px;
+                        }
+                        .wt-production-slip .recipient-row {
+                            display: table;
+                            table-layout: fixed;
+                            width: 100%;
+                            line-height: 1.8;
+                            white-space: nowrap;
+                        }
+                        .wt-production-slip .recipient-label {
+                            display: table-cell;
+                            width: 118px;
+                            white-space: nowrap;
+                        }
+                        .wt-production-slip .recipient-separator {
+                            display: table-cell;
+                            width: 12px;
+                            text-align: center;
+                        }
+                        .wt-production-slip .recipient-value {
+                            display: table-cell;
+                            border-bottom: 1px dotted #333;
+                        }
+                        .wt-production-slip .place-block {
+                            margin-top: 3px;
+                            line-height: 1.4;
+                        }
+                        .wt-production-slip .place-label {
+                            display: block;
+                            margin-left: 0;
+                        }
+                        .wt-production-slip .place-value {
+                            display: inline-block;
+                            margin-left: 20px;
+                            min-width: 72px;
+                            border-bottom: 1px solid #333;
+                            font-style: italic;
+                            text-align: center;
+                        }
+                        .wt-production-slip .subheader-grid {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 16px;
+                        }
+                        .wt-production-slip .subheader-grid td {
+                            vertical-align: bottom;
+                            padding-right: 24px;
+                        }
+                        .wt-production-slip .subheader-grid td:last-child {
+                            padding-right: 0;
+                        }
+                        .wt-production-slip .item-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            font-size: 12px;
+                        }
+                        .wt-production-slip .item-table th,
+                        .wt-production-slip .item-table td {
+                            border: 1px solid #222;
+                            padding: 2px 3px;
+                            vertical-align: middle;
+                        }
+                        .wt-production-slip .item-table th {
+                            text-align: center;
+                            font-weight: 700;
+                        }
+                        .wt-production-slip .number {
+                            text-align: right;
+                        }
+                        .wt-production-slip .center {
+                            text-align: center;
+                        }
+                        .wt-production-slip .note-label-cell {
+                            white-space: nowrap;
+                        }
+                        .wt-production-slip .note-value-cell {
+                            width: 5%;
+                        }
+                        .wt-production-slip .signature-table {
+                            width: 100%;
+                            margin-top: 12px;
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            font-size: 12px;
+                        }
+                        .wt-production-slip .signature-table td {
+                            text-align: center;
+                            vertical-align: bottom;
+                        }
+                        .wt-production-slip .signature-space {
+                            height: 52px;
+                        }
+                        .wt-production-slip .signature-name {
+                            display: inline-block;
+                            min-width: 120px;
+                            border-bottom: 1px dotted #333;
+                            padding: 0 8px 2px;
+                        }
+                    </style>
+
+                    <table class="top-grid">
+                        <tr>
+                            <td class="brand-cell">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="company-logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
+                                </t>
+                                <t t-else="">
+                                    <div class="company-name" t-esc="doc.company_id.name"/>
+                                    <div class="company-subtitle">Plantations</div>
+                                </t>
+                            </td>
+                            <td class="title-cell">
+                                <div class="slip-title">PRODUCTION SLIP</div>
+                                <div class="slip-number">
+                                    No.
+                                    <span class="number-segment"></span>
+                                    /
+                                    <span class="number-segment"></span>
+                                    /
+                                    <span class="number-segment"></span>
+                                </div>
+                            </td>
+                            <td class="meta-cell">
+                                <div class="form-meta">
+                                    <div>Form No : BME-FR-26</div>
+                                    <div>Rev : 00</div>
+                                </div>
+                                <div class="field-line">
+                                    <span class="field-label">Tanggal</span>
+                                    <span class="field-value">
+                                        <span t-field="doc.received_date"/>
+                                    </span>
+                                </div>
+                                <div class="recipient-row">
+                                    <span class="recipient-label">Kepada Saudara</span>
+                                    <span class="recipient-separator">:</span>
+                                    <span class="recipient-value"></span>
+                                </div>
+                                <div class="place-block">
+                                    <span class="place-label">Di</span>
+                                    <span class="place-value">Tempat</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="subheader-grid">
+                        <tr>
+                            <td style="width: 34%;">
+                                <div class="field-line">
+                                    <span class="field-label">Kendaraan</span>
+                                    <span class="field-value"></span>
+                                </div>
+                                <div class="field-line">
+                                    <span class="field-label">Divisi</span>
+                                    <span class="field-value">
+                                        <span t-esc="doc.division_id.name"/>
+                                    </span>
+                                </div>
+                            </td>
+                            <td style="width: 28%;">
+                                <div class="field-line">
+                                    <span class="field-label">No. Polisi</span>
+                                    <span class="field-value"></span>
+                                </div>
+                                <div class="field-line">
+                                    <span class="field-label">Ancak</span>
+                                    <span class="field-value">A / B / C / D</span>
+                                </div>
+                            </td>
+                            <td style="width: 38%;">
+                                <div class="field-line">
+                                    <span class="field-label">Berangkat</span>
+                                    <span class="field-value"></span>
+                                </div>
+                                <div class="field-line">
+                                    <span class="field-label">Jam</span>
+                                    <span class="field-value time-value">WIB</span>
+                                </div>
+                                <div class="field-line">
+                                    <span class="field-label">Tiba</span>
+                                    <span class="field-value time-value">WIB</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="item-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="width: 4%;">No</th>
+                                <th rowspan="2" style="width: 15%;">Jenis Barang</th>
+                                <th colspan="2" style="width: 12%;">Dari Kebun</th>
+                                <th colspan="4" style="width: 24%;">Analisa Mutu</th>
+                                <th rowspan="2" style="width: 6%;">%<br/>Susut</th>
+                                <th rowspan="2" style="width: 13%;">Keterangan</th>
+                                <th colspan="2" rowspan="2" style="width: 18%;">Catatan Hari ini</th>
+                            </tr>
+                            <tr>
+                                <th>KB</th>
+                                <th>Deep<br/>Stik</th>
+                                <th>KB</th>
+                                <th>% DRC</th>
+                                <th>KK</th>
+                                <th>Deep<br/>Stik</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="center">1</td>
+                                <td>Latex</td>
+                                <td/><td/><td/><td/><td/><td/><td/><td/>
+                                <td class="note-label-cell">- Tapper</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">2</td>
+                                <td>Latex Siap</td>
+                                <td/><td/><td/><td/><td/><td/><td/><td/>
+                                <td class="note-label-cell">- Serep Tapp</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">3</td>
+                                <td>Slab Kebun</td>
+                                <td/><td/><td/><td/><td/><td/><td/><td/>
+                                <td class="note-label-cell">- Serep Apit</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">4</td>
+                                <td>Cuci Kaleng</td>
+                                <td/><td/><td/><td/><td/><td/><td/><td/>
+                                <td class="note-label-cell">- Anca Kosong</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">5</td>
+                                <td>Tree Lace</td>
+                                <td/><td/><td/><td/><td/><td/><td/><td/>
+                                <td class="note-label-cell">- Jam Sadap</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">6</td>
+                                <td>Cup Lump</td>
+                                <td class="number">
+                                    <span t-esc="'%.0f' % (doc.total_stock_weight or 0.0)"/>
+                                </td>
+                                <td/>
+                                <td class="number">
+                                    <span t-esc="'%.0f' % (doc.total_stock_weight or 0.0)"/>
+                                </td>
+                                <td/><td/><td/><td/>
+                                <td>
+                                    <span t-if="doc.total_bag">
+                                        <span t-esc="doc.total_bag"/> krg.
+                                    </span>
+                                </td>
+                                <td class="note-label-cell">- Jam Pungut</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">7</td>
+                                <td>Total</td>
+                                <td class="number">
+                                    <span t-esc="'%.0f' % (doc.total_stock_weight or 0.0)"/>
+                                </td>
+                                <td/>
+                                <td class="number">
+                                    <span t-esc="'%.0f' % (doc.total_stock_weight or 0.0)"/>
+                                </td>
+                                <td/><td/><td/><td/>
+                                <td>
+                                    <span t-if="doc.total_bag">
+                                        <span t-esc="doc.total_bag"/> krg.
+                                    </span>
+                                </td>
+                                <td class="note-label-cell">- Cuaca</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">8</td>
+                                <td>Prod Per Tapp</td>
+                                <td/><td/><td/><td/><td/><td/><td/><td/>
+                                <td class="note-label-cell">Total HK Maju</td>
+                                <td class="note-value-cell"/>
+                            </tr>
+                            <tr>
+                                <td class="center">9</td>
+                                <td>Prod Latex VS Off grade</td>
+                                <td/><td/><td/><td/><td/><td/><td/><td/>
+                                <td class="note-label-cell"/>
+                                <td class="note-value-cell"/>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table class="signature-table">
+                        <tr>
+                            <td>Dikirim Oleh,</td>
+                            <td>Diperiksa Oleh,</td>
+                            <td>Diketahui Oleh,</td>
+                            <td>Penerima</td>
+                            <td>Driver</td>
+                        </tr>
+                        <tr>
+                            <td class="signature-space"/>
+                            <td class="signature-space"/>
+                            <td class="signature-space"/>
+                            <td class="signature-space"/>
+                            <td class="signature-space"/>
+                        </tr>
+                        <tr>
+                            <td>( <span class="signature-name"></span> )</td>
+                            <td>( <span class="signature-name"></span> )</td>
+                            <td>( <span class="signature-name"></span> )</td>
+                            <td>( <span class="signature-name"></span> )</td>
+                            <td>( <span class="signature-name"></span> )</td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_production_receipt_slip_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="o" t-value="doc"/>
+                <t t-call="web.external_layout">
+                    <t t-set="product_name" t-value="doc.product_id.display_name or 'Cup Lump'"/>
+                    <t t-set="uom_name" t-value="doc.product_id.uom_id.name or ''"/>
+                    <div class="page wt-production-receipt-slip">
+                        <style>
+                            .wt-production-receipt-slip {
+                                font-size: 12px;
+                            }
+                            .wt-production-receipt-slip .document-title {
+                                margin-bottom: 18px;
+                            }
+                            .wt-production-receipt-slip .metadata-table td {
+                                padding: 3px 8px 3px 0;
+                                vertical-align: top;
+                            }
+                            .wt-production-receipt-slip .metadata-label {
+                                white-space: nowrap;
+                                font-weight: 700;
+                                width: 150px;
+                            }
+                            .wt-production-receipt-slip .main-table th {
+                                padding: 10px 8px;
+                            }
+                            .wt-production-receipt-slip .main-table td {
+                                padding: 8px;
+                            }
+                            .wt-production-receipt-slip .signature-table {
+                                width: 100%;
+                                margin-top: 36px;
+                                border-collapse: collapse;
+                                table-layout: fixed;
+                            }
+                            .wt-production-receipt-slip .signature-table td {
+                                text-align: center;
+                                vertical-align: bottom;
+                            }
+                            .wt-production-receipt-slip .signature-space {
+                                height: 58px;
+                            }
+                            .wt-production-receipt-slip .signature-name {
+                                display: inline-block;
+                                min-width: 95px;
+                                border-bottom: 1px dotted #333;
+                            }
+                        </style>
+
+                        <div class="row document-title">
+                            <div class="col-7">
+                                <h2 class="mb-1">Production Receipt Slip</h2>
+                                <div>
+                                    <strong>No.</strong>
+                                    <span t-esc="doc.name"/>
+                                </div>
+                            </div>
+                            <div class="col-5 text-end">
+                                <strong>Tanggal Cetak :</strong>
+                                <span t-esc="time.strftime('%d/%m/%Y')"/>
+                            </div>
+                        </div>
+
+                        <table class="metadata-table mb-4">
+                            <tr>
+                                <td class="metadata-label">Perusahaan</td>
+                                <td>: <span t-esc="doc.company_id.name"/></td>
+                                <td class="metadata-label">Divisi</td>
+                                <td>: <span t-esc="doc.division_id.name"/></td>
+                            </tr>
+                            <tr>
+                                <td class="metadata-label">Estate</td>
+                                <td>: <span t-esc="doc.division_id.estate_id.name"/></td>
+                                <td class="metadata-label">Kerani</td>
+                                <td>: <span t-esc="doc.clerk_employee_id.name"/></td>
+                            </tr>
+                            <tr>
+                                <td class="metadata-label">Tanggal Produksi</td>
+                                <td>: <span t-field="doc.production_date"/></td>
+                                <td class="metadata-label">Tanggal Penerimaan</td>
+                                <td>: <span t-field="doc.received_date"/></td>
+                            </tr>
+                        </table>
+
+                        <table class="table table-sm o_main_table table-bordered main-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 10%;">No</th>
+                                    <th style="width: 55%;">Jenis Barang</th>
+                                    <th style="width: 35%;">Total Berat</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-center">1</td>
+                                    <td><span t-esc="product_name"/></td>
+                                    <td>
+                                        <span t-esc="('%s %s' % ('%.0f' % (doc.total_stock_weight or 0.0), uom_name)).strip()"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td><strong>Total</strong></td>
+                                    <td>
+                                        <strong>
+                                            <span t-esc="('%s %s' % ('%.0f' % (doc.total_stock_weight or 0.0), uom_name)).strip()"/>
+                                        </strong>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="signature-table">
+                            <tr>
+                                <td>Dikirim Oleh,</td>
+                                <td>Diperiksa Oleh,</td>
+                                <td>Diketahui Oleh,</td>
+                                <td>Penerima</td>
+                                <td>Driver</td>
+                            </tr>
+                            <tr>
+                                <td class="signature-space"/>
+                                <td class="signature-space"/>
+                                <td class="signature-space"/>
+                                <td class="signature-space"/>
+                                <td class="signature-space"/>
+                            </tr>
+                            <tr>
+                                <td>( <span class="signature-name"></span> )</td>
+                                <td>( <span class="signature-name"></span> )</td>
+                                <td>( <span class="signature-name"></span> )</td>
+                                <td>( <span class="signature-name"></span> )</td>
+                                <td>( <span class="signature-name"></span> )</td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

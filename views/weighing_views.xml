@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_weighing_search" model="ir.ui.view">
+        <field name="name">wt.weighing.search</field>
+        <field name="model">wt.weighing</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="local_id"/>
+                <field name="production_date"/>
+                <field name="weighing_date"/>
+                <field name="estate_id"/>
+                <field name="weighing_location_id"/>
+                <field name="division_id"/>
+                <field name="operator_employee_id"/>
+                <field name="clerk_employee_id"/>
+                <field name="foreman_employee_id"/>
+                <field name="tapper_employee_id"/>
+                <field name="data_source"/>
+                <field name="state"/>
+                <field name="data_problem_code"/>
+                <filter name="manual" string="Manual" domain="[('data_source', '=', 'manual')]"/>
+                <filter name="api" string="API" domain="[('data_source', '=', 'api')]"/>
+                <filter name="not_receipted" string="Not Receipted" domain="[('state', '=', 'not_receipted')]"/>
+                <filter name="in_production_receipt" string="In Production Receipt" domain="[('state', '=', 'in_production_receipt')]"/>
+                <filter name="receipt_validated" string="Receipt Validated" domain="[('state', '=', 'receipt_validated')]"/>
+                <filter name="has_data_problem" string="Has Data Problem" domain="[('has_data_problem', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_weighing_list" model="ir.ui.view">
+        <field name="name">wt.weighing.list</field>
+        <field name="model">wt.weighing</field>
+        <field name="arch" type="xml">
+            <list string="Weighing">
+                <field name="name"/>
+                <field name="production_date"/>
+                <field name="weighing_date"/>
+                <field name="local_id"/>
+                <field name="estate_id"/>
+                <field name="weighing_location_id"/>
+                <field name="division_id"/>
+                <field name="operator_employee_id" string="Operator"/>
+                <field name="clerk_employee_id" string="Clerk" optional="show"/>
+                <field name="foreman_employee_id" string="Foreman"/>
+                <field name="tapper_employee_id" string="Tapper"/>
+                <field name="data_source"/>
+                <field name="total_bag" sum="Total"/>
+                <field name="net_weight" sum="Total"/>
+                <field name="has_data_problem"/>
+                <field name="data_problem_code"/>
+                <field name="production_receipt_id"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_weighing_form" model="ir.ui.view">
+        <field name="name">wt.weighing.form</field>
+        <field name="model">wt.weighing</field>
+        <field name="arch" type="xml">
+            <form string="Weighing">
+                <header>
+                    <button name="action_recheck_data_problem" type="object" string="Recheck Data Problem" invisible="state == 'receipt_validated'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="not_receipted,in_production_receipt,receipt_validated,receipt_cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Transaction">
+                            <field name="data_source" readonly="1"/>
+                            <field name="local_id" readonly="1"/>
+                            <field name="device_id" readonly="1"/>
+                            <field name="batch_local_id" readonly="1"/>
+                            <field name="production_receipt_id" readonly="1"/>
+                        </group>
+                        <group string="Dates">
+                            <field name="production_date" readonly="state == 'receipt_validated'" required="1"/>
+                            <field name="weighing_date" readonly="state == 'receipt_validated'" required="1"/>
+                            <field name="master_synced_at" readonly="1"/>
+                            <field name="sent_at" readonly="1"/>
+                            <field name="received_at" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Scope">
+                            <field name="company_id" readonly="state == 'receipt_validated'" required="1"/>
+                            <field name="allowed_division_ids" invisible="1"/>
+                            <field name="estate_id" readonly="state == 'receipt_validated'" required="1"/>
+                            <field name="weighing_location_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id), ('estate_id', '=', estate_id)]"/>
+                            <field name="division_id" readonly="state == 'receipt_validated'" required="1" domain="[('id', 'in', allowed_division_ids)]"/>
+                            <field name="product_id" readonly="1" required="1" force_save="1"/>
+                            <field name="uom_id" readonly="1" required="1" force_save="1"/>
+                            <field name="receipt_rule_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id), ('weighing_location_id', '=', weighing_location_id), ('division_id', '=', division_id)]"/>
+                        </group>
+                        <group string="Data Problem">
+                            <field name="has_data_problem" readonly="1"/>
+                            <field name="data_problem_code" readonly="1"/>
+                            <field name="data_problem_note" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Employees">
+                            <group>
+                                <group string="Operator">
+                                    <field name="operator_employee_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="operator_barcode" readonly="1"/>
+                                </group>
+                                <group string="Clerk">
+                                    <field name="clerk_employee_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="clerk_barcode" readonly="1"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Foreman">
+                                    <field name="foreman_employee_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="foreman_barcode" readonly="1"/>
+                                </group>
+                                <group string="Tapper">
+                                    <field name="tapper_employee_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="tapper_barcode" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Weights">
+                            <group>
+                                <group>
+                                    <field name="total_bag" readonly="state == 'receipt_validated'" required="1"/>
+                                    <field name="production_weight" readonly="state == 'receipt_validated'" required="1"/>
+                                    <field name="reject_weight" readonly="state == 'receipt_validated'"/>
+                                    <field name="slab_weight" readonly="state == 'receipt_validated'"/>
+                                    <field name="net_weight" readonly="state == 'receipt_validated'" required="1"/>
+                                </group>
+                                <group>
+                                    <field name="shrinkage_tolerance_percentage" readonly="state == 'receipt_validated'"/>
+                                    <field name="shrinkage_tolerance_weight" readonly="state == 'receipt_validated'"/>
+                                    <field name="is_manual_weighing" readonly="state == 'receipt_validated'"/>
+                                    <field name="manual_weighing_reason" readonly="state == 'receipt_validated'" required="is_manual_weighing"/>
+                                    <field name="note" readonly="state == 'receipt_validated'"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Initial Weighing">
+                            <group>
+                                <group>
+                                    <field name="initial_weighing_date" readonly="state == 'receipt_validated'"/>
+                                    <field name="initial_device_id" readonly="state == 'receipt_validated'" required="initial_weighing_date" domain="[('company_id', '=', company_id)]"/>
+                                    <field name="initial_device_role" readonly="1"/>
+                                    <field name="initial_device_employee_id" readonly="1"/>
+                                    <field name="initial_device_employee_barcode" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="initial_weight" readonly="state == 'receipt_validated'" required="initial_weighing_date"/>
+                                    <field name="initial_is_manual_weighing" readonly="state == 'receipt_validated'"/>
+                                    <field name="initial_manual_weighing_reason" readonly="state == 'receipt_validated'" required="initial_is_manual_weighing"/>
+                                    <field name="initial_note" readonly="state == 'receipt_validated'"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Snapshots">
+                            <group>
+                                <field name="device_snapshot_json" readonly="1"/>
+                                <field name="odoo_snapshot_json" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_weighing" model="ir.actions.act_window">
+        <field name="name">Weighing</field>
+        <field name="res_model">wt.weighing</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_weighing_search"/>
+        <field name="context">{}</field>
+    </record>
+</odoo>

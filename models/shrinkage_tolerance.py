@@ -3,14 +3,12 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from ..constants.product_types import ProductType
-
 
 class ShrinkageTolerance(models.Model):
     _name = "wt.shrinkage.tolerance"
     _description = "Shrinkage Tolerance"
     _inherit = ["mail.thread", "mail.activity.mixin"]
-    _order = "company_id, product_type, division_id"
+    _order = "company_id, division_id"
 
     active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
@@ -22,13 +20,6 @@ class ShrinkageTolerance(models.Model):
         string="Company",
         required=True,
         default=lambda self: self.env.company,
-        index=True,
-        tracking=True,
-    )
-    product_type = fields.Selection(
-        selection=ProductType.SELECTION,
-        string="Product Type",
-        required=True,
         index=True,
         tracking=True,
     )
@@ -57,23 +48,22 @@ class ShrinkageTolerance(models.Model):
         )
         self.env.cr.execute(
             """
-            CREATE UNIQUE INDEX IF NOT EXISTS wt_shrinkage_tolerance_scope_active_uniq
-            ON wt_shrinkage_tolerance (company_id, product_type, division_id)
+            DROP INDEX IF EXISTS wt_shrinkage_tolerance_scope_active_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_shrinkage_tolerance_company_division_active_uniq
+            ON wt_shrinkage_tolerance (company_id, division_id)
             WHERE active
             """
         )
 
-    @api.depends("company_id", "product_type", "division_id")
+    @api.depends("company_id", "division_id")
     def _compute_name(self):
-        product_type_labels = dict(ProductType.SELECTION)
         for tolerance in self:
-            label = product_type_labels.get(
-                tolerance.product_type,
-                tolerance.product_type or "",
-            )
-            tolerance.name = "%s - %s - %s" % (
+            tolerance.name = "%s - %s" % (
                 tolerance.company_id.name or "",
-                label,
                 tolerance.division_id.name or "",
             )
 
@@ -91,16 +81,14 @@ class ShrinkageTolerance(models.Model):
 
     @api.constrains(
         "company_id",
-        "product_type",
         "division_id",
         "active",
     )
-    def _check_unique_company_product_type_division(self):
+    def _check_unique_company_division(self):
         for tolerance in self:
             if not (
                 tolerance.active
                 and tolerance.company_id
-                and tolerance.product_type
                 and tolerance.division_id
             ):
                 continue
@@ -108,7 +96,6 @@ class ShrinkageTolerance(models.Model):
                 [
                     ("id", "!=", tolerance.id),
                     ("company_id", "=", tolerance.company_id.id),
-                    ("product_type", "=", tolerance.product_type),
                     ("division_id", "=", tolerance.division_id.id),
                     ("active", "=", True),
                 ],
@@ -118,14 +105,10 @@ class ShrinkageTolerance(models.Model):
                 raise ValidationError(
                     _(
                         "Shrinkage tolerance already exists for company '%(company)s', "
-                        "product type '%(product_type)s', and division '%(division)s'."
+                        "and division '%(division)s'."
                     )
                     % {
                         "company": tolerance.company_id.display_name,
-                        "product_type": dict(ProductType.SELECTION).get(
-                            tolerance.product_type,
-                            tolerance.product_type,
-                        ),
                         "division": tolerance.division_id.display_name,
                     }
                 )

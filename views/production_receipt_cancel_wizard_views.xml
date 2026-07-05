@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_production_receipt_cancel_wizard_form" model="ir.ui.view">
+        <field name="name">wt.production.receipt.cancel.wizard.form</field>
+        <field name="model">wt.production.receipt.cancel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cancel Production Receipt">
+                <sheet>
+                    <group>
+                        <field name="receipt_id"/>
+                        <field name="reason" placeholder="Reason" required="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm" type="object" string="Confirm" class="btn-primary"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

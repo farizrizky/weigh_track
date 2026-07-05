@@ -3,16 +3,12 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from ..constants.product_types import ProductType
-
 
 class Product(models.Model):
     _name = "wt.product"
-    _description = "Product"
+    _description = "Weighing Product"
     _inherit = ["mail.thread", "mail.activity.mixin"]
-    _order = "company_id, product_type, product_id"
-
-    LEGACY_PRODUCT_TYPE = "lump"
+    _order = "company_id, product_id"
 
     active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
@@ -24,13 +20,6 @@ class Product(models.Model):
         string="Company",
         required=True,
         default=lambda self: self.env.company,
-        index=True,
-        tracking=True,
-    )
-    product_type = fields.Selection(
-        selection=ProductType.SELECTION,
-        string="Product Type",
-        required=True,
         index=True,
         tracking=True,
     )
@@ -50,32 +39,16 @@ class Product(models.Model):
         readonly=True,
     )
 
-    @api.depends("company_id", "product_type", "product_id")
+    @api.depends("company_id", "product_id")
     def _compute_name(self):
-        product_type_labels = dict(ProductType.SELECTION)
         for mapping in self:
-            label = product_type_labels.get(mapping.product_type, mapping.product_type or "")
             product_name = mapping.product_id.display_name if mapping.product_id else ""
-            mapping.name = "%s - %s - %s" % (
+            mapping.name = "%s - %s" % (
                 mapping.company_id.name or "",
-                label,
                 product_name,
             )
 
     def init(self):
-        for table_name in (
-            "wt_product",
-            "wt_shrinkage_tolerance",
-            "wt_weighing_cup_lump",
-        ):
-            self.env.cr.execute("SELECT to_regclass(%s)", (table_name,))
-            if not self.env.cr.fetchone()[0]:
-                continue
-            self.env.cr.execute(
-                "UPDATE %s SET product_type = %%s WHERE product_type = %%s"
-                % table_name,
-                (ProductType.CUP_LUMP, self.LEGACY_PRODUCT_TYPE),
-            )
         self.env.cr.execute(
             """
             ALTER TABLE wt_product
@@ -84,8 +57,13 @@ class Product(models.Model):
         )
         self.env.cr.execute(
             """
-            CREATE UNIQUE INDEX IF NOT EXISTS wt_product_company_product_type_active_uniq
-            ON wt_product (company_id, product_type)
+            DROP INDEX IF EXISTS wt_product_company_product_type_active_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_product_company_active_uniq
+            ON wt_product (company_id)
             WHERE active
             """
         )
@@ -101,21 +79,20 @@ class Product(models.Model):
                     _("Product must belong to the same company or be a global product.")
                 )
 
-    @api.constrains("company_id", "product_type", "active")
-    def _check_unique_company_product_type(self):
+    @api.constrains("company_id", "active")
+    def _check_unique_company(self):
         for mapping in self:
-            if not (mapping.active and mapping.company_id and mapping.product_type):
+            if not (mapping.active and mapping.company_id):
                 continue
             duplicate = self.search(
                 [
                     ("id", "!=", mapping.id),
                     ("company_id", "=", mapping.company_id.id),
-                    ("product_type", "=", mapping.product_type),
                     ("active", "=", True),
                 ],
                 limit=1,
             )
             if duplicate:
                 raise ValidationError(
-                    _("Only one product mapping is allowed per company and product type.")
+                    _("Only one weighing product is allowed per company.")
                 )

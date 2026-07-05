@@ -2,19 +2,18 @@
 
 from odoo import _, fields, models
 
-from ..constants.product_types import ProductType
 from ..constants.roles import Role
 
 
-class ApiPushWeighingCupLumpService(models.AbstractModel):
-    _name = "wt.api.push.weighing.cup.lump.service"
-    _description = "API Push Weighing Cup Lump Service"
+class ApiPushWeighingService(models.AbstractModel):
+    _name = "wt.api.push.weighing.service"
+    _description = "API Push Weighing Service"
 
     PUSH_ROLES = {Role.OPERATOR}
     def _response(self):
         return self.env["wt.api.response.service"].sudo()
 
-    def push_weighing_cup_lump(self, payload):
+    def push_weighing(self, payload):
         response = self._response()
         auth = self.env["wt.api.security.service"].sudo().authenticate_device(
             payload,
@@ -84,24 +83,17 @@ class ApiPushWeighingCupLumpService(models.AbstractModel):
 
     def _validate_root_payload(self, payload):
         response = self._response()
-        product_type = payload.get("product_type")
-        if product_type and product_type != ProductType.CUP_LUMP:
-            return response.error(
-                "unsupported_product_type",
-                _("Unsupported product type: %s.") % product_type,
-                400,
-            )
         items = payload.get("items")
         if not isinstance(items, list):
             return response.error(
                 "missing_items",
-                _("Weighing cup lump items are required."),
+                _("Weighing items are required."),
                 400,
             )
         if not items:
             return response.error(
                 "empty_items",
-                _("Weighing cup lump items are empty."),
+                _("Weighing items are empty."),
                 400,
             )
         if payload.get("master_synced_at") and not self._is_valid_datetime(
@@ -121,7 +113,7 @@ class ApiPushWeighingCupLumpService(models.AbstractModel):
         return {"ok": True}
 
     def _handler(self):
-        return self.env["wt.cup.lump.service"].sudo()
+        return self.env["wt.weighing.service"].sudo()
 
     def _summary(self, items):
         return {
@@ -133,11 +125,11 @@ class ApiPushWeighingCupLumpService(models.AbstractModel):
             "with_data_problem": sum(
                 1 for item in items if item.get("has_data_problem")
             ),
-            "weighing_cup_lump_ids": sorted(
+            "weighing_ids": sorted(
                 {
-                    item["weighing_cup_lump_id"]
+                    item["weighing_id"]
                     for item in items
-                    if item.get("weighing_cup_lump_id")
+                    if item.get("weighing_id")
                 }
             ),
         }

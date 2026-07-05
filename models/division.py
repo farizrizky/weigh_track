@@ -50,25 +50,33 @@ class Division(models.Model):
         )
         self.env.cr.execute(
             """
-            CREATE UNIQUE INDEX IF NOT EXISTS wt_division_code_estate_active_uniq
-            ON wt_division (code, estate_id)
+            DROP INDEX IF EXISTS wt_division_code_estate_active_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_division_code_company_active_uniq
+            ON wt_division (code, company_id)
             WHERE active
             """
         )
 
-    @api.constrains("code", "estate_id")
-    def _check_unique_code_estate(self):
+    @api.constrains("code", "estate_id", "company_id", "active")
+    def _check_unique_code_company(self):
         for division in self:
-            duplicate = self.search_count(
+            if not (division.active and division.code and division.company_id):
+                continue
+            duplicate = self.search(
                 [
                     ("id", "!=", division.id),
                     ("code", "=", division.code),
-                    ("estate_id", "=", division.estate_id.id),
+                    ("company_id", "=", division.company_id.id),
                     ("active", "=", True),
-                ]
+                ],
+                limit=1,
             )
-            if division.active and duplicate:
-                raise ValidationError(_("Division code must be unique per estate."))
+            if duplicate:
+                raise ValidationError(_("Division code must be unique per company."))
 
     @api.constrains("clerk_id", "estate_id")
     def _check_clerk_company(self):
