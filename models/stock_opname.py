@@ -256,10 +256,12 @@ class StockOpname(models.Model):
                 location_dest = opname.location_id
 
             move_vals_list.append({
-                # Odoo 19: tidak ada field 'name', state & picked wajib ada
+                # Odoo 19: 'inventory_name' → field "Referensi" di histori pergerakan
+                # 'origin' → field "Sumber" (Source Document)
                 "state": "confirmed",
                 "picked": True,
                 "is_inventory": True,
+                "inventory_name": opname.name,
                 "product_id": line.product_id.id,
                 "product_uom": line.uom_id.id,
                 "product_uom_qty": alloc.qty,
@@ -301,11 +303,16 @@ class StockOpname(models.Model):
                 "product_id": line.product_id.id,
                 "lot_id": line.lot_id.id,
                 "inventory_quantity": line.physical_qty,
+                "inventory_reference": opname.name,
             })
         else:
-            quant.inventory_quantity = line.physical_qty
+            quant.write({
+                "inventory_quantity": line.physical_qty,
+                "inventory_reference": opname.name,
+            })
 
         quant.action_apply_inventory()
+
 
 
 class StockOpnameLine(models.Model):

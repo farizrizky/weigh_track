@@ -45,6 +45,13 @@ class DeliveryLineAllocation(models.Model):
     note = fields.Char(
         string="Catatan",
     )
+    lot_id = fields.Many2one(
+        "stock.lot",
+        string="No. Lot",
+        related="move_line_id.lot_id",
+        readonly=True,
+        store=False,
+    )
     uom_id = fields.Many2one(
         "uom.uom",
         string="Satuan",

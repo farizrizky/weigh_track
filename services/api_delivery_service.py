@@ -50,11 +50,17 @@ class ApiDeliveryService(models.AbstractModel):
                 delivery.write({"state": "in_progress"})
 
             # Move lines milik operator ini (filter per picking.wt_operator_id)
+            # Pull hanya mengirim baris yang BELUM ditimbang (wt_physical_qty == 0
+            # dan tidak di-skip), sehingga saat Pull ulang setelah Apply Adjustment,
+            # operator hanya melihat lot-lot baru yang perlu ditimbang —
+            # tidak terganggu oleh lot yang sudah selesai ditimbang sebelumnya.
             lines_data = []
             pulled_line_ids = []
             for ml in delivery.move_line_ids.filtered(
                 lambda l: l.quantity > 0
                 and l.picking_id.wt_operator_id == device.employee_id
+                and not l.wt_skip_line
+                and l.wt_physical_qty == 0.0
             ):
                 lines_data.append({
                     "move_line_id": ml.id,

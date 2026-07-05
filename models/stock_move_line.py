@@ -149,6 +149,28 @@ class StockMoveLineWeighing(models.Model):
 
     # ── Business Logic ────────────────────────────────────────────────────────
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        # Setelah move line baru dibuat, paksa rekomputasi wt_has_unpulled_lines
+        # pada parent wt.delivery dalam transaksi yang sama.
+        # Tanpa ini, stored computed field mungkin tidak langsung ter-update
+        # saat lot ditambahkan via popup stock.picking (Operasi Detail).
+        deliveries = records.sudo().mapped("wt_delivery_id").filtered(bool)
+        if deliveries:
+            deliveries.sudo()._compute_wt_has_unpulled_lines()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        # Rekomputasi juga saat quantity atau wt_is_pulled berubah,
+        # karena keduanya adalah dependensi wt_has_unpulled_lines.
+        if any(k in vals for k in ("quantity", "wt_is_pulled", "wt_physical_qty")):
+            deliveries = self.sudo().mapped("wt_delivery_id").filtered(bool)
+            if deliveries:
+                deliveries.sudo()._compute_wt_has_unpulled_lines()
+        return result
+
     def _apply_wt_weighing(self):
         """Set quantity move line ke berat fisik aktual atau 0 jika dilewati.
         Di Odoo 19, `picked` wajib di-set agar _action_done() memproses baris.

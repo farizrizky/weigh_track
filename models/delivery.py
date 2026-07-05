@@ -70,6 +70,22 @@ class Delivery(models.Model):
         domain=[("wt_is_pulled", "=", True), ("quantity", ">", 0)],
         string="Detail Timbang",
     )
+    # Lot yang belum di-push ke operator — muncul saat Odoo re-reserve
+    # ke lot lain setelah Apply Adjustment mengurangi stok lot asal.
+    unpulled_move_line_ids = fields.One2many(
+        "stock.move.line",
+        "wt_delivery_id",
+        domain=[("wt_is_pulled", "=", False), ("quantity", ">", 0)],
+        string="Lot Belum Di-Push",
+    )
+    wt_has_unpulled_lines = fields.Boolean(
+        string="Ada Lot Belum Di-Push",
+        compute="_compute_wt_has_unpulled_lines",
+        store=True,
+        help="True jika ada move line aktif (qty > 0) yang belum pernah di-pull "
+             "oleh operator — biasanya karena Odoo re-reserve dari lot lain setelah "
+             "Apply Adjustment mengurangi stok lot asal.",
+    )
     state = fields.Selection(
         STATE_SELECTION,
         string="Status",
@@ -157,6 +173,17 @@ class Delivery(models.Model):
         for rec in self:
             rec.picking_count = len(rec.picking_ids)
 
+    @api.depends(
+        "move_line_ids.wt_is_pulled",
+        "move_line_ids.quantity",
+    )
+    def _compute_wt_has_unpulled_lines(self):
+        for rec in self:
+            rec.wt_has_unpulled_lines = any(
+                not l.wt_is_pulled and l.quantity > 0
+                for l in rec.move_line_ids
+            )
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -236,6 +263,12 @@ class Delivery(models.Model):
                 "Pastikan alokasi selisih sudah diisi untuk setiap baris yang punya selisih."
             ))
 
+        # ── Step 1: Bangun move_vals_list DAHULU ─────────────────────────────
+        # PENTING: wt_difference_qty dibaca SEBELUM Step 2 mengubah quantity,
+        # karena wt_difference_qty adalah computed field yang bergantung pada
+        # quantity. Jika quantity diubah lebih dulu, wt_difference_qty akan
+        # ter-recompute menjadi 0 dan arah lokasi akan terbalik (susut → stok
+        # masuk, bukan stok keluar).
         company = self.company_id
         move_vals_list = []
         for line in adjustable_lines:
@@ -250,6 +283,13 @@ class Delivery(models.Model):
                     location_dest = line.location_id
 
                 move_vals_list.append({
+                    # Odoo 19: 'inventory_name' → field "Referensi" di histori pergerakan
+                    # format: "WTDEL/... / No.Lot / Alasan"
+                    "inventory_name": "%s / %s / %s" % (
+                        self.name,
+                        line.lot_id.name or line.product_id.display_name,
+                        alloc.reason_id.name,
+                    ),
                     "state": "confirmed",
                     "picked": True,
                     "is_inventory": True,
@@ -273,11 +313,63 @@ class Delivery(models.Model):
                     })],
                 })
 
+        # ── Step 2: Sesuaikan quantity move_line dan demand move ─────────────
+        #
+        # Kita menggunakan ORM standard write() agar Odoo me-recompute semua cache,
+        # dependensi, dan forecast_availability dengan benar.
+        #
+        # Untuk stock.move, kita pass context `do_not_unreserve=True` agar Odoo
+        # tidak memicu _do_unreserve() yang akan menghapus record stock.move.line.
+        # Dengan cara ini, semua data timbang dan alokasi buatan operator tetap aman.
+
+        cr = self.env.cr
+
+        shrinkage_lines = adjustable_lines.filtered(
+            lambda l: l.wt_difference_qty < 0
+        )
+
+        # Hitung product_uom_qty baru = sum physical qty per move
+        move_update_map = {}   # {move_id: new_product_uom_qty}
+        for line in shrinkage_lines:
+            move = line.move_id
+            if move and move.state not in ("done", "cancel") and move.id not in move_update_map:
+                total_physical = sum(ml.wt_physical_qty for ml in move.move_line_ids)
+                if total_physical < move.product_uom_qty:
+                    move_update_map[move.id] = total_physical
+
+        # Step 2a: Turunkan quantity move_line via standard write()
+        # Ini akan otomatis meng-update reserved_quantity di stock_quant via ORM.
+        for line in shrinkage_lines:
+            line.sudo().write({"quantity": line.wt_physical_qty})
+
+        # Step 2b: Turunkan demand (product_uom_qty) via standard write()
+        # Gunakan context 'do_not_unreserve' agar move line tidak di-unlink.
+        for move_id, new_qty in move_update_map.items():
+            self.env["stock.move"].browse(move_id).sudo().with_context(do_not_unreserve=True).write(
+                {"product_uom_qty": new_qty}
+            )
+
+        # ── Step 3: Eksekusi stock move penyesuaian ──────────────────────────
         if move_vals_list:
-            moves = self.env["stock.move"].sudo().with_context(
-                inventory_mode=False
-            ).create(move_vals_list)
-            moves.with_context(ignore_dest_packages=True)._action_done()
+            ctx = dict(
+                inventory_mode=False,
+                tracking_disable=True,
+                mail_notrack=True,
+                no_recompute=True,
+                ignore_dest_packages=True,
+            )
+            moves = self.env["stock.move"].sudo().with_context(**ctx).create(move_vals_list)
+            moves.with_context(**ctx)._action_done()
+
+        # ── Step 4: Refresh ketersediaan picking ─────────────────────────────
+        # Cukup panggil action_assign() untuk me-refresh status picking di UI.
+        affected_pickings = adjustable_lines.mapped("picking_id").filtered(
+            lambda p: p.state not in ("done", "cancel", "draft")
+        )
+        if affected_pickings:
+            affected_pickings.sudo().with_context(
+                mail_notrack=True,
+            ).action_assign()
 
         # Tandai baris sebagai sudah di-adjust
         adjustable_lines.sudo().write({"wt_adjustment_applied": True})
@@ -324,7 +416,86 @@ class Delivery(models.Model):
         for delivery in self:
             if delivery.state != "in_progress":
                 raise ValidationError(_("Hanya In Progress yang bisa diselesaikan."))
+
+            # Blokir jika ada baris dengan selisih yang belum teralokasi penuh.
+            # Alokasi harus diisi sebelum Selesai Timbang agar proses Apply
+            # Adjustment dan Validasi dapat berjalan dengan benar.
+            pulled_lines = delivery.move_line_ids.filtered(
+                lambda l: l.wt_is_pulled and not l.wt_skip_line
+            )
+            unallocated = pulled_lines.filtered(
+                lambda l: abs(l.wt_difference_qty) > 0.001 and not l.wt_is_fully_allocated
+            )
+            if unallocated:
+                lot_details = "\n".join(
+                    "- %s (sisa: %.4f kg)" % (
+                        l.lot_id.name or l.product_id.display_name,
+                        l.wt_unallocated_qty,
+                    )
+                    for l in unallocated
+                )
+                raise ValidationError(_(
+                    "Tidak dapat menyelesaikan pengiriman karena selisih timbang "
+                    "pada lot berikut belum teralokasi penuh:\n\n"
+                    "%s\n\n"
+                    "Buka tab Detail Timbang → klik ikon Alokasi pada baris "
+                    "yang bersangkutan untuk mengisi alokasi selisih terlebih dahulu."
+                ) % lot_details)
+
+            # Blokir jika ada baris yang sudah teralokasi penuh tapi Apply Adjustment
+            # belum dilakukan. Koreksi stok HARUS diterapkan sebelum pengiriman
+            # dianggap selesai agar stok gudang langsung akurat.
+            unapplied = pulled_lines.filtered(
+                lambda l: abs(l.wt_difference_qty) > 0.001
+                and l.wt_is_fully_allocated
+                and not l.wt_adjustment_applied
+            )
+            if unapplied:
+                lot_names = ", ".join(
+                    l.lot_id.name or l.product_id.display_name
+                    for l in unapplied
+                )
+                raise ValidationError(_(
+                    "Tidak dapat menyelesaikan pengiriman karena Apply Adjustment "
+                    "belum diterapkan pada lot berikut:\n\n%s\n\n"
+                    "Klik tombol 'Apply Adjustment' terlebih dahulu untuk "
+                    "menerapkan koreksi stok sebelum Selesai Timbang."
+                ) % lot_names)
+
+            # Blokir jika ada lot baru yang belum di-pull operator.
+            # Lot ini biasanya muncul karena Odoo auto-reserve ke lot lain
+            # setelah Apply Adjustment mengurangi stok lot asal.
+            # Operator wajib Pull Tugas ulang agar bisa menimbang lot tersebut
+            # sebelum pengiriman bisa diselesaikan.
+            #
+            # Gunakan display_notification + reload (bukan ValidationError) agar
+            # form di-reload setelah notifikasi ditutup → banner peringatan muncul
+            # otomatis tanpa perlu refresh manual.
+            if delivery.wt_has_unpulled_lines:
+                unpulled = delivery.unpulled_move_line_ids
+                lot_names = ", ".join(
+                    l.lot_id.name or l.product_id.display_name
+                    for l in unpulled
+                )
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Selesai Timbang Gagal"),
+                        "message": _(
+                            "Terdapat lot baru yang belum di-pull dan ditimbang "
+                            "oleh operator: %s\n\n"
+                            "Minta operator Pull Tugas ulang, lakukan penimbangan, "
+                            "lalu coba Selesai Timbang kembali."
+                        ) % lot_names,
+                        "type": "danger",
+                        "sticky": True,
+                        "next": {"type": "ir.actions.client", "tag": "reload"},
+                    },
+                }
+
             delivery.write({"state": "completed"})
+
 
 
     def action_validate(self):
@@ -390,6 +561,13 @@ class Delivery(models.Model):
                     location_src = alloc.location_dest_id
                     location_dest = line.location_id
                 adjustments_to_create.append({
+                    # Odoo 19: 'inventory_name' → field "Referensi" di histori pergerakan
+                    # format: "WTDEL/... / No.Lot / Alasan"
+                    "inventory_name": "%s / %s / %s" % (
+                        self.name,
+                        line.lot_id.name or line.product_id.display_name,
+                        alloc.reason_id.name,
+                    ),
                     "state": "confirmed",
                     "picked": True,
                     "is_inventory": True,

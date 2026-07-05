@@ -30,6 +30,10 @@
                         <field name="move_line_id"
                                string="Formulir Picking"
                                readonly="1"/>
+                        <field name="lot_id"
+                               string="No. Lot"
+                               readonly="1"
+                               optional="show"/>
                         <field name="reason_id"
                                string="Alasan"
                                readonly="1"/>

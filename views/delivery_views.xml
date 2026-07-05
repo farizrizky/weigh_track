@@ -100,6 +100,19 @@
                         </group>
                     </group>
 
+                    <!-- Banner Peringatan jika ada Lot baru yang belum di-pull oleh operator -->
+                    <div class="alert alert-warning d-flex align-items-center" role="alert"
+                         invisible="not wt_has_unpulled_lines">
+                        <i class="fa fa-exclamation-triangle me-2" style="font-size: 1.5em;"/>
+                        <div>
+                            <strong>Perhatian:</strong> Terdapat lot baru/tambahan yang belum di-pull oleh operator timbangan di lapangan. 
+                            Hal ini biasanya terjadi karena perubahan stock reservasi (misal setelah Apply Adjustment). 
+                            Harap informasikan ke operator untuk melakukan <strong>Pull Tugas</strong> ulang pada perangkat mereka.
+                        </div>
+                    </div>
+
+                    <field name="wt_has_unpulled_lines" invisible="1"/>
+
                     <notebook>
                         <!-- Tab 1: Daftar DO -->
                         <page string="Delivery Orders (DO)">
@@ -173,15 +186,34 @@
                                            readonly="1" optional="show"
                                            decoration-danger="wt_unallocated_qty &gt; 0.001"
                                            decoration-success="wt_unallocated_qty &lt;= 0.001"/>
+                                    <field name="wt_adjustment_applied" column_invisible="1"/>
                                     <button name="action_configure_allocation"
                                             string="Alokasi"
                                             type="object"
                                             icon="fa-sliders"
-                                            invisible="wt_difference_qty == 0.0"/>
+                                            invisible="wt_difference_qty == 0.0 or wt_adjustment_applied"/>
                                     <field name="wt_note" string="Catatan" optional="hide"/>
                                     <field name="wt_skip_line" string="Lewati" optional="hide"/>
                                 </list>
                             </field>
+
+                            <!-- Section Lot Belum Di-Push (Tampil jika ada) -->
+                            <div class="mt-4" invisible="not wt_has_unpulled_lines">
+                                <h4 class="text-warning">
+                                    <i class="fa fa-info-circle me-1"/>
+                                    Daftar Lot Baru yang Belum Di-Push (Operator Harus Pull Ulang)
+                                </h4>
+                                <field name="unpulled_move_line_ids" readonly="1">
+                                    <list string="Lot Belum Di-Push" create="false" delete="false" edit="false">
+                                        <field name="picking_id" string="DO"/>
+                                        <field name="product_id" string="Produk"/>
+                                        <field name="lot_id" string="Nomor Seri/Lot"/>
+                                        <field name="quantity" string="Qty Demand (kg)"/>
+                                        <field name="location_id" string="Lokasi Asal"/>
+                                        <field name="location_dest_id" string="Lokasi Tujuan"/>
+                                    </list>
+                                </field>
+                            </div>
                         </page>
 
                         <!-- Tab 3: Catatan -->
