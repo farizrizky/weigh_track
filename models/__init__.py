@@ -22,6 +22,10 @@ from . import stock_opname
 from . import stock_opname_difference_reason
 from . import stock_opname_line_allocation
 from . import delivery
+from . import delivery_route
+from . import delivery_step
+from . import delivery_do_line_lot
+from . import delivery_do_line
 from . import delivery_line_allocation
 from . import stock_picking
 from . import stock_move_line

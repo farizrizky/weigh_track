@@ -9,12 +9,14 @@
             <list string="Tugas Pengiriman"
                   decoration-info="state == 'draft'"
                   decoration-primary="state in ('confirmed','in_progress')"
-                  decoration-success="state == 'validated'"
+                  decoration-success="state in ('validated', 'done')"
                   decoration-warning="state == 'completed'"
-                  decoration-muted="state == 'cancelled'">
+                  decoration-danger="state == 'cancelled'">
                 <field name="name"/>
                 <field name="date"/>
+                <field name="partner_id" string="Customer" optional="show"/>
                 <field name="company_id" groups="base.group_multi_company"/>
+                <field name="step_count" string="Steps" optional="show"/>
                 <field name="picking_count" string="Jumlah DO"/>
                 <field name="total_demand_qty" string="Total Demand (kg)"/>
                 <field name="total_physical_qty" string="Total Fisik (kg)"/>
@@ -23,7 +25,7 @@
                        decoration-info="state == 'draft'"
                        decoration-primary="state in ('confirmed','in_progress')"
                        decoration-warning="state == 'completed'"
-                       decoration-success="state == 'validated'"
+                       decoration-success="state in ('validated', 'done')"
                        decoration-danger="state == 'cancelled'"/>
             </list>
         </field>
@@ -50,7 +52,7 @@
                             string="Selesai Timbang"
                             type="object"
                             class="btn-primary"
-                            invisible="state != 'in_progress'"/>
+                            invisible="state != 'in_progress' or step_count &gt; 0"/>
                     <button name="action_validate"
                             string="Validasi &amp; Kirim"
                             type="object"
@@ -61,24 +63,25 @@
                             string="Batalkan"
                             type="object"
                             class="btn-danger"
-                            invisible="state in ('validated','cancelled')"
+                            invisible="state in ('validated','done','cancelled')"
                             confirm="Yakin ingin membatalkan tugas pengiriman ini?"/>
                     <button name="action_draft"
                             string="Set ke Draft"
                             type="object"
                             invisible="state != 'cancelled'"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,in_progress,completed,validated"/>
+                           statusbar_visible="draft,confirmed,in_progress,completed,validated,done"/>
                 </header>
                 <sheet>
-                    <!-- Smart Button -->
+                    <!-- Smart Buttons -->
                     <div class="oe_button_box" name="button_box">
+                        <!-- Smart button DO: muncul setelah validated (picking dari do_lines) -->
                         <button name="action_view_pickings"
                                 type="object"
                                 class="oe_stat_button"
                                 icon="fa-truck"
                                 invisible="picking_count == 0">
-                            <field name="picking_count" widget="statinfo" string="DO"/>
+                            <field name="picking_count" widget="statinfo" string="DO Dibuat"/>
                         </button>
                     </div>
 
@@ -92,6 +95,8 @@
                             <field name="company_id" groups="base.group_multi_company"
                                    readonly="state != 'draft'"/>
                             <field name="date" readonly="state != 'draft'"/>
+                            <field name="partner_id" readonly="state not in ('draft', 'confirmed')"/>
+                            <field name="product_id" readonly="state not in ('draft', 'confirmed')" optional="show"/>
                         </group>
                         <group>
                             <field name="total_demand_qty" readonly="1"/>
@@ -114,40 +119,151 @@
                     <field name="wt_has_unpulled_lines" invisible="1"/>
 
                     <notebook>
-                        <!-- Tab 1: Daftar DO -->
+
+                        <!-- Tab 2: Delivery Orders (DO) -->
                         <page string="Delivery Orders (DO)">
-                            <div class="mb-2" invisible="state not in ('draft','confirmed')">
-                                <button name="action_new_picking"
-                                        string="Tambah Pengiriman"
-                                        type="object"
-                                        class="btn btn-secondary"
-                                        icon="fa-plus"/>
-                            </div>
-                            <field name="picking_ids"
-                                   readonly="state not in ('draft','confirmed')"
-                                   context="{'default_wt_delivery_id': id, 'default_origin': name, 'default_company_id': company_id}">
-                                <list string="Delivery Orders" create="false">
-                                    <field name="name"/>
-                                    <field name="picking_type_id" string="Tipe Operasi"/>
-                                    <field name="wt_operator_id" string="Operator"/>
-                                    <field name="location_id" string="Dari"/>
-                                    <field name="location_dest_id" string="Ke"/>
-                                    <field name="scheduled_date" string="Tgl Jadwal"/>
-                                    <field name="wt_push_done" string="Push Selesai" readonly="1"
-                                           widget="boolean_toggle"/>
-                                    <field name="wt_push_done_at" string="Waktu Push" readonly="1"
+
+                            <!-- ── SECTION A: Rencana DO (hanya saat Draft & Confirmed) ── -->
+                            <group invisible="state not in ('draft', 'confirmed')">
+                                <div class="alert alert-info d-flex align-items-start mb-3" role="alert">
+                                    <i class="fa fa-info-circle me-2 mt-1" style="font-size:1.2em;"/>
+                                    <div>
+                                        Isi rencana DO di bawah ini. Tidak ada DO Odoo yang dibuat selama proses.
+                                        DO akan dibuat otomatis dengan status <strong>Selesai</strong>
+                                        saat klik <strong>Validasi &amp; Kirim</strong>.
+                                    </div>
+                                </div>
+                            </group>
+
+                            <!-- Tabel Rencana DO (satu field, perilaku berubah berdasarkan state) -->
+                            <field name="do_line_ids"
+                                   readonly="state not in ('draft', 'confirmed')"
+                                   context="{'default_delivery_id': id, 'default_company_id': company_id}">
+                                <list string="Rencana DO"
+                                      decoration-success="picking_state == 'done'">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="picking_type_id"
+                                           options="{'no_create': True, 'no_open': True}"
+                                           string="Tipe Operasi"/>
+                                    <field name="product_id"
+                                           options="{'no_create': True}"
+                                           string="Produk"/>
+                                    <field name="operator_id"
+                                           options="{'no_create': True}"
+                                           string="Operator"/>
+                                    <field name="location_id"
+                                           options="{'no_create': True}"
+                                           string="Lokasi Sumber"/>
+                                    <field name="location_dest_id"
+                                           options="{'no_create': True}"
+                                           string="Lokasi Tujuan"/>
+                                    <field name="route_id"
+                                           string="Rute Transit"
                                            optional="show"/>
-                                    <field name="state" widget="badge"
-                                           decoration-info="state == 'draft'"
-                                           decoration-warning="state == 'waiting'"
-                                           decoration-primary="state == 'confirmed'"
-                                           decoration-success="state in ('assigned','done')"
-                                           decoration-danger="state == 'cancel'"/>
+                                    <field name="demand_qty"
+                                           string="Demand (kg)"/>
+                                    <field name="partner_id"
+                                           options="{'no_create': True}"
+                                           string="Partner Tujuan"
+                                           optional="hide"/>
+                                    <field name="scheduled_date"
+                                           string="Tgl Terjadwal"
+                                           optional="hide"/>
+                                    <!-- Kolom hasil generate — hanya tampil setelah validated -->
+                                    <field name="picking_id"
+                                           string="DO Terbentuk"
+                                           options="{'no_open': False}"
+                                           optional="show"
+                                           readonly="1"/>
+                                    <field name="picking_state"
+                                           string="Status DO"
+                                           widget="badge"
+                                           decoration-success="picking_state == 'done'"
+                                           decoration-info="picking_state == 'confirmed'"
+                                           decoration-danger="picking_state == 'cancel'"
+                                           optional="show"
+                                           readonly="1"/>
+                                     <button name="action_validate_line"
+                                             string="Validasi"
+                                             type="object"
+                                             icon="fa-check"
+                                             class="btn-primary"
+                                             invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
+                                    <field name="company_id" column_invisible="1"/>
                                 </list>
+                                <form string="Rincian Rencana DO">
+                                     <header>
+                                         <button name="action_validate_line"
+                                                 string="Validasi Rencana DO"
+                                                 type="object"
+                                                 class="btn-primary"
+                                                 invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
+                                         <field name="picking_state" widget="statusbar" statusbar_visible="assigned,done" invisible="not picking_id"/>
+                                     </header>
+                                    <sheet>
+                                         <field name="picking_state" invisible="1"/>
+                                         <field name="picking_id" invisible="1"/>
+                                        <group>
+                                             <group string="Konfigurasi Operasi">
+                                                <field name="route_id" options="{'no_create': True}" force_save="1"/>
+                                                <field name="picking_type_id"
+                                                       options="{'no_create': True, 'no_open': True}"
+                                                       readonly="route_id"
+                                                       force_save="1"/>
+                                                <field name="product_id" options="{'no_create': True}"/>
+                                                <field name="operator_id" options="{'no_create': True}"/>
+                                            </group>
+                                            <group string="Lokasi &amp; Tanggal">
+                                                <field name="location_id"
+                                                       options="{'no_create': True}"
+                                                       readonly="route_id"
+                                                       force_save="1"/>
+                                                <field name="location_dest_id"
+                                                       options="{'no_create': True}"
+                                                       readonly="route_id"
+                                                       force_save="1"/>
+                                                <field name="scheduled_date"/>
+                                                <field name="demand_qty" force_save="1"/>
+                                                <field name="partner_id" options="{'no_create': True}"/>
+                                            </group>
+                                        </group>
+                                        <notebook>
+                                            <page string="Perincian Lot (Lot Details)">
+                                                <field name="lot_line_ids" context="{'default_do_line_id': id}">
+                                                    <list string="Perincian Lot" editable="bottom">
+                                                        <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}"/>
+                                                        <field name="location_id" readonly="1" string="Lokasi"/>
+                                                        <field name="wt_qty_on_hand" readonly="1" string="Stok Fisik (kg)"/>
+                                                        <field name="wt_qty_reserved" readonly="1" string="Terpesan (kg)"/>
+                                                        <field name="qty_available" readonly="1" string="Stok Bebas (kg)"/>
+                                                        <field name="qty" string="Demand (kg)"/>
+                                                        <field name="wt_physical_qty" string="Berat Fisik (kg)" readonly="1" optional="show"/>
+                                                        <field name="wt_difference_qty" string="Selisih (kg)" readonly="1" optional="show"/>
+                                                        <field name="wt_skip_line" string="Lewati" optional="hide"/>
+                                                        <field name="wt_note" string="Catatan" optional="hide"/>
+                                                    </list>
+                                                </field>
+                                            </page>
+                                        </notebook>
+                                    </sheet>
+                                </form>
                             </field>
+
+                            <!-- Info saat proses berlangsung -->
+                            <div class="alert alert-warning d-flex align-items-center mt-3"
+                                 invisible="state not in ('in_progress', 'completed') or not do_line_ids"
+                                 role="alert">
+                                <i class="fa fa-clock-o me-2" style="font-size:1.2em;"/>
+                                <div>
+                                    DO Odoo belum dibuat. DO akan dibuat otomatis (langsung <strong>Selesai</strong>)
+                                    setelah klik <strong>Validasi &amp; Kirim</strong>.
+                                </div>
+                            </div>
                         </page>
 
-                        <!-- Tab 2: Detail Timbang (langsung dari stock.move.line) -->
+
+
+                        <!-- Tab 2: Detail Timbang -->
                         <page string="Detail Timbang">
                             <div class="mb-2 d-flex gap-2"
                                  invisible="not has_adjustable_lines or state not in ('in_progress', 'completed')">
@@ -158,7 +274,42 @@
                                         icon="fa-check-circle"
                                         confirm="Aksi ini akan mengkoreksi stok sesuai alokasi selisih yang sudah diatur. Stok lot terdampak akan disesuaikan sekarang. Lanjutkan?"/>
                             </div>
+
+                            <!-- Tabel Detail Timbang Rencana DO (alur baru) -->
+                            <field name="pulled_do_lot_line_ids"
+                                   invisible="not do_line_ids"
+                                   readonly="state in ('validated','cancelled')">
+                                <list string="Detail Timbang (Rencana)" create="false" delete="false" edit="false"
+                                      decoration-danger="not wt_skip_line and wt_physical_qty == 0.0"
+                                      decoration-warning="wt_difference_qty &lt; -0.001 and not wt_is_fully_allocated"
+                                      decoration-success="wt_physical_qty &gt; 0.0 and (wt_difference_qty == 0.0 or wt_is_fully_allocated)">
+                                    <field name="route_id" string="Rute Transit" readonly="1"/>
+                                    <field name="product_id" readonly="1"/>
+                                    <field name="lot_id" readonly="1"/>
+                                    <field name="qty" string="Demand Rencana (kg)" readonly="1"/>
+                                    <field name="wt_physical_qty" string="Berat Fisik (kg)" readonly="1"/>
+                                    <field name="wt_difference_qty" string="Selisih (kg)" readonly="1"
+                                           decoration-danger="wt_difference_qty &lt; -0.001"
+                                           decoration-success="wt_difference_qty &gt;= -0.001"/>
+                                    <field name="wt_is_fully_allocated" column_invisible="1"/>
+                                    <field name="wt_unallocated_qty" string="Belum Teralokasi"
+                                           readonly="1" optional="show"
+                                           decoration-danger="wt_unallocated_qty &gt; 0.001"
+                                           decoration-success="wt_unallocated_qty &lt;= 0.001"/>
+                                    <field name="wt_adjustment_applied" column_invisible="1"/>
+                                    <button name="action_configure_allocation"
+                                            string="Alokasi"
+                                            type="object"
+                                            icon="fa-sliders"
+                                            invisible="wt_difference_qty == 0.0 or wt_adjustment_applied"/>
+                                    <field name="wt_note" string="Catatan" optional="hide"/>
+                                    <field name="wt_skip_line" string="Lewati" optional="hide"/>
+                                </list>
+                            </field>
+
+                            <!-- Tabel Detail Timbang DO Asli (alur lama) -->
                             <field name="pulled_move_line_ids"
+                                   invisible="do_line_ids"
                                    readonly="state in ('validated','cancelled')"
                                    domain="[]"
                                    context="{'show_original_demand': state == 'validated'}">
@@ -175,7 +326,7 @@
                                     <field name="product_uom_id" readonly="1" optional="hide"/>
                                     <field name="wt_original_demand_qty" string="Demand Awal (kg)" readonly="1"
                                            optional="show"
-                                           decoration-muted="wt_original_demand_qty == 0"/>
+                                           decoration-info="wt_original_demand_qty == 0"/>
                                     <field name="quantity" string="Terkirim (kg)" readonly="1"/>
                                     <field name="wt_physical_qty" string="Berat Fisik (kg)"/>
                                     <field name="wt_difference_qty" string="Selisih (kg)" readonly="1"
@@ -197,8 +348,24 @@
                                 </list>
                             </field>
 
-                            <!-- Section Lot Belum Di-Push (Tampil jika ada) -->
-                            <div class="mt-4" invisible="not wt_has_unpulled_lines">
+                            <!-- Section Lot Belum Di-Push Rencana DO (alur baru) -->
+                            <div class="mt-4" invisible="not wt_has_unpulled_lines or not do_line_ids">
+                                <h4 class="text-warning">
+                                    <i class="fa fa-info-circle me-1"/>
+                                    Daftar Lot Rencana yang Belum Di-Push (Operator Harus Pull Ulang)
+                                </h4>
+                                <field name="unpulled_do_lot_line_ids" readonly="1">
+                                    <list string="Lot Rencana Belum Di-Push" create="false" delete="false" edit="false">
+                                        <field name="route_id" string="Rute Transit"/>
+                                        <field name="product_id" string="Produk"/>
+                                        <field name="lot_id" string="Nomor Seri/Lot"/>
+                                        <field name="qty" string="Qty Demand (kg)"/>
+                                    </list>
+                                </field>
+                            </div>
+
+                            <!-- Section Lot Belum Di-Push DO Asli (alur lama) -->
+                            <div class="mt-4" invisible="not wt_has_unpulled_lines or do_line_ids">
                                 <h4 class="text-warning">
                                     <i class="fa fa-info-circle me-1"/>
                                     Daftar Lot Baru yang Belum Di-Push (Operator Harus Pull Ulang)

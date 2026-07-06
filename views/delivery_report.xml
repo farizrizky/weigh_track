@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_delivery_slip" model="report.paperformat">
+        <field name="name">Delivery Slip A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">20</field>
+        <field name="margin_bottom">20</field>
+        <field name="margin_left">15</field>
+        <field name="margin_right">15</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_delivery_slip" model="ir.actions.report">
+        <field name="name">Delivery Slip</field>
+        <field name="model">wt.delivery</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_delivery_slip_document</field>
+        <field name="report_file">weightrack.report_delivery_slip_document</field>
+        <field name="paperformat_id" ref="paperformat_delivery_slip"/>
+        <field name="binding_model_id" ref="model_wt_delivery"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Delivery Slip - %s' % (object.name)</field>
+    </record>
+
+    <template id="report_delivery_slip_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page" style="font-family: Arial, sans-serif; color: #333; font-size: 13px; line-height: 1.5;">
+                    <!-- Header Grid -->
+                    <div class="row" style="margin-bottom: 25px;">
+                        <div class="col-6">
+                            <h2 style="font-weight: bold; color: #1e3a8a; margin: 0;">SLIP TUGAS PENGIRIMAN</h2>
+                            <h4 style="color: #4b5563; margin-top: 5px; margin-bottom: 0;" t-field="doc.name"/>
+                        </div>
+                        <div class="col-6 text-end">
+                            <t t-if="doc.company_id.logo">
+                                <img t-att-src="image_data_uri(doc.company_id.logo)" style="max-height: 85px; max-width: 260px;" alt="Logo"/>
+                            </t>
+                            <div style="font-weight: bold; font-size: 16px; margin-top: 5px;" t-field="doc.company_id.name"/>
+                        </div>
+                    </div>
+
+                    <!-- Meta Information Card -->
+                    <div class="card" style="border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 25px;">
+                        <div class="card-body" style="padding: 15px;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <table class="table table-sm table-borderless mb-0" style="font-size: 13px;">
+                                        <tr>
+                                            <td style="width: 120px; font-weight: bold; padding: 3px 0;">Tanggal</td>
+                                            <td style="padding: 3px 0;">: <span t-field="doc.date" t-options='{"widget": "date"}'/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold; padding: 3px 0;">Customer</td>
+                                            <td style="padding: 3px 0;">: <span t-field="doc.partner_id.name"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold; padding: 3px 0;">Status</td>
+                                            <td style="padding: 3px 0;">: 
+                                                <span class="badge bg-secondary" style="font-size: 12px; text-transform: uppercase;" t-field="doc.state"/>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-6">
+                                    <table class="table table-sm table-borderless mb-0" style="font-size: 13px;">
+                                        <tr>
+                                            <td style="width: 120px; font-weight: bold; padding: 3px 0;">Produk Utama</td>
+                                            <td style="padding: 3px 0;">: <span t-field="doc.product_id.display_name"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: bold; padding: 3px 0;">Catatan</td>
+                                            <td style="padding: 3px 0;">: <span t-field="doc.note"/></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Totals -->
+                    <div class="row" style="margin-bottom: 30px;">
+                        <div class="col-4">
+                            <div style="background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; text-align: center;">
+                                <div style="font-size: 11px; color: #4b5563; font-weight: bold;">TOTAL DEMAND RENCANA</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #111827; margin-top: 3px;">
+                                    <span t-out="('{:,.2f}'.format(doc.total_demand_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/> kg
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div style="background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; text-align: center;">
+                                <div style="font-size: 11px; color: #4b5563; font-weight: bold;">TOTAL FISIK TIMBANG</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #111827; margin-top: 3px;">
+                                    <span t-out="('{:,.2f}'.format(doc.total_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/> kg
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div style="background-color: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; text-align: center;">
+                                <div style="font-size: 11px; color: #991b1b; font-weight: bold;">TOTAL SUSUT / SELISIH</div>
+                                <div style="font-size: 18px; font-weight: bold; color: #991b1b; margin-top: 3px;">
+                                    <span t-out="('{:,.2f}'.format(doc.total_difference_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/> kg
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Details Section -->
+                    <h4 style="font-weight: bold; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 6px; margin-top: 30px; margin-bottom: 20px;">RINCIAN PENGIRIMAN &amp; SUSUT PER RUTE TRANSIT</h4>
+                    
+                    <t t-foreach="doc.do_line_ids" t-as="line">
+                        <div style="border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; page-break-inside: avoid; margin-bottom: 25px;">
+                            <!-- Line Header -->
+                            <div style="background-color: #f8fafc; border-bottom: 1px solid #e5e7eb; padding: 12px 15px;">
+                                <div class="row align-items-center">
+                                    <div class="col-8">
+                                        <span style="font-weight: bold; font-size: 14px; color: #0f172a;">
+                                            Rute Transit: <span t-field="line.route_id.display_name"/>
+                                        </span>
+                                        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                                            Tipe Operasi: <span t-field="line.picking_type_id.display_name"/> | 
+                                            Dari: <span t-field="line.location_id.display_name"/> -&gt; Ke: <span t-field="line.location_dest_id.display_name"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-4 text-end" style="font-size: 12px;">
+                                        <div>DO Ref: <strong><span t-field="line.picking_id.name"/></strong></div>
+                                        <div style="margin-top: 4px;">Status DO: <span class="badge bg-success" style="font-size: 10px; text-transform: uppercase;" t-field="line.picking_state"/></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Lot Sub-Table -->
+                            <div style="padding: 15px;">
+                                <table class="table table-bordered mb-0" style="font-size: 12px; border-color: #e5e7eb; width: 100%;">
+                                    <thead style="background-color: #f1f5f9;">
+                                        <tr>
+                                            <th style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Nomor Lot</th>
+                                            <th style="width: 25%; padding: 8px; font-weight: bold; color: #374151;">Lokasi Asal</th>
+                                            <th class="text-end" style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Demand (kg)</th>
+                                            <th class="text-end" style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Berat Fisik (kg)</th>
+                                            <th class="text-end" style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Susut / Selisih (kg)</th>
+                                            <th style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Alokasi Susut</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="line.lot_line_ids" t-as="lot_line">
+                                            <tr>
+                                                 <td style="padding: 8px; vertical-align: middle;"><span t-field="lot_line.lot_id.name"/></td>
+                                                 <td style="padding: 8px; vertical-align: middle;"><span t-field="lot_line.location_id.display_name"/></td>
+                                                 <td class="text-end" style="padding: 8px; vertical-align: middle;">
+                                                     <span t-out="('{:,.2f}'.format(lot_line.qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                                 </td>
+                                                 <td class="text-end" style="padding: 8px; vertical-align: middle;">
+                                                     <span t-out="('{:,.2f}'.format(lot_line.wt_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                                 </td>
+                                                 <td class="text-end" style="padding: 8px; vertical-align: middle;" t-att-style="'color: #ef4444; font-weight: bold; padding: 8px; vertical-align: middle;' if abs(lot_line.wt_difference_qty) &gt; 0.001 else 'padding: 8px; vertical-align: middle;'">
+                                                     <span t-out="('{:,.2f}'.format(lot_line.wt_difference_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                                 </td>
+                                                 <td style="padding: 8px; vertical-align: middle;">
+                                                     <!-- Alokasi Susut -->
+                                                     <t t-if="lot_line.wt_allocation_ids">
+                                                         <div t-foreach="lot_line.wt_allocation_ids" t-as="alloc" style="font-size: 11px; margin-bottom: 4px;">
+                                                             - <span t-field="alloc.reason_id.name"/>: <strong><span t-out="('{:,.2f}'.format(alloc.qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></strong> kg
+                                                             <div t-if="alloc.note" style="color: #64748b; font-style: italic; margin-left: 8px; margin-top: 2px;">
+                                                                 (<span t-field="alloc.note"/>)
+                                                             </div>
+                                                         </div>
+                                                     </t>
+                                                     <t t-else="">
+                                                         <span class="text-muted" style="font-style: italic;">Tidak ada alokasi</span>
+                                                     </t>
+                                                 </td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- Signature Section -->
+                    <div class="row" style="margin-top: 80px; page-break-inside: avoid;">
+                        <div class="col-4 text-center">
+                            <div>Dibuat Oleh,</div>
+                            <div style="margin-top: 70px; font-weight: bold; border-top: 1px solid #333; display: inline-block; width: 160px; padding-top: 5px;">
+                                Operator Timbangan
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div>Diperiksa Oleh,</div>
+                            <div style="margin-top: 70px; font-weight: bold; border-top: 1px solid #333; display: inline-block; width: 160px; padding-top: 5px;">
+                                Supervisor
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <div>Disetujui Oleh,</div>
+                            <div style="margin-top: 70px; font-weight: bold; border-top: 1px solid #333; display: inline-block; width: 160px; padding-top: 5px;">
+                                Manager / Admin
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

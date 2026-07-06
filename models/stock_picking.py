@@ -57,13 +57,14 @@ class StockPicking(models.Model):
 
     def button_validate(self):
         """Blokir validasi manual jika DO ini berasal dari Tugas Pengiriman WeighTrack."""
-        for picking in self:
-            if picking.wt_delivery_id:
-                raise UserError(_(
-                    "DO ini dibuat dari Tugas Pengiriman '%s'.\n\n"
-                    "Validasi hanya bisa dilakukan melalui tombol 'Validasi & Kirim' "
-                    "di dokumen Tugas Pengiriman WeighTrack."
-                ) % picking.origin)
+        if not self.env.context.get("wt_force_validate"):
+            for picking in self:
+                if picking.wt_delivery_id:
+                    raise UserError(_(
+                        "DO ini dibuat dari Tugas Pengiriman '%s'.\n\n"
+                        "Validasi hanya bisa dilakukan melalui tombol 'Validasi & Kirim' "
+                        "di dokumen Tugas Pengiriman WeighTrack."
+                    ) % picking.origin)
         return super().button_validate()
     production_receipt_id = fields.Many2one(
         "wt.production.receipt",

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- FORM VIEW (embedded di delivery, juga bisa standalone) -->
+    <record id="view_wt_delivery_step_form" model="ir.ui.view">
+        <field name="name">wt.delivery.step.form</field>
+        <field name="model">wt.delivery.step</field>
+        <field name="arch" type="xml">
+            <form string="Warehouse Step">
+                <header>
+                    <button name="action_start_weighing"
+                            string="Mulai Timbang"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'pending'"/>
+                    <button name="action_finish_weighing"
+                            string="Selesai Timbang"
+                            type="object"
+                            class="btn-primary"
+                            invisible="state != 'weighing'"/>
+                    <button name="action_validate_step"
+                            string="Validasi Step"
+                            type="object"
+                            class="btn-success"
+                            invisible="state != 'weighing_done'"
+                            confirm="Validasi step ini akan membuat picking secara otomatis. Lanjutkan?"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="pending,weighing,weighing_done,done"/>
+                </header>
+                <sheet>
+                    <!-- Smart Buttons -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_weighings"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-balance-scale"
+                                invisible="weighing_count == 0">
+                            <field name="weighing_count" widget="statinfo" string="Timbang"/>
+                        </button>
+                        <button name="action_view_picking"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-truck"
+                                invisible="not picking_id">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Transfer</span>
+                                <field name="picking_state" widget="badge"
+                                       decoration-info="picking_state == 'draft'"
+                                       decoration-warning="picking_state in ('waiting','confirmed')"
+                                       decoration-success="picking_state in ('assigned','done')"
+                                       decoration-danger="picking_state == 'cancel'"/>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="warehouse_id" placeholder="Pilih Gudang..."/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Konfigurasi Step">
+                            <field name="sequence"/>
+                            <field name="delivery_id" readonly="1"/>
+                            <field name="is_last_step"/>
+                            <field name="requested_qty"/>
+                            <field name="net_qty" readonly="1"/>
+                        </group>
+                        <group string="Lokasi">
+                            <field name="source_location_ids" widget="many2many_tags"/>
+                            <field name="transit_location_id"
+                                   invisible="is_last_step"/>
+                        </group>
+                    </group>
+
+                    <group string="Sesi Timbang">
+                        <field name="weighing_ids" nolabel="1">
+                            <list string="Sesi Timbang" create="false" delete="false">
+                                <field name="name"/>
+                                <field name="weighing_date"/>
+                                <field name="product_id"/>
+                                <field name="net_weight"/>
+                                <field name="state" widget="badge"/>
+                            </list>
+                        </field>
+                    </group>
+
+                    <group string="Informasi Picking" invisible="not picking_id">
+                        <field name="picking_id" readonly="1"/>
+                        <field name="picking_state" readonly="1" widget="badge"
+                               decoration-success="picking_state in ('assigned','done')"
+                               decoration-warning="picking_state in ('waiting','confirmed')"
+                               decoration-danger="picking_state == 'cancel'"/>
+                    </group>
+
+                    <group string="Catatan" col="1">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- LIST VIEW (dipakai inline di delivery form) -->
+    <record id="view_wt_delivery_step_list" model="ir.ui.view">
+        <field name="name">wt.delivery.step.list</field>
+        <field name="model">wt.delivery.step</field>
+        <field name="arch" type="xml">
+            <list string="Warehouse Steps"
+                  decoration-success="state == 'done'"
+                  decoration-primary="state == 'weighing'"
+                  decoration-warning="state == 'weighing_done'"
+                  decoration-danger="state == 'cancelled'">
+                <field name="sequence" widget="handle"/>
+                <field name="warehouse_id"/>
+                <field name="source_location_ids" widget="many2many_tags"/>
+                <field name="transit_location_id"/>
+                <field name="requested_qty"/>
+                <field name="net_qty" readonly="1"/>
+                <field name="is_last_step"/>
+                <field name="picking_id" readonly="1" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'pending'"
+                       decoration-primary="state == 'weighing'"
+                       decoration-warning="state == 'weighing_done'"
+                       decoration-success="state == 'done'"
+                       decoration-danger="state == 'cancelled'"/>
+                <button name="action_start_weighing"
+                        string="Mulai"
+                        type="object"
+                        icon="fa-play"
+                        invisible="state != 'pending'"/>
+                <button name="action_finish_weighing"
+                        string="Selesai Timbang"
+                        type="object"
+                        icon="fa-check"
+                        invisible="state != 'weighing'"/>
+                <button name="action_validate_step"
+                        string="Validasi"
+                        type="object"
+                        icon="fa-paper-plane"
+                        invisible="state != 'weighing_done'"/>
+            </list>
+        </field>
+    </record>
+
+
+    <!-- WINDOW ACTION (untuk navigasi langsung jika diperlukan) -->
+    <record id="action_wt_delivery_step" model="ir.actions.act_window">
+        <field name="name">Warehouse Steps</field>
+        <field name="res_model">wt.delivery.step</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+</odoo>

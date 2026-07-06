@@ -152,6 +152,15 @@ class Weighing(models.Model):
         copy=False,
         tracking=True,
     )
+    delivery_step_id = fields.Many2one(
+        "wt.delivery.step",
+        string="Delivery Step",
+        ondelete="set null",
+        index=True,
+        copy=False,
+        tracking=True,
+        help="Tahapan pengiriman (Delivery Step) yang menggunakan sesi timbang ini.",
+    )
     data_source = fields.Selection(
         DATA_SOURCE_SELECTION,
         string="Data Source",

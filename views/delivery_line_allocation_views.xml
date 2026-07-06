@@ -69,7 +69,90 @@
                            context="{'default_move_line_id': id}"
                            nolabel="1">
                         <list editable="bottom"
-                              decoration-danger="qty &lt;= 0">
+                               decoration-danger="qty &lt;= 0">
+                            <field name="reason_id"/>
+                            <field name="qty" string="Qty Alokasi"/>
+                            <field name="uom_id" readonly="1" string="Satuan"/>
+                            <field name="location_dest_id" string="Lokasi Tujuan"
+                                    domain="[('usage', 'not in', ['view'])]"/>
+                            <field name="note" optional="hide"/>
+                        </list>
+                    </field>
+                </sheet>
+                <footer>
+                    <!-- Tombol Simpan hanya tampil jika belum validated -->
+                    <button string="Simpan" class="btn-primary" special="save"
+                            invisible="wt_difference_qty == 0 or wt_delivery_state == 'validated'"/>
+                    <button string="Tutup" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- wt.delivery.do.line.lot — Popup Form View -->
+    <record id="view_wt_delivery_do_lot_allocation_popup" model="ir.ui.view">
+        <field name="name">wt.delivery.do.line.lot.allocation.popup</field>
+        <field name="model">wt.delivery.do.line.lot</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <form string="Alokasi Selisih (Rencana)">
+                <sheet>
+                    <field name="delivery_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="wt_is_fully_allocated" invisible="1"/>
+                    <field name="wt_difference_qty" invisible="1"/>
+                    <field name="wt_adjustment_applied" invisible="1"/>
+
+                    <!-- Banner: adjustment sudah diterapkan -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not wt_adjustment_applied">
+                         <i class="fa fa-lock me-1"/>
+                         Adjustment sudah diterapkan — alokasi tidak dapat diubah lagi.
+                    </div>
+
+                    <group>
+                        <group string="Informasi Lot">
+                            <field name="product_id" readonly="1"/>
+                            <field name="lot_id" readonly="1"/>
+                        </group>
+                        <group string="Qty">
+                            <field name="qty" readonly="1" string="Demand Rencana (kg)"/>
+                            <field name="wt_physical_qty" readonly="1" string="Berat Fisik (kg)"/>
+                            <field name="wt_difference_qty" readonly="1" string="Selisih (kg)"/>
+                            <field name="wt_allocated_qty" readonly="1" string="Qty Teralokasi"/>
+                            <field name="wt_unallocated_qty" readonly="1" string="Qty Belum Teralokasi"
+                                   decoration-danger="wt_unallocated_qty &gt; 0.001"
+                                   decoration-success="wt_unallocated_qty &lt;= 0.001"/>
+                        </group>
+                    </group>
+
+                    <!-- Tidak ada selisih -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="wt_difference_qty != 0">
+                        <i class="fa fa-info-circle me-1"/>
+                        Lot ini tidak memiliki selisih — alokasi tidak diperlukan.
+                    </div>
+
+                    <!-- Sudah teralokasi penuh -->
+                    <div class="alert alert-success" role="alert"
+                         invisible="not wt_is_fully_allocated or wt_difference_qty == 0">
+                        <i class="fa fa-check-circle me-1"/>
+                        Selisih sudah teralokasi penuh.
+                    </div>
+
+                    <!-- Belum teralokasi -->
+                    <div class="alert alert-info" role="alert"
+                         invisible="wt_is_fully_allocated or wt_difference_qty == 0">
+                        <i class="fa fa-info-circle me-1"/>
+                        Tambahkan baris alokasi hingga Belum Teralokasi = 0.
+                    </div>
+
+                    <!-- Tabel alokasi -->
+                    <field name="wt_allocation_ids"
+                           readonly="wt_difference_qty == 0 or wt_adjustment_applied"
+                           context="{'default_do_lot_line_id': id}"
+                           nolabel="1">
+                        <list editable="bottom" decoration-danger="qty &lt;= 0">
                             <field name="reason_id"/>
                             <field name="qty" string="Qty Alokasi"/>
                             <field name="uom_id" readonly="1" string="Satuan"/>
@@ -80,9 +163,8 @@
                     </field>
                 </sheet>
                 <footer>
-                    <!-- Tombol Simpan hanya tampil jika belum validated -->
                     <button string="Simpan" class="btn-primary" special="save"
-                            invisible="wt_difference_qty == 0 or wt_delivery_state == 'validated'"/>
+                            invisible="wt_difference_qty == 0 or wt_adjustment_applied"/>
                     <button string="Tutup" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
