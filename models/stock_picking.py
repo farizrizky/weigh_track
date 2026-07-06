@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class StockPicking(models.Model):
@@ -52,3 +53,14 @@ class StockPicking(models.Model):
             allocs = picking.move_line_ids.mapped("wt_allocation_ids")
             picking.wt_allocation_ids = allocs
             picking.wt_has_allocation = bool(allocs)
+
+    def button_validate(self):
+        """Blokir validasi manual jika DO ini berasal dari Tugas Pengiriman WeighTrack."""
+        for picking in self:
+            if picking.wt_delivery_id:
+                raise UserError(_(
+                    "DO ini dibuat dari Tugas Pengiriman '%s'.\n\n"
+                    "Validasi hanya bisa dilakukan melalui tombol 'Validasi & Kirim' "
+                    "di dokumen Tugas Pengiriman WeighTrack."
+                ) % picking.origin)
+        return super().button_validate()

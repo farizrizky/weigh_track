@@ -639,7 +639,13 @@ class Delivery(models.Model):
     def action_cancel(self):
         for delivery in self:
             if delivery.state == "validated":
-                raise ValidationError(_("Dokumen yang sudah divalidasi tidak dapat dibatalkan."))
+                raise ValidationError(_(("Dokumen yang sudah divalidasi tidak dapat dibatalkan.")))
+            # Cancel semua DO yang terhubung dan belum selesai/dibatalkan
+            pickings_to_cancel = delivery.picking_ids.filtered(
+                lambda p: p.state not in ("done", "cancel")
+            )
+            if pickings_to_cancel:
+                pickings_to_cancel.action_cancel()
             delivery.write({"state": "cancelled"})
 
     def action_draft(self):

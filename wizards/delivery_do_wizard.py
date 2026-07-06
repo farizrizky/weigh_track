@@ -39,10 +39,10 @@ class DeliveryDoWizard(models.TransientModel):
         string="Lokasi Sumber",
         domain="[('usage', '=', 'internal')]",
     )
-    location_dest_id = fields.Many2one(
-        "stock.location",
-        string="Lokasi Tujuan",
-        domain="[('usage', 'not in', ['view', 'inventory'])]",
+    partner_id = fields.Many2one(
+        "res.partner",
+        string="Alamat Tujuan",
+        help="Alamat tujuan pengiriman. Akan otomatis terisi di form Delivery Order.",
     )
     scheduled_date = fields.Datetime(
         string="Tanggal Terjadwal",
@@ -51,10 +51,9 @@ class DeliveryDoWizard(models.TransientModel):
 
     @api.onchange("picking_type_id")
     def _onchange_picking_type_id(self):
-        """Auto-isi lokasi sumber & tujuan dari tipe operasi yang dipilih."""
+        """Auto-isi lokasi sumber dari tipe operasi yang dipilih."""
         if self.picking_type_id:
             self.location_id = self.picking_type_id.default_location_src_id
-            self.location_dest_id = self.picking_type_id.default_location_dest_id
 
     @api.model
     def default_get(self, fields_list):
@@ -72,9 +71,6 @@ class DeliveryDoWizard(models.TransientModel):
             if picking_type:
                 res["picking_type_id"] = picking_type.id
                 res["location_id"] = picking_type.default_location_src_id.id or False
-                res["location_dest_id"] = (
-                    picking_type.default_location_dest_id.id or False
-                )
         return res
 
     def action_create_do(self):
@@ -92,9 +88,8 @@ class DeliveryDoWizard(models.TransientModel):
                 "location_id": self.location_id.id
                 if self.location_id
                 else self.picking_type_id.default_location_src_id.id,
-                "location_dest_id": self.location_dest_id.id
-                if self.location_dest_id
-                else self.picking_type_id.default_location_dest_id.id,
+                "location_dest_id": self.picking_type_id.default_location_dest_id.id,
+                "partner_id": self.partner_id.id if self.partner_id else False,
                 "scheduled_date": self.scheduled_date,
                 "wt_delivery_id": delivery.id,
                 "wt_operator_id": self.operator_id.id,
