@@ -5,8 +5,10 @@ from . import api_request_log
 from . import product
 from . import shrinkage_tolerance
 from . import stock_warehouse
+from . import stock_picking
+from . import stock_return_picking
 from . import receipt_rule
-from . import weighing_cup_lump
+from . import weighing
 from . import production_receipt
 from . import weather
 from . import weather_data

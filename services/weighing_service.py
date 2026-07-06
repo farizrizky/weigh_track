@@ -6,12 +6,10 @@ from psycopg2 import IntegrityError
 
 from odoo import _, fields, models
 
-from ..constants.product_types import ProductType
 
-
-class CupLumpService(models.AbstractModel):
-    _name = "wt.cup.lump.service"
-    _description = "Cup Lump Service"
+class WeighingService(models.AbstractModel):
+    _name = "wt.weighing.service"
+    _description = "Weighing Service"
 
     WEIGHT_EPSILON = 0.0001
     DATA_PROBLEM_LABEL_IDN = {
@@ -66,11 +64,11 @@ class CupLumpService(models.AbstractModel):
         "Receipt rule division does not match.": (
             "Divisi pada aturan penerimaan tidak sesuai."
         ),
-        "Receipt rule product does not match.": (
-            "Produk pada aturan penerimaan tidak sesuai."
+        "Weighing product is not configured for the weighing company.": (
+            "Produk penimbangan belum dikonfigurasi untuk perusahaan penimbangan."
         ),
-        "Product is not configured as Cup Lump for the weighing company.": (
-            "Produk belum dikonfigurasi sebagai Cup Lump untuk perusahaan penimbangan."
+        "Payload product does not match configured weighing product.": (
+            "Produk pada payload tidak sesuai dengan produk penimbangan yang dikonfigurasi."
         ),
         "Payload clerk does not match division clerk.": (
             "Kerani pada record penimbangan tidak sesuai dengan kerani divisi."
@@ -121,7 +119,7 @@ class CupLumpService(models.AbstractModel):
             if not isinstance(item, dict):
                 return response.error(
                     "invalid_inbound_item",
-                    _("Each inbound cup lump item must be an object."),
+                    _("Each weighing item must be an object."),
                     400,
                 )
             for field_name in ("local_id", "production_date", "weighing_date"):
@@ -156,7 +154,7 @@ class CupLumpService(models.AbstractModel):
         received_at,
     ):
         return [
-            self._process_cup_lump_item(
+            self._process_weighing_item(
                 item,
                 payload,
                 device,
@@ -168,7 +166,7 @@ class CupLumpService(models.AbstractModel):
             for item in items
         ]
 
-    def _process_cup_lump_item(
+    def _process_weighing_item(
         self,
         item,
         payload,
@@ -178,14 +176,14 @@ class CupLumpService(models.AbstractModel):
         sent_at,
         received_at,
     ):
-        existing = self._existing_cup_lump(device, item.get("local_id"))
+        existing = self._existing_weighing(device, item.get("local_id"))
         if existing:
             return self._duplicate_item_response(item, existing)
 
         production_date = self._to_date(item.get("production_date"))
         weighing_date = self._to_datetime(item.get("weighing_date"))
-        records = self._records_from_cup_lump_item(item, device.company_id)
-        problem = self._evaluate_cup_lump_data_problem(
+        records = self._records_from_weighing_item(item, device.company_id)
+        problem = self._evaluate_weighing_data_problem(
             item,
             records,
             device,
@@ -195,11 +193,11 @@ class CupLumpService(models.AbstractModel):
         try:
             with self.env.cr.savepoint():
                 detail = (
-                    self.env["wt.weighing.cup.lump"]
+                    self.env["wt.weighing"]
                     .with_user(bot_user)
                     .sudo()
                     .create(
-                        self._cup_lump_values(
+                        self._weighing_values(
                             item,
                             payload,
                             records,
@@ -214,7 +212,7 @@ class CupLumpService(models.AbstractModel):
                     )
                 )
         except IntegrityError:
-            existing = self._existing_cup_lump(device, item.get("local_id"))
+            existing = self._existing_weighing(device, item.get("local_id"))
             if existing:
                 return self._duplicate_item_response(item, existing)
             raise
@@ -223,15 +221,14 @@ class CupLumpService(models.AbstractModel):
             "status": "created",
             "has_data_problem": detail.has_data_problem,
             "data_problem_code": detail.data_problem_code,
-            "weighing_cup_lump_id": detail.id,
+            "weighing_id": detail.id,
         }
 
-    def _existing_cup_lump(self, device, local_id):
-        return self.env["wt.weighing.cup.lump"].sudo().search(
+    def _existing_weighing(self, device, local_id):
+        return self.env["wt.weighing"].sudo().search(
             [
                 ("data_source", "=", "api"),
                 ("device_id", "=", device.device_id),
-                ("product_type", "=", ProductType.CUP_LUMP),
                 ("local_id", "=", local_id),
             ],
             limit=1,
@@ -243,10 +240,10 @@ class CupLumpService(models.AbstractModel):
             "status": "duplicate",
             "has_data_problem": detail.has_data_problem,
             "data_problem_code": detail.data_problem_code,
-            "weighing_cup_lump_id": detail.id,
+            "weighing_id": detail.id,
         }
 
-    def _cup_lump_values(
+    def _weighing_values(
         self,
         item,
         payload,
@@ -267,12 +264,17 @@ class CupLumpService(models.AbstractModel):
         product = item.get("product") or {}
         uom = product.get("uom") or {}
         initial_device = self._initial_device(initial, device.company_id)
+        weighing_product = records["product"]
+        uom_id = (
+            weighing_product.uom_id.id
+            if weighing_product
+            else self._browse("uom.uom", self._payload_id(uom)).id
+        )
         return {
             "local_id": item.get("local_id"),
             "device_id": device.device_id,
             "device_record_id": device.id,
             "company_id": device.company_id.id,
-            "product_type": ProductType.CUP_LUMP,
             "data_source": "api",
             "production_date": production_date,
             "weighing_date": weighing_date,
@@ -291,7 +293,7 @@ class CupLumpService(models.AbstractModel):
             "division_id": records["division"].id or False,
             "product_id": records["product"].id or False,
             "receipt_rule_id": records["receipt_rule"].id or False,
-            "uom_id": self._browse("uom.uom", self._payload_id(uom)).id or False,
+            "uom_id": uom_id or False,
             "operator_employee_id": self._browse(
                 "hr.employee",
                 operator.get("employee_id"),
@@ -362,8 +364,8 @@ class CupLumpService(models.AbstractModel):
                 "device_id": detail.initial_device_id.device_id,
             },
         }
-        records = self._records_from_cup_lump_item(item, detail.company_id)
-        return self._evaluate_cup_lump_data_problem(
+        records = self._records_from_weighing_item(item, detail.company_id)
+        return self._evaluate_weighing_data_problem(
             item,
             records,
             detail.device_record_id,
@@ -371,35 +373,60 @@ class CupLumpService(models.AbstractModel):
             detail.production_date,
         )
 
-    def _records_from_cup_lump_item(self, item, company):
+    def _records_from_weighing_item(self, item, company):
+        location = self._browse(
+            "wt.weighing.location",
+            self._nested_id(item, "weighing_location"),
+        )
         division = self._browse("wt.division", self._nested_id(item, "division"))
-        foreman = self._browse("wt.foreman", self._nested_id(item, "foreman"))
-        tapper = self._browse("wt.tapper", self._nested_id(item, "tapper"))
+        foreman = self._foreman_from_employee_division(
+            self._nested_employee_id(item, "foreman"),
+            division,
+        )
+        tapper = self._tapper_from_employee(self._nested_employee_id(item, "tapper"))
         if not foreman:
-            foreman = self._foreman_from_employee_division(
-                self._nested_employee_id(item, "foreman"),
-                division,
-            )
+            foreman = self._browse("wt.foreman", self._nested_id(item, "foreman"))
         if not tapper:
-            tapper = self._tapper_from_employee(self._nested_employee_id(item, "tapper"))
+            tapper = self._browse("wt.tapper", self._nested_id(item, "tapper"))
+        payload_receipt_rule = self._browse(
+            "wt.receipt.rule",
+            self._nested_id(item, "receipt_rule"),
+        )
+        fallback_receipt_rule = self._active_receipt_rule(company, location, division)
+        receipt_rule = payload_receipt_rule
+        if (
+            fallback_receipt_rule
+            and (
+                not receipt_rule
+                or self._is_archived(receipt_rule)
+                or not self._receipt_rule_matches_scope(
+                    receipt_rule,
+                    company,
+                    location,
+                    division,
+                )
+            )
+        ):
+            receipt_rule = fallback_receipt_rule
+        product_mapping = self._configured_product_mapping(company)
         return {
             "company": company,
             "estate": self._browse("wt.estate", self._nested_id(item, "estate")),
-            "weighing_location": self._browse(
-                "wt.weighing.location",
-                self._nested_id(item, "weighing_location"),
-            ),
+            "weighing_location": location,
             "division": division,
-            "product": self._browse("product.product", self._nested_id(item, "product")),
-            "receipt_rule": self._browse(
-                "wt.receipt.rule",
-                self._nested_id(item, "receipt_rule"),
+            "product": product_mapping.product_id,
+            "payload_product": self._browse(
+                "product.product",
+                self._nested_id(item, "product"),
             ),
+            "product_mapping": product_mapping,
+            "receipt_rule": receipt_rule,
+            "payload_receipt_rule": payload_receipt_rule,
             "foreman": foreman,
             "tapper": tapper,
         }
 
-    def _evaluate_cup_lump_data_problem(
+    def _evaluate_weighing_data_problem(
         self,
         item,
         records,
@@ -436,8 +463,6 @@ class CupLumpService(models.AbstractModel):
             ("estate", "Estate"),
             ("weighing_location", "Weighing location"),
             ("division", "Division"),
-            ("product", "Product"),
-            ("receipt_rule", "Receipt rule"),
             ("foreman", "Foreman"),
             ("tapper", "Tapper"),
         ):
@@ -456,6 +481,23 @@ class CupLumpService(models.AbstractModel):
                     % self.DATA_PROBLEM_LABEL_IDN.get(label, label),
                 )
 
+        payload_receipt_rule_id = self._nested_id(item, "receipt_rule")
+        payload_receipt_rule = records["payload_receipt_rule"]
+        if payload_receipt_rule_id and not payload_receipt_rule:
+            add(
+                "missing_master",
+                "Receipt rule was not found in Odoo.",
+                "%s tidak ditemukan di master data."
+                % self.DATA_PROBLEM_LABEL_IDN["Receipt rule"],
+            )
+        elif self._is_archived(payload_receipt_rule):
+            add(
+                "inactive_master",
+                self.INACTIVE_MASTER_MESSAGE_EN % "Receipt rule",
+                self.INACTIVE_MASTER_MESSAGE_IDN
+                % self.DATA_PROBLEM_LABEL_IDN["Receipt rule"],
+            )
+
         initial = item.get("initial_weighing") or {}
         initial = initial if isinstance(initial, dict) else {}
         initial_device_id = initial.get("device_id")
@@ -471,7 +513,10 @@ class CupLumpService(models.AbstractModel):
         location = records["weighing_location"]
         division = records["division"]
         product = records["product"]
+        payload_product = records["payload_product"]
+        product_mapping = records["product_mapping"]
         receipt_rule = records["receipt_rule"]
+        payload_receipt_rule = records["payload_receipt_rule"]
         foreman = records["foreman"]
         tapper = records["tapper"]
 
@@ -531,35 +576,61 @@ class CupLumpService(models.AbstractModel):
                     "receipt_rule_mismatch",
                     "Receipt rule division does not match.",
                 )
-            if product and receipt_rule.product_id != product:
+
+        if payload_receipt_rule and payload_receipt_rule != receipt_rule:
+            if company and payload_receipt_rule.company_id != company:
                 add(
                     "receipt_rule_mismatch",
-                    "Receipt rule product does not match.",
+                    "Receipt rule company does not match.",
+                )
+            if location and payload_receipt_rule.weighing_location_id != location:
+                add(
+                    "receipt_rule_mismatch",
+                    "Receipt rule weighing location does not match.",
+                )
+            if division and payload_receipt_rule.division_id != division:
+                add(
+                    "receipt_rule_mismatch",
+                    "Receipt rule division does not match.",
                 )
 
-        if product:
-            mapping = self.env["wt.product"].sudo().with_context(
-                active_test=False
-            ).search(
-                [
-                    ("company_id", "=", company.id if company else False),
-                    ("product_type", "=", ProductType.CUP_LUMP),
-                    ("product_id", "=", product.id),
-                ],
-                limit=1,
+        payload_product_id = self._nested_id(item, "product")
+        if payload_product_id and not payload_product:
+            add(
+                "missing_master",
+                "Product was not found in Odoo.",
+                "Produk tidak ditemukan di master data.",
             )
-            if not mapping:
-                add(
-                    "product_mapping_mismatch",
-                    "Product is not configured as Cup Lump for the weighing company.",
-                )
-            elif self._is_archived(mapping):
-                add(
-                    "inactive_master",
-                    self.INACTIVE_MASTER_MESSAGE_EN % "Product mapping",
-                    self.INACTIVE_MASTER_MESSAGE_IDN
-                    % self.DATA_PROBLEM_LABEL_IDN["Product mapping"],
-                )
+        elif self._is_archived(payload_product):
+            add(
+                "inactive_master",
+                self.INACTIVE_MASTER_MESSAGE_EN % "Product",
+                self.INACTIVE_MASTER_MESSAGE_IDN % self.DATA_PROBLEM_LABEL_IDN["Product"],
+            )
+
+        if not product_mapping:
+            add(
+                "product_mapping_mismatch",
+                "Weighing product is not configured for the weighing company.",
+            )
+        elif self._is_archived(product_mapping):
+            add(
+                "inactive_master",
+                self.INACTIVE_MASTER_MESSAGE_EN % "Product mapping",
+                self.INACTIVE_MASTER_MESSAGE_IDN
+                % self.DATA_PROBLEM_LABEL_IDN["Product mapping"],
+            )
+        elif self._is_archived(product):
+            add(
+                "inactive_master",
+                self.INACTIVE_MASTER_MESSAGE_EN % "Product",
+                self.INACTIVE_MASTER_MESSAGE_IDN % self.DATA_PROBLEM_LABEL_IDN["Product"],
+            )
+        elif payload_product and payload_product != product:
+            add(
+                "product_mapping_mismatch",
+                "Payload product does not match configured weighing product.",
+            )
 
         clerk_employee_id = self._nested_employee_id(item, "clerk")
         if division and clerk_employee_id and division.clerk_id.id != clerk_employee_id:
@@ -641,7 +712,7 @@ class CupLumpService(models.AbstractModel):
             )
 
         self._evaluate_initial_weighing_date_rule(item, production_date, add)
-        self._evaluate_cup_lump_weight_rules(item, production_date, add)
+        self._evaluate_weighing_weight_rules(item, production_date, add)
 
         unique_issues = list(dict.fromkeys(issues))
         return {
@@ -655,7 +726,7 @@ class CupLumpService(models.AbstractModel):
             ),
         }
 
-    def _evaluate_cup_lump_weight_rules(self, item, production_date, add):
+    def _evaluate_weighing_weight_rules(self, item, production_date, add):
         initial = item.get("initial_weighing") or {}
         weighing_date = self._to_datetime(item.get("weighing_date"))
         production_weight = self._to_float(item.get("production_weight"))
@@ -761,7 +832,9 @@ class CupLumpService(models.AbstractModel):
         location = records["weighing_location"]
         division = records["division"]
         product = records["product"]
+        product_mapping = records.get("product_mapping")
         receipt_rule = records["receipt_rule"]
+        payload_receipt_rule = records.get("payload_receipt_rule")
         foreman = records["foreman"]
         tapper = records["tapper"]
         return {
@@ -790,6 +863,10 @@ class CupLumpService(models.AbstractModel):
                 ["code", "name", "active", "company_id", "estate_id", "clerk_id"],
             ),
             "product": self._record_snapshot(product, ["display_name", "active"]),
+            "product_mapping": self._record_snapshot(
+                product_mapping,
+                ["active", "company_id", "product_id"],
+            ),
             "receipt_rule": self._record_snapshot(
                 receipt_rule,
                 [
@@ -797,7 +874,15 @@ class CupLumpService(models.AbstractModel):
                     "company_id",
                     "weighing_location_id",
                     "division_id",
-                    "product_id",
+                ],
+            ),
+            "payload_receipt_rule": self._record_snapshot(
+                payload_receipt_rule,
+                [
+                    "active",
+                    "company_id",
+                    "weighing_location_id",
+                    "division_id",
                 ],
             ),
             "foreman": self._record_snapshot(
@@ -834,6 +919,42 @@ class CupLumpService(models.AbstractModel):
 
     def _is_archived(self, record):
         return bool(record and "active" in record._fields and not record.active)
+
+    def _configured_product_mapping(self, company):
+        if not company:
+            return self.env["wt.product"].browse()
+        product_mapping = self.env["wt.product"].sudo().search(
+            [("company_id", "=", company.id), ("active", "=", True)],
+            limit=1,
+        )
+        if product_mapping:
+            return product_mapping
+        return self.env["wt.product"].sudo().with_context(active_test=False).search(
+            [("company_id", "=", company.id)],
+            limit=1,
+        )
+
+    def _active_receipt_rule(self, company, location, division):
+        if not (company and location and division):
+            return self.env["wt.receipt.rule"].browse()
+        return self.env["wt.receipt.rule"].sudo().search(
+            [
+                ("company_id", "=", company.id),
+                ("weighing_location_id", "=", location.id),
+                ("division_id", "=", division.id),
+                ("active", "=", True),
+            ],
+            limit=1,
+        )
+
+    def _receipt_rule_matches_scope(self, receipt_rule, company, location, division):
+        if not receipt_rule:
+            return False
+        return (
+            (not company or receipt_rule.company_id == company)
+            and (not location or receipt_rule.weighing_location_id == location)
+            and (not division or receipt_rule.division_id == division)
+        )
 
     def _foreman_from_employee_division(self, employee_id, division):
         if not employee_id or not division:

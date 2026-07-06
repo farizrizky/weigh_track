@@ -9,7 +9,7 @@
 
 Project WeighTrack {
   database_type: "PostgreSQL"
-  Note: "Generated from Odoo custom module models. Current API scope includes device activation, pull master, push weighing Cup Lump, and Production Receipt validation. Inventory stock picking from Production Receipt is not active yet."
+  Note: "Generated from Odoo custom module models. Current API scope includes device activation, pull master, push weighing, Production Receipt validation, and Inventory Receipt creation from validated Production Receipt."
 }
 
 Enum wt_employee_role {
@@ -47,13 +47,16 @@ Enum wt_device_state_reason_action {
   revoke
 }
 
-Enum wt_product_type {
-  cup_lump
+Enum wt_weighing_state {
+  not_receipted
+  in_production_receipt
+  receipt_validated
+  receipt_cancelled
 }
 
-Enum wt_inbound_state {
-  draft
-  validated
+Enum wt_data_source {
+  manual
+  api
 }
 
 Enum wt_production_receipt_state {
@@ -61,13 +64,6 @@ Enum wt_production_receipt_state {
   processed
   validated
   cancelled
-}
-
-Enum wt_receipt_status {
-  not_receipted
-  in_production_receipt
-  receipt_validated
-  receipt_cancelled
 }
 
 Enum wt_data_problem_code {
@@ -155,6 +151,26 @@ Table stock_picking_type {
   company_id integer
 
   Note: "Odoo stock operation type table stub."
+}
+
+Table stock_lot {
+  id integer [pk]
+  name varchar
+  product_id integer
+  company_id integer
+
+  Note: "Odoo stock lot/serial table stub."
+}
+
+Table stock_picking {
+  id integer [pk]
+  name varchar
+  picking_type_id integer
+  location_id integer
+  location_dest_id integer
+  company_id integer
+
+  Note: "Odoo stock picking table stub."
 }
 
 Table product_product {
@@ -258,9 +274,8 @@ Table wt_employee_role {
 
 Table wt_product {
   id integer [pk, increment]
-  name varchar [note: "Computed and stored from company, product type, and product"]
+  name varchar [note: "Computed and stored from company and product"]
   company_id integer [not null]
-  product_type wt_product_type [not null]
   product_id integer [not null]
   active boolean [not null, default: true]
   create_uid integer
@@ -270,20 +285,18 @@ Table wt_product {
 
   indexes {
     company_id
-    product_type
     product_id
     // Partial unique index in PostgreSQL: WHERE active
-    (company_id, product_type) [unique, name: "wt_product_company_product_type_active_uniq"]
+    (company_id) [unique, name: "wt_product_company_active_uniq"]
   }
 
-  Note: "Odoo model: wt.product. Company-level mapping from weighing product type to Odoo product.product. Product must belong to the same company or be global. Archive supported through active. Business key is unique only for active records."
+  Note: "Odoo model: wt.product. Company-level mapping to the single active Odoo product.product used by WeighTrack. Product must belong to the same company or be global. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_shrinkage_tolerance {
   id integer [pk, increment]
-  name varchar [note: "Computed and stored from company, product type, and division. Stored for display/search; hidden on the form view."]
+  name varchar [note: "Computed and stored from company and division. Stored for display/search; hidden on the form view."]
   company_id integer [not null]
-  product_type wt_product_type [not null]
   division_id integer [not null]
   shrinkage_tolerance_percentage decimal [not null]
   active boolean [not null, default: true]
@@ -294,23 +307,21 @@ Table wt_shrinkage_tolerance {
 
   indexes {
     company_id
-    product_type
     division_id
     // Partial unique index in PostgreSQL: WHERE active
-    (company_id, product_type, division_id) [unique, name: "wt_shrinkage_tolerance_scope_active_uniq"]
+    (company_id, division_id) [unique, name: "wt_shrinkage_tolerance_company_division_active_uniq"]
   }
 
-  Note: "Odoo model: wt.shrinkage.tolerance. Defines maximum production shrinkage tolerance per company, product type, and division when production date differs from warehouse weighing date. Form starts from company_id; computed name is hidden. Archive supported through active. Business key is unique only for active records."
+  Note: "Odoo model: wt.shrinkage.tolerance. Defines maximum production shrinkage tolerance per company and division when production date differs from warehouse weighing date. Form starts from company_id; computed name is hidden. Archive supported through active. Business key is unique only for active records."
 }
 
 Table wt_receipt_rule {
   id integer [pk, increment]
-  name varchar [note: "Computed and stored from weighing location, division, and product"]
+  name varchar [note: "Computed and stored from weighing location and division"]
   company_id integer [not null]
   estate_id integer [not null, note: "Stored related field from weighing_location_id.estate_id"]
   weighing_location_id integer [not null]
   division_id integer [not null]
-  product_id integer [not null]
   warehouse_id integer [not null]
   location_id integer [not null]
   operation_type_id integer [not null]
@@ -325,107 +336,32 @@ Table wt_receipt_rule {
     estate_id
     weighing_location_id
     division_id
-    product_id
     warehouse_id
     location_id
     operation_type_id
     // Partial unique index in PostgreSQL: WHERE active
-    (weighing_location_id, division_id, product_id) [unique, name: "wt_receipt_rule_scope_active_uniq"]
+    (weighing_location_id, division_id) [unique, name: "wt_receipt_rule_scope_active_uniq"]
   }
 
-  Note: "Odoo model: wt.receipt.rule. Defines which product can be weighed by which division at a weighing location and the stock warehouse/location/operation type destination. Estate follows weighing location. Warehouse must match company and estate. Archive supported through active. Business key is unique only for active records."
+  Note: "Odoo model: wt.receipt.rule. Defines the stock receiving route for a weighing location and division: warehouse, internal receiving location, and operation type. Receiving location must be under the selected warehouse. Estate follows weighing location. Archive supported through active. Business key is unique only for active records."
 }
 
-Table wt_inbound_weighing {
+Table wt_weighing {
   id integer [pk, increment]
-  name varchar [note: "Number format: INB/KODE_DIVISI/YYYYMMDD/NNN"]
-  company_id integer [not null]
-  production_date date [not null]
-  weighing_location_id integer
-  division_id integer
-  operator_employee_id integer
-  device_record_id integer
+  name varchar [note: "Stored number from ir.sequence wt.weighing; default format WG/YYYYMMDD/NNN"]
+  local_id varchar
   device_id varchar
-  device_name varchar
-  batch_local_id varchar
-  master_synced_at timestamp
-  sent_at timestamp
-  received_at timestamp
-  state wt_inbound_state [not null, default: "draft"]
-  has_data_gap boolean
-  data_gap_count integer
-  create_uid integer
-  create_date timestamp
-  write_uid integer
-  write_date timestamp
-
-  indexes {
-    company_id
-    production_date
-    weighing_location_id
-    division_id
-    operator_employee_id
-    device_record_id
-    device_id
-    state
-    has_data_gap
-  }
-
-  Note: "Odoo model: wt.inbound.weighing. Draft inbound weighing header created by push API, grouped by company, production_date, weighing location, and division."
-}
-
-Table wt_inbound_weighing_product {
-  id integer [pk, increment]
-  name varchar [note: "Number format: PRD/PRODUCT_TYPE/YYYYMMDD/NNN"]
-  inbound_weighing_id integer [not null]
-  company_id integer
-  production_date date
-  product_type wt_product_type [not null]
-  product_id integer
-  receipt_rule_id integer
-  state wt_inbound_state [not null, default: "draft"]
-  has_data_gap boolean
-  data_gap_count integer
-  total_bag integer
-  inbound_stock decimal
-  create_uid integer
-  create_date timestamp
-  write_uid integer
-  write_date timestamp
-
-  indexes {
-    inbound_weighing_id
-    company_id
-    production_date
-    product_type
-    product_id
-    receipt_rule_id
-    state
-    has_data_gap
-  }
-
-  Note: "Odoo model: wt.inbound.weighing.product. Product aggregation line; for cup_lump, inbound_stock is total net_weight from detail lines."
-}
-
-Table wt_weighing_lump {
-  id integer [pk, increment]
-  name varchar [note: "Stored number from ir.sequence wt.weighing.cup.lump; default format WH/CUP_LUMP/YYYYMMDD/NNN"]
-  inbound_product_id integer [not null]
-  inbound_weighing_id integer
-  local_id varchar [not null]
-  device_id varchar [not null]
   device_record_id integer
   company_id integer [not null]
-  product_type wt_product_type [not null, default: "cup_lump"]
   production_date date [not null]
   weighing_date timestamp [not null]
   master_synced_at timestamp
   sent_at timestamp
   received_at timestamp
   batch_local_id varchar
-  state wt_inbound_state [not null, default: "draft"]
-  receipt_status wt_receipt_status [not null, default: "not_receipted"]
+  state wt_weighing_state [not null, default: "not_receipted"]
   production_receipt_id integer
+  data_source wt_data_source [not null, default: "manual"]
   has_data_problem boolean
   data_problem_code wt_data_problem_code
   data_problem_note_en text [note: "Stored English audit/debug note"]
@@ -478,17 +414,14 @@ Table wt_weighing_lump {
   write_date timestamp
 
   indexes {
-    inbound_product_id
-    inbound_weighing_id
     local_id
     device_id
     device_record_id
     company_id
-    product_type
     production_date
     weighing_date
     state
-    receipt_status
+    data_source
     production_receipt_id
     has_data_problem
     data_problem_code
@@ -503,18 +436,27 @@ Table wt_weighing_lump {
     foreman_employee_id
     tapper_id
     tapper_employee_id
-    (device_id, product_type, local_id) [unique, name: "device_product_local_uniq"]
+    (device_id, local_id) [unique, name: "wt_weighing_device_local_api_uniq"]
   }
 
-  Note: "Odoo model: wt.weighing.lump. Detail cup lump weighing pushed from offline app. Officer name/barcode fields are stored related fields from hr_employee."
+  Note: "Odoo model: wt.weighing. Draft weighing data created manually or by push API. API idempotency uses device_id + local_id for data_source = api. Product and UoM are prioritized from the active wt.product mapping for the company."
 }
 
 Table wt_production_receipt {
   id integer [pk, increment]
-  name varchar [note: "Stored number from ir.sequence wt.production.receipt; default format PR/CUP_LUMP/YYYYMMDD/NNN"]
+  name varchar [note: "Stored number from ir.sequence wt.production.receipt; default format PR/YYYYMMDD/NNN"]
   company_id integer [not null]
   production_date date [not null]
+  received_date date [not null]
   division_id integer [not null]
+  clerk_employee_id integer
+  product_id integer [not null]
+  operation_type_id integer [not null]
+  warehouse_id integer
+  location_id integer [not null, note: "Receiving Location"]
+  lot_id integer
+  stock_picking_id integer
+  reverse_picking_id integer
   total_weighing integer
   total_bag integer
   total_stock_weight decimal
@@ -533,20 +475,28 @@ Table wt_production_receipt {
   indexes {
     company_id
     production_date
+    received_date
     division_id
+    clerk_employee_id
+    product_id
+    operation_type_id
+    warehouse_id
+    location_id
+    lot_id
+    stock_picking_id
+    reverse_picking_id
     state
   }
 
-  Note: "Odoo model: wt.production.receipt. Aggregates Cup Lump weighing lines per company, production date, and division. Validation locks weighing data but does not create stock picking yet."
+  Note: "Odoo model: wt.production.receipt. Aggregates Weighing lines per company, production date, division, product, operation type, and receiving location. Validation creates one lot and one Inventory Receipt; cancel creates one Inventory Reversal only when the lot stock is still available at the original receiving location."
 }
 
 Table wt_production_receipt_line {
   id integer [pk, increment]
   receipt_id integer [not null]
   receipt_state wt_production_receipt_state
-  weighing_cup_lump_id integer [not null]
+  weighing_id integer [not null]
   company_id integer
-  product_type wt_product_type
   production_date date
   weighing_date timestamp
   estate_id integer
@@ -571,7 +521,7 @@ Table wt_production_receipt_line {
   indexes {
     receipt_id
     receipt_state
-    weighing_cup_lump_id
+    weighing_id
     company_id
     production_date
     division_id
@@ -580,7 +530,7 @@ Table wt_production_receipt_line {
     has_data_problem
   }
 
-  Note: "Odoo model: wt.production.receipt.line. Links one weighing Cup Lump record into a Production Receipt. Active duplicates are blocked in ORM; cancelled receipts preserve audit history."
+  Note: "Odoo model: wt.production.receipt.line. Links one wt.weighing record into a Production Receipt. Active duplicates are blocked in ORM; cancelled receipts preserve audit history."
 }
 
 Table wt_api {
@@ -660,10 +610,10 @@ Table wt_division {
     company_id
     clerk_id
     // Partial unique index in PostgreSQL: WHERE active
-    (code, estate_id) [unique, name: "wt_division_code_estate_active_uniq"]
+    (code, company_id) [unique, name: "wt_division_code_company_active_uniq"]
   }
 
-  Note: "Odoo model: wt.division. Clerk must be allowed by wt_employee_role role clerk. Archive supported through active. Business key is unique only for active records."
+  Note: "Odoo model: wt.division. Clerk must be allowed by wt_employee_role role clerk. Archive supported through active. Division code is unique per company for active records."
 }
 
 Table wt_weighing_location {
@@ -827,48 +777,42 @@ Ref: wt_receipt_rule.company_id > res_company.id
 Ref: wt_receipt_rule.estate_id > wt_estate.id
 Ref: wt_receipt_rule.weighing_location_id > wt_weighing_location.id [delete: restrict]
 Ref: wt_receipt_rule.division_id > wt_division.id [delete: restrict]
-Ref: wt_receipt_rule.product_id > product_product.id [delete: restrict]
 Ref: wt_receipt_rule.warehouse_id > stock_warehouse.id [delete: restrict]
 Ref: wt_receipt_rule.location_id > stock_location.id [delete: restrict]
 Ref: wt_receipt_rule.operation_type_id > stock_picking_type.id [delete: restrict]
 
-Ref: wt_inbound_weighing.company_id > res_company.id
-Ref: wt_inbound_weighing.weighing_location_id > wt_weighing_location.id [delete: restrict]
-Ref: wt_inbound_weighing.division_id > wt_division.id [delete: restrict]
-Ref: wt_inbound_weighing.operator_employee_id > hr_employee.id [delete: restrict]
-Ref: wt_inbound_weighing.device_record_id > wt_device.id [delete: restrict]
-
-Ref: wt_inbound_weighing_product.inbound_weighing_id > wt_inbound_weighing.id [delete: cascade]
-Ref: wt_inbound_weighing_product.company_id > res_company.id
-Ref: wt_inbound_weighing_product.product_id > product_product.id [delete: restrict]
-Ref: wt_inbound_weighing_product.receipt_rule_id > wt_receipt_rule.id [delete: restrict]
-
-Ref: wt_weighing_lump.inbound_product_id > wt_inbound_weighing_product.id [delete: cascade]
-Ref: wt_weighing_lump.inbound_weighing_id > wt_inbound_weighing.id
-Ref: wt_weighing_lump.device_record_id > wt_device.id [delete: restrict]
-Ref: wt_weighing_lump.company_id > res_company.id
-Ref: wt_weighing_lump.estate_id > wt_estate.id [delete: restrict]
-Ref: wt_weighing_lump.weighing_location_id > wt_weighing_location.id [delete: restrict]
-Ref: wt_weighing_lump.division_id > wt_division.id [delete: restrict]
-Ref: wt_weighing_lump.product_id > product_product.id [delete: restrict]
-Ref: wt_weighing_lump.receipt_rule_id > wt_receipt_rule.id [delete: restrict]
-Ref: wt_weighing_lump.uom_id > uom_uom.id [delete: restrict]
-Ref: wt_weighing_lump.operator_employee_id > hr_employee.id [delete: restrict]
-Ref: wt_weighing_lump.clerk_employee_id > hr_employee.id [delete: restrict]
-Ref: wt_weighing_lump.foreman_id > wt_foreman.id [delete: restrict]
-Ref: wt_weighing_lump.foreman_employee_id > hr_employee.id [delete: restrict]
-Ref: wt_weighing_lump.tapper_id > wt_tapper.id [delete: restrict]
-Ref: wt_weighing_lump.tapper_employee_id > hr_employee.id [delete: restrict]
-Ref: wt_weighing_lump.initial_device_employee_id > hr_employee.id [delete: restrict]
-Ref: wt_weighing_lump.production_receipt_id > wt_production_receipt.id [delete: set null]
+Ref: wt_weighing.device_record_id > wt_device.id [delete: restrict]
+Ref: wt_weighing.company_id > res_company.id
+Ref: wt_weighing.estate_id > wt_estate.id [delete: restrict]
+Ref: wt_weighing.weighing_location_id > wt_weighing_location.id [delete: restrict]
+Ref: wt_weighing.division_id > wt_division.id [delete: restrict]
+Ref: wt_weighing.product_id > product_product.id [delete: restrict]
+Ref: wt_weighing.receipt_rule_id > wt_receipt_rule.id [delete: restrict]
+Ref: wt_weighing.uom_id > uom_uom.id [delete: restrict]
+Ref: wt_weighing.operator_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing.clerk_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing.foreman_id > wt_foreman.id [delete: restrict]
+Ref: wt_weighing.foreman_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing.tapper_id > wt_tapper.id [delete: restrict]
+Ref: wt_weighing.tapper_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing.initial_device_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_weighing.production_receipt_id > wt_production_receipt.id [delete: set null]
 
 Ref: wt_production_receipt.company_id > res_company.id [delete: restrict]
 Ref: wt_production_receipt.division_id > wt_division.id [delete: restrict]
+Ref: wt_production_receipt.clerk_employee_id > hr_employee.id [delete: restrict]
+Ref: wt_production_receipt.product_id > product_product.id [delete: restrict]
+Ref: wt_production_receipt.operation_type_id > stock_picking_type.id [delete: restrict]
+Ref: wt_production_receipt.warehouse_id > stock_warehouse.id [delete: restrict]
+Ref: wt_production_receipt.location_id > stock_location.id [delete: restrict]
+Ref: wt_production_receipt.lot_id > stock_lot.id
+Ref: wt_production_receipt.stock_picking_id > stock_picking.id
+Ref: wt_production_receipt.reverse_picking_id > stock_picking.id
 Ref: wt_production_receipt.validated_by_id > res_users.id
 Ref: wt_production_receipt.cancelled_by_id > res_users.id
 
 Ref: wt_production_receipt_line.receipt_id > wt_production_receipt.id [delete: cascade]
-Ref: wt_production_receipt_line.weighing_cup_lump_id > wt_weighing_lump.id [delete: restrict]
+Ref: wt_production_receipt_line.weighing_id > wt_weighing.id [delete: restrict]
 Ref: wt_production_receipt_line.company_id > res_company.id
 Ref: wt_production_receipt_line.estate_id > wt_estate.id [delete: restrict]
 Ref: wt_production_receipt_line.weighing_location_id > wt_weighing_location.id [delete: restrict]
@@ -924,6 +868,12 @@ Ref: stock_warehouse.estate_id > wt_estate.id [delete: restrict]
 Ref: stock_location.company_id > res_company.id
 Ref: stock_picking_type.company_id > res_company.id
 Ref: stock_picking_type.warehouse_id > stock_warehouse.id
+Ref: stock_lot.product_id > product_product.id
+Ref: stock_lot.company_id > res_company.id
+Ref: stock_picking.picking_type_id > stock_picking_type.id
+Ref: stock_picking.location_id > stock_location.id
+Ref: stock_picking.location_dest_id > stock_location.id
+Ref: stock_picking.company_id > res_company.id
 Ref: product_product.company_id > res_company.id
 
 Ref: wt_estate.create_uid > res_users.id
@@ -940,12 +890,8 @@ Ref: wt_shrinkage_tolerance.create_uid > res_users.id
 Ref: wt_shrinkage_tolerance.write_uid > res_users.id
 Ref: wt_receipt_rule.create_uid > res_users.id
 Ref: wt_receipt_rule.write_uid > res_users.id
-Ref: wt_inbound_weighing.create_uid > res_users.id
-Ref: wt_inbound_weighing.write_uid > res_users.id
-Ref: wt_inbound_weighing_product.create_uid > res_users.id
-Ref: wt_inbound_weighing_product.write_uid > res_users.id
-Ref: wt_weighing_lump.create_uid > res_users.id
-Ref: wt_weighing_lump.write_uid > res_users.id
+Ref: wt_weighing.create_uid > res_users.id
+Ref: wt_weighing.write_uid > res_users.id
 Ref: wt_production_receipt.create_uid > res_users.id
 Ref: wt_production_receipt.write_uid > res_users.id
 Ref: wt_production_receipt_line.create_uid > res_users.id

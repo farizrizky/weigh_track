@@ -8,7 +8,7 @@ class ReceiptRule(models.Model):
     _name = "wt.receipt.rule"
     _description = "Receipt Rule"
     _inherit = ["mail.thread", "mail.activity.mixin"]
-    _order = "weighing_location_id, division_id, product_id"
+    _order = "weighing_location_id, division_id"
 
     active = fields.Boolean(default=True, tracking=True)
     name = fields.Char(
@@ -44,26 +44,12 @@ class ReceiptRule(models.Model):
         compute="_compute_allowed_division_ids",
         string="Allowed Divisions",
     )
-    allowed_product_ids = fields.Many2many(
-        "product.product",
-        compute="_compute_allowed_product_ids",
-        string="Allowed Products",
-    )
     division_id = fields.Many2one(
         "wt.division",
         string="Division",
         required=True,
         ondelete="restrict",
         domain="[('id', 'in', allowed_division_ids)]",
-        index=True,
-        tracking=True,
-    )
-    product_id = fields.Many2one(
-        "product.product",
-        string="Product",
-        required=True,
-        ondelete="restrict",
-        domain="[('id', 'in', allowed_product_ids)]",
         index=True,
         tracking=True,
     )
@@ -75,12 +61,17 @@ class ReceiptRule(models.Model):
         domain="[('company_id', '=', company_id), ('estate_id', '=', estate_id)]",
         tracking=True,
     )
+    allowed_location_ids = fields.Many2many(
+        "stock.location",
+        compute="_compute_allowed_location_ids",
+        string="Allowed Locations",
+    )
     location_id = fields.Many2one(
         "stock.location",
         string="Location",
         required=True,
         ondelete="restrict",
-        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]",
+        domain="[('id', 'in', allowed_location_ids)]",
         tracking=True,
     )
     operation_type_id = fields.Many2one(
@@ -101,19 +92,23 @@ class ReceiptRule(models.Model):
         )
         self.env.cr.execute(
             """
+            DROP INDEX IF EXISTS wt_receipt_rule_scope_active_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
             CREATE UNIQUE INDEX IF NOT EXISTS wt_receipt_rule_scope_active_uniq
-            ON wt_receipt_rule (weighing_location_id, division_id, product_id)
+            ON wt_receipt_rule (weighing_location_id, division_id)
             WHERE active
             """
         )
 
-    @api.depends("weighing_location_id", "division_id", "product_id")
+    @api.depends("weighing_location_id", "division_id")
     def _compute_name(self):
         for mapping in self:
-            mapping.name = "%s - %s - %s" % (
+            mapping.name = "%s - %s" % (
                 mapping.weighing_location_id.name or "",
                 mapping.division_id.name or "",
-                mapping.product_id.display_name or "",
             )
 
     @api.depends("weighing_location_id")
@@ -121,22 +116,27 @@ class ReceiptRule(models.Model):
         for mapping in self:
             mapping.allowed_division_ids = mapping.weighing_location_id.allowed_division_ids
 
-    @api.depends("company_id")
-    def _compute_allowed_product_ids(self):
-        product_config = self.env["wt.product"].sudo()
+    @api.depends("warehouse_id", "company_id")
+    def _compute_allowed_location_ids(self):
+        location_model = self.env["stock.location"]
         for mapping in self:
-            if not mapping.company_id:
-                mapping.allowed_product_ids = self.env["product.product"].browse()
+            if not mapping.warehouse_id or not mapping.warehouse_id.view_location_id:
+                mapping.allowed_location_ids = location_model.browse()
                 continue
-            mapping.allowed_product_ids = product_config.search(
-                [("company_id", "=", mapping.company_id.id), ("active", "=", True)]
-            ).mapped("product_id")
+
+            domain = [
+                ("id", "child_of", mapping.warehouse_id.view_location_id.id),
+                ("usage", "=", "internal"),
+            ]
+            if mapping.company_id:
+                domain.append(("company_id", "in", [False, mapping.company_id.id]))
+
+            mapping.allowed_location_ids = location_model.search(domain)
 
     @api.onchange("weighing_location_id")
     def _onchange_weighing_location_id(self):
         for mapping in self:
             mapping.division_id = False
-            mapping.product_id = False
             if mapping.weighing_location_id:
                 mapping.warehouse_id = False
                 mapping.location_id = False
@@ -153,17 +153,15 @@ class ReceiptRule(models.Model):
         "estate_id",
         "weighing_location_id",
         "division_id",
-        "product_id",
         "active",
     )
-    def _check_unique_company_location_division_product(self):
+    def _check_unique_company_location_division(self):
         for mapping in self:
             if not (
                 mapping.active
                 and mapping.company_id
                 and mapping.weighing_location_id
                 and mapping.division_id
-                and mapping.product_id
             ):
                 continue
 
@@ -173,7 +171,6 @@ class ReceiptRule(models.Model):
                     ("company_id", "=", mapping.company_id.id),
                     ("weighing_location_id", "=", mapping.weighing_location_id.id),
                     ("division_id", "=", mapping.division_id.id),
-                    ("product_id", "=", mapping.product_id.id),
                     ("active", "=", True),
                 ],
                 limit=1,
@@ -182,15 +179,13 @@ class ReceiptRule(models.Model):
                 raise ValidationError(
                     _(
                         "Receipt Rule already exists for company '%(company)s', "
-                        "weighing location '%(location)s', division '%(division)s', "
-                        "and product '%(product)s'. Please use the existing rule "
-                        "or change one of those values."
+                        "weighing location '%(location)s', and division '%(division)s'. "
+                        "Please use the existing rule or change one of those values."
                     )
                     % {
                         "company": mapping.company_id.display_name,
                         "location": mapping.weighing_location_id.display_name,
                         "division": mapping.division_id.display_name,
-                        "product": mapping.product_id.display_name,
                     }
                 )
 
@@ -199,7 +194,6 @@ class ReceiptRule(models.Model):
         "estate_id",
         "weighing_location_id",
         "division_id",
-        "product_id",
         "warehouse_id",
         "location_id",
         "operation_type_id",
@@ -226,26 +220,6 @@ class ReceiptRule(models.Model):
                     _("Division must be allowed in the selected weighing location.")
                 )
 
-            product_company = mapping.product_id.product_tmpl_id.company_id
-            if product_company and product_company != mapping.company_id:
-                raise ValidationError(
-                    _("Product must belong to the same company or be a global product.")
-                )
-
-            product_configured = not mapping.product_id or not mapping.company_id
-            if mapping.product_id and mapping.company_id:
-                product_configured = self.env["wt.product"].sudo().search_count(
-                    [
-                        ("company_id", "=", mapping.company_id.id),
-                        ("product_id", "=", mapping.product_id.id),
-                        ("active", "=", True),
-                    ]
-                )
-            if not product_configured:
-                raise ValidationError(
-                    _("Product must be configured in Product for the same company.")
-                )
-
             if (
                 mapping.warehouse_id
                 and mapping.warehouse_id.company_id != mapping.company_id
@@ -264,6 +238,18 @@ class ReceiptRule(models.Model):
                     _("Location must belong to the same company or be a shared location.")
                 )
 
+            if mapping.location_id and mapping.location_id.usage != "internal":
+                raise ValidationError(_("Location must be an internal stock location."))
+
+            if (
+                mapping.location_id
+                and mapping.warehouse_id
+                and not mapping._is_location_under_selected_warehouse()
+            ):
+                raise ValidationError(
+                    _("Location must be under the selected warehouse.")
+                )
+
             operation_company = mapping.operation_type_id.company_id
             if operation_company and operation_company != mapping.company_id:
                 raise ValidationError(
@@ -277,3 +263,22 @@ class ReceiptRule(models.Model):
                 raise ValidationError(
                     _("Operation type must belong to the selected warehouse.")
                 )
+
+    def _is_location_under_selected_warehouse(self):
+        self.ensure_one()
+        warehouse_root = self.warehouse_id.view_location_id
+        if not self.location_id or not warehouse_root:
+            return True
+
+        if self.location_id == warehouse_root:
+            return True
+
+        if self.location_id.parent_path and warehouse_root.parent_path:
+            return self.location_id.parent_path.startswith(warehouse_root.parent_path)
+
+        parent = self.location_id.parent_id
+        while parent:
+            if parent == warehouse_root:
+                return True
+            parent = parent.parent_id
+        return False

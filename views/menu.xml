@@ -24,3 +24,28 @@
             <menuitem id="menu_wt_receipt_rule" name="Receipt Rule" parent="menu_wt_configuration" action="action_wt_receipt_rule" sequence="40" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_stock_opname_difference_reason" name="Difference Reasons" parent="menu_wt_configuration" action="action_wt_stock_opname_difference_reason" sequence="45" groups="weightrack.group_admin"/>
 </odoo>
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_wt_root" name="WeighTrack" sequence="10" groups="weightrack.group_admin" web_icon="weightrack,static/description/icon.png"/>
+        <menuitem id="menu_wt_master_data" name="Master Data" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_estate" name="Estates" parent="menu_wt_master_data" action="action_wt_estate" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_weather" name="Weather" parent="menu_wt_master_data" action="action_wt_weather" sequence="20" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_weather_data" name="Weather Data" parent="menu_wt_master_data" action="action_wt_weather_data" sequence="25" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_division" name="Divisions" parent="menu_wt_master_data" action="action_wt_division" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_weighing_location" name="Weighing Locations" parent="menu_wt_master_data" action="action_wt_weighing_location" sequence="40" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_foreman" name="Foremen" parent="menu_wt_master_data" action="action_wt_foreman" sequence="50" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_tapper" name="Tappers" parent="menu_wt_master_data" action="action_wt_tapper" sequence="60" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_operations" name="Operations" parent="menu_wt_root" sequence="11" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_weighing" name="Weighing" parent="menu_wt_operations" action="action_wt_weighing" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_production_receipt" name="Production Receipt" parent="menu_wt_operations" action="action_wt_production_receipt" sequence="20" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_stock_opname" name="Stock Opname" parent="menu_wt_operations" action="action_wt_stock_opname" sequence="20" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_device" name="Device" parent="menu_wt_root" action="action_wt_device" sequence="12" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="13" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_api" name="API" parent="menu_wt_configuration" action="action_wt_api" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_api_request_log" name="API Request Logs" parent="menu_wt_configuration" action="action_wt_api_request_log" sequence="15" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_employee_role" name="Employee Roles" parent="menu_wt_configuration" action="action_wt_employee_role" sequence="20" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_product" name="Product" parent="menu_wt_configuration" action="action_wt_product" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_shrinkage_tolerance" name="Shrinkage Tolerance" parent="menu_wt_configuration" action="action_wt_shrinkage_tolerance" sequence="35" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_receipt_rule" name="Receipt Rule" parent="menu_wt_configuration" action="action_wt_receipt_rule" sequence="40" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_stock_opname_difference_reason" name="Difference Reasons" parent="menu_wt_configuration" action="action_wt_stock_opname_difference_reason" sequence="45" groups="weightrack.group_admin"/>
+</odoo>

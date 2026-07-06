@@ -1,6 +1,5 @@
 from odoo import fields, models
 
-from ..constants.product_types import ProductType
 from ..constants.roles import Role
 
 
@@ -80,7 +79,6 @@ class ApiPullMasterService(models.AbstractModel):
             "uoms": self.env["uom.uom"].browse(),
             "shrinkage_tolerances": self.env["wt.shrinkage.tolerance"].browse(),
             "employees": self.env["hr.employee"].browse(),
-            "product_type_by_product_id": {},
             "clerks": self.env["hr.employee"].browse(),
             "foremen": self.env["wt.foreman"].browse(),
             "operators": self.env["hr.employee"].browse(),
@@ -205,26 +203,17 @@ class ApiPullMasterService(models.AbstractModel):
         )
         if device.role == Role.OPERATOR:
             operators |= device.employee_id
-        products = self._active_records(receipt_rules.mapped("product_id"))
-        product_type_by_product_id = self._product_type_by_product_id(
-            device.company_id,
-            products,
+        product_configs = self.env["wt.product"].sudo().search(
+            [
+                ("company_id", "=", device.company_id.id),
+                ("active", "=", True),
+            ]
         )
-        receipt_rules = receipt_rules.filtered(
-            lambda rule: rule.product_id in products
-            and rule.product_id.id in product_type_by_product_id
-        )
-        products = self._active_records(receipt_rules.mapped("product_id"))
+        products = self._active_records(product_configs.mapped("product_id"))
         uoms = products.mapped("uom_id")
-        product_type_codes = {
-            product_type
-            for product_type in product_type_by_product_id.values()
-            if product_type
-        }
         shrinkage_tolerances = self._shrinkage_tolerances_for_scope(
             device.company_id,
             divisions,
-            product_type_codes,
         )
         employees = (
             clerks
@@ -242,7 +231,6 @@ class ApiPullMasterService(models.AbstractModel):
             "uoms": uoms,
             "shrinkage_tolerances": shrinkage_tolerances,
             "employees": employees,
-            "product_type_by_product_id": product_type_by_product_id,
             "clerks": clerks,
             "foremen": foremen,
             "operators": operators,
@@ -258,11 +246,6 @@ class ApiPullMasterService(models.AbstractModel):
             "weighing_location_ids": scope["weighing_locations"].ids,
             "receipt_rule_ids": scope["receipt_rules"].ids,
             "product_ids": scope["products"].ids,
-            "product_type_codes": sorted(
-                product_type
-                for product_type in set(scope["product_type_by_product_id"].values())
-                if product_type
-            ),
             "uom_ids": scope["uoms"].ids,
             "shrinkage_tolerance_ids": scope["shrinkage_tolerances"].ids,
             "employee_ids": scope["employees"].ids,
@@ -272,8 +255,6 @@ class ApiPullMasterService(models.AbstractModel):
 
     def _masters_payload(self, scope, device):
         receipt_rules = scope["receipt_rules"]
-        product_type_by_product_id = scope["product_type_by_product_id"]
-        product_type_codes = set(product_type_by_product_id.values())
         return {
             "company": self._company_payload(device.company_id),
             "roles": self._selection_payload(Role.DEVICE_SELECTION, {device.role}),
@@ -292,10 +273,7 @@ class ApiPullMasterService(models.AbstractModel):
                 self._receipt_rule_payload(rule) for rule in receipt_rules
             ],
             "products": [
-                self._product_payload(
-                    product,
-                    product_type_by_product_id.get(product.id),
-                )
+                self._product_payload(product)
                 for product in scope["products"]
             ],
             "uoms": [self._uom_payload(uom) for uom in scope["uoms"]],
@@ -303,10 +281,6 @@ class ApiPullMasterService(models.AbstractModel):
                 self._shrinkage_tolerance_payload(tolerance)
                 for tolerance in scope["shrinkage_tolerances"]
             ],
-            "product_types": self._selection_payload(
-                ProductType.SELECTION,
-                product_type_codes,
-            ),
             "foremen": [self._foreman_payload(foreman) for foreman in scope["foremen"]],
             "tappers": [self._tapper_payload(tapper) for tapper in scope["tappers"]],
         }
@@ -382,45 +356,23 @@ class ApiPullMasterService(models.AbstractModel):
             "company_id": rule.company_id.id,
             "weighing_location_id": rule.weighing_location_id.id,
             "division_id": rule.division_id.id,
-            "product_id": rule.product_id.id,
         }
 
-    def _product_payload(self, product, product_type=False):
+    def _product_payload(self, product):
         return {
             "id": product.id,
             "name": product.display_name,
             "company_id": product.product_tmpl_id.company_id.id or False,
             "uom_id": product.uom_id.id,
-            "product_type": product_type or False,
         }
 
-    def _product_type_by_product_id(self, company, products):
-        mapping = {}
-        if not products:
-            return mapping
-
-        product_config_model = self.env["wt.product"].sudo()
-        product_configs = product_config_model.search(
-            [
-                ("company_id", "=", company.id),
-                ("product_id", "in", products.ids),
-                ("active", "=", True),
-            ]
-        )
-        for product_config in product_configs:
-            if product_config.product_id and product_config.product_type:
-                mapping[product_config.product_id.id] = product_config.product_type
-
-        return mapping
-
-    def _shrinkage_tolerances_for_scope(self, company, divisions, product_type_codes):
-        if not divisions or not product_type_codes:
+    def _shrinkage_tolerances_for_scope(self, company, divisions):
+        if not divisions:
             return self.env["wt.shrinkage.tolerance"].browse()
         return self.env["wt.shrinkage.tolerance"].sudo().search(
             [
                 ("company_id", "=", company.id),
                 ("division_id", "in", divisions.ids),
-                ("product_type", "in", list(product_type_codes)),
                 ("active", "=", True),
             ]
         )
@@ -440,7 +392,6 @@ class ApiPullMasterService(models.AbstractModel):
         return {
             "id": tolerance.id,
             "company_id": tolerance.company_id.id,
-            "product_type": tolerance.product_type,
             "division_id": tolerance.division_id.id,
             "shrinkage_tolerance_percentage": tolerance.shrinkage_tolerance_percentage,
         }

@@ -3,7 +3,7 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from ..constants.product_types import ProductType
+from ..constants.roles import Role
 
 
 class ProductionReceipt(models.Model):
@@ -41,6 +41,13 @@ class ProductionReceipt(models.Model):
         index=True,
         tracking=True,
     )
+    received_date = fields.Date(
+        string="Received Date",
+        required=True,
+        default=lambda self: fields.Date.context_today(self),
+        index=True,
+        tracking=True,
+    )
     division_id = fields.Many2one(
         "wt.division",
         string="Division",
@@ -49,11 +56,118 @@ class ProductionReceipt(models.Model):
         index=True,
         tracking=True,
     )
+    clerk_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Clerk",
+        ondelete="restrict",
+        domain="[('id', 'in', allowed_clerk_employee_ids)]",
+        tracking=True,
+    )
+    allowed_clerk_employee_ids = fields.Many2many(
+        "hr.employee",
+        compute="_compute_allowed_clerk_employee_ids",
+        string="Allowed Clerk Employees",
+    )
+    allowed_product_ids = fields.Many2many(
+        "product.product",
+        compute="_compute_allowed_product_ids",
+        string="Allowed Products",
+    )
+    product_id = fields.Many2one(
+        "product.product",
+        string="Product",
+        required=True,
+        default=lambda self: self._configured_product_for_company(self.env.company),
+        ondelete="restrict",
+        domain="[('id', 'in', allowed_product_ids)]",
+        index=True,
+        tracking=True,
+    )
+    allowed_operation_type_ids = fields.Many2many(
+        "stock.picking.type",
+        compute="_compute_allowed_destination_ids",
+        string="Allowed Operation Types",
+    )
+    operation_type_id = fields.Many2one(
+        "stock.picking.type",
+        string="Operation Type",
+        required=True,
+        ondelete="restrict",
+        domain="[('id', 'in', allowed_operation_type_ids)]",
+        index=True,
+        tracking=True,
+    )
+    warehouse_id = fields.Many2one(
+        "stock.warehouse",
+        string="Warehouse",
+        related="operation_type_id.warehouse_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
+    allowed_location_ids = fields.Many2many(
+        "stock.location",
+        compute="_compute_allowed_destination_ids",
+        string="Allowed Locations",
+    )
+    location_id = fields.Many2one(
+        "stock.location",
+        string="Receiving Location",
+        required=True,
+        ondelete="restrict",
+        domain="[('id', 'in', allowed_location_ids)]",
+        index=True,
+        tracking=True,
+    )
+    lot_id = fields.Many2one(
+        "stock.lot",
+        string="Lot",
+        readonly=True,
+        copy=False,
+        index=True,
+        tracking=True,
+    )
+    stock_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Inventory Receipt",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    reverse_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Inventory Reversal",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
     line_ids = fields.One2many(
         "wt.production.receipt.line",
         "receipt_id",
         string="Weighing",
         copy=False,
+    )
+    stock_picking_ids = fields.One2many(
+        "stock.picking",
+        "production_receipt_id",
+        string="Inventory Receipts",
+        readonly=True,
+        copy=False,
+    )
+    reverse_picking_ids = fields.One2many(
+        "stock.picking",
+        "production_receipt_reverse_id",
+        string="Inventory Reversals",
+        readonly=True,
+        copy=False,
+    )
+    stock_picking_count = fields.Integer(
+        string="Inventory Receipt Count",
+        compute="_compute_stock_picking_count",
+    )
+    reverse_picking_count = fields.Integer(
+        string="Inventory Reversal Count",
+        compute="_compute_stock_picking_count",
     )
     total_weighing = fields.Integer(
         string="Total Weighing",
@@ -118,10 +232,174 @@ class ProductionReceipt(models.Model):
         tracking=True,
     )
 
+    def init(self):
+        self.env.cr.execute(
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'clerk_employee_id'
+                ) THEN
+                    UPDATE wt_production_receipt AS receipt
+                    SET clerk_employee_id = division.clerk_id
+                    FROM wt_division AS division
+                    WHERE receipt.division_id = division.id
+                        AND receipt.clerk_employee_id IS NULL
+                        AND division.clerk_id IS NOT NULL;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'received_date'
+                ) THEN
+                    UPDATE wt_production_receipt
+                    SET received_date = COALESCE(production_date, CURRENT_DATE)
+                    WHERE received_date IS NULL;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'product_id'
+                ) THEN
+                    UPDATE wt_production_receipt AS receipt
+                    SET product_id = product_config.product_id
+                    FROM wt_product AS product_config
+                    WHERE receipt.product_id IS NULL
+                        AND product_config.company_id = receipt.company_id
+                        AND product_config.active IS TRUE;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'stock_picking_id'
+                ) THEN
+                    UPDATE wt_production_receipt AS receipt
+                    SET stock_picking_id = picking.id
+                    FROM (
+                        SELECT DISTINCT ON (production_receipt_id)
+                            id,
+                            production_receipt_id
+                        FROM stock_picking
+                        WHERE production_receipt_id IS NOT NULL
+                            AND state != 'cancel'
+                        ORDER BY production_receipt_id, id
+                    ) AS picking
+                    WHERE picking.production_receipt_id = receipt.id
+                        AND receipt.stock_picking_id IS NULL;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'reverse_picking_id'
+                ) THEN
+                    UPDATE wt_production_receipt AS receipt
+                    SET reverse_picking_id = picking.id
+                    FROM (
+                        SELECT DISTINCT ON (production_receipt_reverse_id)
+                            id,
+                            production_receipt_reverse_id
+                        FROM stock_picking
+                        WHERE production_receipt_reverse_id IS NOT NULL
+                            AND state != 'cancel'
+                        ORDER BY production_receipt_reverse_id, id
+                    ) AS picking
+                    WHERE picking.production_receipt_reverse_id = receipt.id
+                        AND receipt.reverse_picking_id IS NULL;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'operation_type_id'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'location_id'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt_line'
+                        AND column_name = 'weighing_id'
+                ) THEN
+                    UPDATE wt_production_receipt AS receipt
+                    SET operation_type_id = destination.operation_type_id,
+                        location_id = destination.location_id
+                    FROM (
+                        SELECT DISTINCT ON (line.receipt_id)
+                            line.receipt_id,
+                            rule.operation_type_id,
+                            rule.location_id
+                        FROM wt_production_receipt_line AS line
+                        JOIN wt_weighing AS weighing
+                            ON weighing.id = line.weighing_id
+                        JOIN wt_receipt_rule AS rule
+                            ON rule.id = weighing.receipt_rule_id
+                        WHERE rule.operation_type_id IS NOT NULL
+                            AND rule.location_id IS NOT NULL
+                        ORDER BY line.receipt_id, line.id
+                    ) AS destination
+                    WHERE destination.receipt_id = receipt.id
+                        AND (
+                            receipt.operation_type_id IS NULL
+                            OR receipt.location_id IS NULL
+                        );
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_production_receipt'
+                        AND column_name = 'lot_id'
+                ) THEN
+                    UPDATE wt_production_receipt AS receipt
+                    SET lot_id = lot_line.lot_id
+                    FROM (
+                        SELECT DISTINCT ON (picking.production_receipt_id)
+                            picking.production_receipt_id,
+                            move_line.lot_id
+                        FROM stock_picking AS picking
+                        JOIN stock_move_line AS move_line
+                            ON move_line.picking_id = picking.id
+                        WHERE picking.production_receipt_id IS NOT NULL
+                            AND move_line.lot_id IS NOT NULL
+                        ORDER BY picking.production_receipt_id, move_line.id
+                    ) AS lot_line
+                    WHERE lot_line.production_receipt_id = receipt.id
+                        AND receipt.lot_id IS NULL;
+                END IF;
+            END $$;
+            """
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         sequence_model = self.env["ir.sequence"]
         for vals in vals_list:
+            company = self.env["res.company"].browse(
+                vals.get("company_id") or self.env.company.id
+            )
+            if not vals.get("product_id"):
+                product = self._configured_product_for_company(company)
+                if product:
+                    vals["product_id"] = product.id
+            if vals.get("division_id"):
+                division = self.env["wt.division"].browse(vals["division_id"])
+                vals["clerk_employee_id"] = division.clerk_id.id
             if not vals.get("name") or vals["name"] == "/":
                 sequence_date = (
                     fields.Date.to_date(vals["production_date"])
@@ -152,12 +430,33 @@ class ProductionReceipt(models.Model):
             problem_lines = receipt.line_ids.filtered("has_data_problem")
             receipt.data_problem_count = len(problem_lines)
 
+    def _compute_stock_picking_count(self):
+        for receipt in self:
+            receipt.stock_picking_count = len(receipt.stock_picking_ids)
+            receipt.reverse_picking_count = len(receipt.reverse_picking_ids)
+
     def write(self, vals):
+        if vals.get("division_id"):
+            vals = dict(vals)
+            division = self.env["wt.division"].browse(vals["division_id"])
+            vals["clerk_employee_id"] = division.clerk_id.id
+        elif (
+            "clerk_employee_id" in vals
+            and not self.env.context.get("allow_production_receipt_clerk_update")
+        ):
+            raise ValidationError(
+                _("Clerk on Production Receipt is determined by Division and cannot be changed manually.")
+            )
         locked = self.filtered(lambda receipt: receipt.state == "validated")
         protected_fields = {
             "company_id",
             "production_date",
+            "received_date",
             "division_id",
+            "clerk_employee_id",
+            "product_id",
+            "operation_type_id",
+            "location_id",
             "line_ids",
             "state",
         }
@@ -168,6 +467,87 @@ class ProductionReceipt(models.Model):
         ):
             raise ValidationError(_("Validated Production Receipt cannot be changed."))
         return super().write(vals)
+
+    @api.onchange("division_id")
+    def _onchange_division_id(self):
+        for receipt in self:
+            receipt.clerk_employee_id = receipt.division_id.clerk_id
+            receipt.operation_type_id = False
+            receipt.location_id = False
+
+    @api.onchange("company_id")
+    def _onchange_company_id(self):
+        for receipt in self:
+            product = receipt._configured_product_for_company(receipt.company_id)
+            receipt.product_id = product
+            receipt.operation_type_id = False
+            receipt.location_id = False
+
+    @api.onchange("operation_type_id")
+    def _onchange_operation_type_id(self):
+        for receipt in self:
+            if receipt.location_id and receipt.location_id not in receipt.allowed_location_ids:
+                receipt.location_id = False
+
+    @api.depends("company_id")
+    def _compute_allowed_clerk_employee_ids(self):
+        mapping_model = self.env["wt.employee.role"]
+        for receipt in self:
+            receipt.allowed_clerk_employee_ids = mapping_model.get_allowed_employees(
+                receipt.company_id,
+                Role.CLERK,
+            )
+
+    @api.depends("company_id")
+    def _compute_allowed_product_ids(self):
+        product_config_model = self.env["wt.product"].sudo()
+        for receipt in self:
+            if not receipt.company_id:
+                receipt.allowed_product_ids = self.env["product.product"].browse()
+                continue
+            receipt.allowed_product_ids = product_config_model.search(
+                [
+                    ("company_id", "=", receipt.company_id.id),
+                    ("active", "=", True),
+                ]
+            ).mapped("product_id")
+
+    @api.depends("company_id", "division_id", "operation_type_id")
+    def _compute_allowed_destination_ids(self):
+        receipt_rule_model = self.env["wt.receipt.rule"].sudo()
+        for receipt in self:
+            if not receipt.company_id or not receipt.division_id:
+                receipt.allowed_operation_type_ids = self.env["stock.picking.type"].browse()
+                receipt.allowed_location_ids = self.env["stock.location"].browse()
+                continue
+
+            rules = receipt_rule_model.search(
+                [
+                    ("active", "=", True),
+                    ("company_id", "=", receipt.company_id.id),
+                    ("division_id", "=", receipt.division_id.id),
+                ]
+            )
+            receipt.allowed_operation_type_ids = rules.mapped("operation_type_id")
+
+            location_rules = rules
+            if receipt.operation_type_id:
+                location_rules = rules.filtered(
+                    lambda rule: rule.operation_type_id == receipt.operation_type_id
+                )
+            receipt.allowed_location_ids = location_rules.mapped("location_id")
+
+    def _configured_product_for_company(self, company):
+        if not company:
+            return self.env["product.product"].browse()
+        product_config = self.env["wt.product"].sudo().search(
+            [
+                ("company_id", "=", company.id),
+                ("active", "=", True),
+            ],
+            limit=1,
+        )
+        return product_config.product_id
 
     def unlink(self):
         if self.filtered(lambda receipt: receipt.state == "validated"):
@@ -189,6 +569,136 @@ class ProductionReceipt(models.Model):
             ):
                 raise ValidationError(_("Division must belong to the selected company."))
 
+    @api.constrains("production_date", "received_date")
+    def _check_received_date_not_before_production_date(self):
+        for receipt in self:
+            if (
+                receipt.production_date
+                and receipt.received_date
+                and receipt.received_date < receipt.production_date
+            ):
+                raise ValidationError(
+                    _("Received Date cannot be before Production Date.")
+                )
+
+    @api.constrains("company_id", "clerk_employee_id")
+    def _check_clerk_employee(self):
+        for receipt in self:
+            self.env["wt.employee.role"].check_employee_allowed(
+                receipt.clerk_employee_id,
+                receipt.company_id,
+                Role.CLERK,
+                _("Clerk"),
+            )
+
+    @api.constrains("company_id", "product_id")
+    def _check_product_configured(self):
+        for receipt in self:
+            if not receipt.company_id or not receipt.product_id:
+                continue
+            product_company = receipt.product_id.product_tmpl_id.company_id
+            if product_company and product_company != receipt.company_id:
+                raise ValidationError(
+                    _("Product must belong to the same company or be a global product.")
+                )
+            configured_product = receipt._configured_product_for_company(
+                receipt.company_id
+            )
+            if receipt.product_id != configured_product:
+                raise ValidationError(
+                    _("Product must match the active Weighing Product for the company.")
+                )
+
+    @api.constrains(
+        "company_id",
+        "division_id",
+        "operation_type_id",
+        "location_id",
+    )
+    def _check_inventory_destination(self):
+        for receipt in self:
+            if not (
+                receipt.company_id
+                and receipt.division_id
+                and receipt.operation_type_id
+                and receipt.location_id
+            ):
+                continue
+
+            operation_company = receipt.operation_type_id.company_id
+            if operation_company and operation_company != receipt.company_id:
+                raise ValidationError(
+                    _("Operation type must belong to the same company.")
+                )
+
+            location_company = receipt.location_id.company_id
+            if location_company and location_company != receipt.company_id:
+                raise ValidationError(
+                    _("Receiving Location must belong to the same company or be a shared location.")
+                )
+
+            if receipt.location_id.usage != "internal":
+                raise ValidationError(
+                    _("Receiving Location must be an internal stock location.")
+                )
+
+            warehouse = receipt.operation_type_id.warehouse_id
+            if warehouse:
+                if warehouse.company_id != receipt.company_id:
+                    raise ValidationError(
+                        _("Warehouse must belong to the same company.")
+                    )
+                if warehouse.estate_id and warehouse.estate_id != receipt.division_id.estate_id:
+                    raise ValidationError(
+                        _("Warehouse must belong to the same estate as the division.")
+                    )
+                if not receipt._is_location_under_warehouse(receipt.location_id, warehouse):
+                    raise ValidationError(
+                        _("Receiving Location must be under the selected warehouse.")
+                    )
+
+            if not receipt._matching_receipt_rules():
+                raise ValidationError(
+                    _(
+                        "No active Receipt Rule exists for this division, operation type, "
+                        "and receiving location."
+                    )
+                )
+
+    def _matching_receipt_rules(self):
+        self.ensure_one()
+        if not (
+            self.company_id
+            and self.division_id
+            and self.operation_type_id
+            and self.location_id
+        ):
+            return self.env["wt.receipt.rule"].browse()
+        return self.env["wt.receipt.rule"].sudo().search(
+            [
+                ("active", "=", True),
+                ("company_id", "=", self.company_id.id),
+                ("division_id", "=", self.division_id.id),
+                ("operation_type_id", "=", self.operation_type_id.id),
+                ("location_id", "=", self.location_id.id),
+            ]
+        )
+
+    def _is_location_under_warehouse(self, location, warehouse):
+        warehouse_root = warehouse.view_location_id
+        if not location or not warehouse_root:
+            return True
+        if location == warehouse_root:
+            return True
+        if location.parent_path and warehouse_root.parent_path:
+            return location.parent_path.startswith(warehouse_root.parent_path)
+        parent = location.parent_id
+        while parent:
+            if parent == warehouse_root:
+                return True
+            parent = parent.parent_id
+        return False
+
     def action_process(self):
         for receipt in self:
             receipt._action_process_one()
@@ -202,7 +712,7 @@ class ProductionReceipt(models.Model):
         self._check_process_required()
 
         candidates = self._get_process_candidates()
-        existing_weighing_ids = set(self.line_ids.mapped("weighing_cup_lump_id").ids)
+        existing_weighing_ids = set(self.line_ids.mapped("weighing_id").ids)
         new_weighings = candidates.filtered(
             lambda detail: detail.id not in existing_weighing_ids
         )
@@ -214,7 +724,7 @@ class ProductionReceipt(models.Model):
             line_model.create(
                 {
                     "receipt_id": self.id,
-                    "weighing_cup_lump_id": weighing.id,
+                    "weighing_id": weighing.id,
                 }
             )
 
@@ -223,7 +733,7 @@ class ProductionReceipt(models.Model):
                 allow_production_receipt_update=True
             ).write(
                 {
-                    "receipt_status": "in_production_receipt",
+                    "state": "in_production_receipt",
                     "production_receipt_id": self.id,
                 }
             )
@@ -235,7 +745,12 @@ class ProductionReceipt(models.Model):
         for field_name, label in (
             ("company_id", _("Company")),
             ("production_date", _("Production Date")),
+            ("received_date", _("Received Date")),
             ("division_id", _("Division")),
+            ("clerk_employee_id", _("Clerk")),
+            ("product_id", _("Product")),
+            ("operation_type_id", _("Operation Type")),
+            ("location_id", _("Receiving Location")),
         ):
             if not self[field_name]:
                 missing.append(label)
@@ -247,20 +762,28 @@ class ProductionReceipt(models.Model):
 
     def _get_process_candidates(self):
         self.ensure_one()
+        receipt_rules = self._matching_receipt_rules()
+        if not receipt_rules:
+            raise ValidationError(
+                _(
+                    "No active Receipt Rule exists for this Production Receipt destination."
+                )
+            )
         active_line_weighing_ids = self.env["wt.production.receipt.line"].search(
             [
                 ("receipt_id.state", "!=", "cancelled"),
                 ("receipt_id", "!=", self.id),
             ]
-        ).mapped("weighing_cup_lump_id").ids
+        ).mapped("weighing_id").ids
         domain = [
             ("company_id", "=", self.company_id.id),
             ("division_id", "=", self.division_id.id),
             ("production_date", "=", self.production_date),
-            ("product_type", "=", ProductType.CUP_LUMP),
+            ("product_id", "=", self.product_id.id),
+            ("receipt_rule_id", "in", receipt_rules.ids),
             ("id", "not in", active_line_weighing_ids or [0]),
         ]
-        return self.env["wt.weighing.cup.lump"].search(domain)
+        return self.env["wt.weighing"].search(domain)
 
     def action_validate(self):
         for receipt in self:
@@ -277,7 +800,7 @@ class ProductionReceipt(models.Model):
 
         self._check_process_required()
         self._check_line_consistency()
-        weighings = self.line_ids.mapped("weighing_cup_lump_id")
+        weighings = self.line_ids.mapped("weighing_id")
         weighings._check_required_for_validate()
         weighings.action_recheck_data_problem()
         self.line_ids._refresh_from_weighing()
@@ -289,6 +812,7 @@ class ProductionReceipt(models.Model):
                 _("Production Receipt still has weighing lines with data problem.")
             )
         self._check_duplicate_lines()
+        self._create_inventory_receipts()
 
         now = fields.Datetime.now()
         self.with_context(allow_production_receipt_update=True).write(
@@ -300,7 +824,7 @@ class ProductionReceipt(models.Model):
         )
         weighings.with_context(allow_production_receipt_update=True).write(
             {
-                "receipt_status": "receipt_validated",
+                "state": "receipt_validated",
                 "production_receipt_id": self.id,
             }
         )
@@ -311,6 +835,10 @@ class ProductionReceipt(models.Model):
             lambda line: line.company_id != self.company_id
             or line.production_date != self.production_date
             or line.division_id != self.division_id
+            or line.product_id != self.product_id
+            or not line.receipt_rule_id
+            or line.receipt_rule_id.operation_type_id != self.operation_type_id
+            or line.receipt_rule_id.location_id != self.location_id
         )
         if invalid_lines:
             raise ValidationError(
@@ -319,11 +847,278 @@ class ProductionReceipt(models.Model):
 
     def _check_duplicate_lines(self):
         self.ensure_one()
-        weighing_ids = self.line_ids.mapped("weighing_cup_lump_id").ids
+        weighing_ids = self.line_ids.mapped("weighing_id").ids
         if len(weighing_ids) != len(set(weighing_ids)):
             raise ValidationError(_("Production Receipt cannot have duplicate lines."))
 
+    def _create_inventory_receipts(self):
+        self.ensure_one()
+        active_picking = (
+            self.stock_picking_id
+            if self.stock_picking_id and self.stock_picking_id.state != "cancel"
+            else self.env["stock.picking"]
+        )
+        active_picking = active_picking or self.stock_picking_ids.filtered(
+            lambda picking: picking.state != "cancel"
+        )[:1]
+        if active_picking:
+            raise ValidationError(
+                _("Inventory Receipt already exists for this Production Receipt.")
+            )
+
+        clerk = self.clerk_employee_id
+        if not clerk:
+            raise ValidationError(
+                _("Please set Clerk on this Production Receipt.")
+            )
+
+        for line in self.line_ids:
+            if not line.receipt_rule_id:
+                raise ValidationError(
+                    _("Receipt Rule is missing on weighing '%s'.")
+                    % line.weighing_id.display_name
+                )
+            if not line.product_id:
+                raise ValidationError(
+                    _("Product is missing on weighing '%s'.")
+                    % line.weighing_id.display_name
+                )
+            if line.stock_weight <= 0:
+                raise ValidationError(
+                    _("Stock Weight must be greater than zero on weighing '%s'.")
+                    % line.weighing_id.display_name
+                )
+
+        return self._create_inventory_receipt(clerk)
+
+    def _create_inventory_receipt(self, clerk):
+        self.ensure_one()
+        product = self.product_id
+        if product.tracking != "lot":
+            raise ValidationError(
+                _("Product '%s' must use lot tracking before Production Receipt can create inventory lot.")
+                % product.display_name
+            )
+
+        picking_type = self.operation_type_id
+        destination_location = self.location_id
+        source_location = self._get_receipt_source_location(picking_type)
+        total_quantity = sum(self.line_ids.mapped("stock_weight"))
+        lot = self.lot_id or self._create_inventory_lot(product)
+        if not self.lot_id:
+            self.with_context(allow_production_receipt_update=True).write(
+                {"lot_id": lot.id}
+            )
+        partner = self._get_employee_partner(clerk)
+        received_datetime = self._get_received_datetime()
+
+        picking_model = self.env["stock.picking"].sudo().with_company(self.company_id)
+        move_values = {
+            "product_id": product.id,
+            "product_uom_qty": total_quantity,
+            "product_uom": product.uom_id.id,
+            "location_id": source_location.id,
+            "location_dest_id": destination_location.id,
+        }
+        if received_datetime and "date" in self.env["stock.move"]._fields:
+            move_values["date"] = received_datetime
+        picking_values = {
+            "picking_type_id": picking_type.id,
+            "partner_id": partner.id if partner else False,
+            "receive_from_employee_id": clerk.id,
+            "location_id": source_location.id,
+            "location_dest_id": destination_location.id,
+            "origin": self.name,
+            "production_receipt_id": self.id,
+            "move_ids": [(0, 0, move_values)],
+        }
+        if received_datetime and "scheduled_date" in picking_model._fields:
+            picking_values["scheduled_date"] = received_datetime
+        picking = picking_model.create(picking_values)
+        picking.action_confirm()
+        move = picking.move_ids.filtered(
+            lambda stock_move: stock_move.product_id == product
+        )[:1]
+        if not move:
+            raise ValidationError(
+                _("Inventory move could not be created for product '%s'.")
+                % product.display_name
+            )
+        self._set_inventory_done_quantity(
+            picking,
+            move,
+            lot,
+            total_quantity,
+            source_location,
+            destination_location,
+        )
+        picking.with_context(skip_backorder=True).button_validate()
+        self._sync_inventory_receipt_dates(picking, received_datetime)
+        if picking.state != "done":
+            raise ValidationError(
+                _("Inventory Receipt '%s' could not be validated automatically.")
+                % picking.display_name
+            )
+        self.with_context(allow_production_receipt_update=True).write(
+            {"stock_picking_id": picking.id}
+        )
+        return picking
+
+    def _get_received_datetime(self):
+        self.ensure_one()
+        received_date = fields.Date.to_date(self.received_date)
+        if not received_date:
+            return False
+        return fields.Datetime.to_datetime(received_date)
+
+    def _sync_inventory_receipt_dates(self, picking, received_datetime):
+        if not received_datetime:
+            return
+        values = {}
+        if "scheduled_date" in picking._fields:
+            values["scheduled_date"] = received_datetime
+        if "date_done" in picking._fields:
+            values["date_done"] = received_datetime
+        if values:
+            picking.sudo().write(values)
+
+    def _get_receipt_source_location(self, picking_type):
+        self.ensure_one()
+        source_location = picking_type.default_location_src_id
+        if source_location:
+            return source_location
+        source_location = self.env.ref(
+            "stock.stock_location_suppliers",
+            raise_if_not_found=False,
+        )
+        if not source_location:
+            raise ValidationError(
+                _("Source Location is not configured on Operation Type '%s'.")
+                % picking_type.display_name
+            )
+        return source_location
+
+    def _create_inventory_lot(self, product):
+        self.ensure_one()
+        lot_name = self._get_inventory_lot_name(product)
+        lot_model = self.env["stock.lot"].sudo().with_company(self.company_id)
+        return lot_model.create(
+            {
+                "name": lot_name,
+                "product_id": product.id,
+                "company_id": self.company_id.id,
+                "division_id": self.division_id.id,
+                "production_date": self.production_date,
+            }
+        )
+
+    def _get_inventory_lot_name(self, product):
+        self.ensure_one()
+        prefix = self._get_inventory_lot_prefix()
+        next_number = self._get_next_inventory_lot_number(product, prefix)
+        return "%s%03d" % (prefix, next_number)
+
+    def _get_inventory_lot_prefix(self):
+        self.ensure_one()
+        division_code = self._clean_lot_component(self.division_id.code)
+        production_date = fields.Date.to_date(self.production_date).strftime("%Y%m%d")
+        return "LOT/%s/%s/" % (division_code, production_date)
+
+    def _get_next_inventory_lot_number(self, product, prefix):
+        self.ensure_one()
+        lot_model = self.env["stock.lot"].sudo().with_company(self.company_id)
+        lots = lot_model.search(
+            [
+                ("name", "=like", prefix + "%"),
+                ("product_id", "=", product.id),
+                ("company_id", "in", [False, self.company_id.id]),
+            ],
+            order="name desc",
+        )
+        last_number = 0
+        prefix_length = len(prefix)
+        for lot in lots:
+            suffix = lot.name[prefix_length:]
+            if suffix.isdigit():
+                last_number = max(last_number, int(suffix))
+        next_number = last_number + 1
+        if next_number > 999:
+            raise ValidationError(
+                _("Inventory lot sequence for '%s' has reached the 999 limit.")
+                % prefix.rstrip("/")
+            )
+        return next_number
+
+    def _clean_lot_component(self, value):
+        value = (value or "").strip()
+        return value.replace("/", "-").replace("\\", "-").replace(" ", "-")
+
+    def _get_employee_partner(self, employee):
+        self.ensure_one()
+        for field_name in ("work_contact_id", "address_home_id"):
+            if field_name in employee._fields and employee[field_name]:
+                return employee[field_name]
+        if "user_id" in employee._fields and employee.user_id.partner_id:
+            return employee.user_id.partner_id
+        return self.env["res.partner"]
+
+    def _set_inventory_done_quantity(
+        self,
+        picking,
+        move,
+        lot,
+        quantity,
+        source_location,
+        destination_location,
+    ):
+        move_line_model = self.env["stock.move.line"].sudo().with_company(
+            self.company_id
+        )
+        move.move_line_ids.filtered(
+            lambda line: line.state not in ("done", "cancel")
+        ).unlink()
+        quantity_field = (
+            "quantity"
+            if "quantity" in move_line_model._fields
+            else "qty_done"
+        )
+        move_line_values = {
+            "picking_id": picking.id,
+            "move_id": move.id,
+            "company_id": self.company_id.id,
+            "product_id": move.product_id.id,
+            "product_uom_id": move.product_uom.id,
+            "location_id": source_location.id,
+            "location_dest_id": destination_location.id,
+            "lot_id": lot.id,
+            quantity_field: quantity,
+        }
+        if "picked" in move_line_model._fields:
+            move_line_values["picked"] = True
+        move_line_model.create(move_line_values)
+
     def action_cancel(self):
+        self.ensure_one()
+        if self.state == "cancelled":
+            return False
+        if self.state != "validated":
+            raise ValidationError(
+                _("Only validated Production Receipt can be cancelled.")
+            )
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Cancel Production Receipt"),
+            "res_model": "wt.production.receipt.cancel.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_receipt_id": self.id,
+            },
+        }
+
+    def action_confirm_cancel(self, reason):
+        if not reason:
+            raise ValidationError(_("Cancel reason is required."))
         for receipt in self:
             if receipt.state == "cancelled":
                 continue
@@ -331,16 +1126,233 @@ class ProductionReceipt(models.Model):
                 raise ValidationError(
                     _("Only validated Production Receipt can be cancelled.")
                 )
-            receipt.line_ids.mapped("weighing_cup_lump_id").with_context(
+            receipt._create_inventory_reversals()
+            receipt.line_ids.mapped("weighing_id").with_context(
                 allow_production_receipt_update=True
-            ).write({"receipt_status": "receipt_cancelled"})
+            ).write({"state": "receipt_cancelled"})
             receipt.with_context(allow_production_receipt_update=True).write(
                 {
                     "state": "cancelled",
                     "cancelled_at": fields.Datetime.now(),
                     "cancelled_by_id": self.env.user.id,
+                    "cancel_reason": reason,
                 }
             )
+
+    def _create_inventory_reversals(self):
+        self.ensure_one()
+        original_picking = (
+            self.stock_picking_id
+            if self.stock_picking_id and self.stock_picking_id.state == "done"
+            else self.env["stock.picking"]
+        )
+        original_picking = original_picking or self.stock_picking_ids.filtered(
+            lambda picking: picking.state == "done"
+        )[:1]
+        if not original_picking:
+            return self.env["stock.picking"]
+        active_reversal = (
+            self.reverse_picking_id
+            if self.reverse_picking_id and self.reverse_picking_id.state != "cancel"
+            else self.env["stock.picking"]
+        )
+        active_reversal = active_reversal or self.reverse_picking_ids.filtered(
+            lambda picking: picking.state != "cancel"
+        )[:1]
+        if active_reversal:
+            raise ValidationError(
+                _("Inventory Reversal already exists for this Production Receipt.")
+            )
+        self._check_inventory_reversal_stock_available(original_picking)
+
+        return self._create_inventory_reversal_for_picking(original_picking)
+
+    def _check_inventory_reversal_stock_available(self, original_pickings):
+        self.ensure_one()
+        original_lines = original_pickings.move_line_ids.filtered(
+            lambda line: line.state == "done" and line.lot_id and line.quantity > 0
+        )
+        if not original_lines:
+            return
+
+        grouped_lines = {}
+        for line in original_lines:
+            location = line.location_dest_id
+            key = (line.product_id.id, line.lot_id.id, location.id)
+            grouped_lines.setdefault(
+                key,
+                {
+                    "product": line.product_id,
+                    "lot": line.lot_id,
+                    "location": location,
+                    "quantity": 0.0,
+                },
+            )
+            grouped_lines[key]["quantity"] += line.product_uom_id._compute_quantity(
+                line.quantity,
+                line.product_id.uom_id,
+                round=False,
+            )
+
+        quant_model = self.env["stock.quant"].sudo()
+        for values in grouped_lines.values():
+            product = values["product"]
+            lot = values["lot"]
+            location = values["location"]
+            required_quantity = values["quantity"]
+            available_quantity = quant_model._get_available_quantity(
+                product,
+                location,
+                lot_id=lot,
+                strict=True,
+            )
+            if product.uom_id.compare(available_quantity, required_quantity) < 0:
+                raise ValidationError(
+                    _(
+                        "Production Receipt cannot be cancelled because lot '%(lot)s' "
+                        "only has %(available)s %(uom)s available at '%(location)s', "
+                        "while %(required)s %(uom)s is required for reversal."
+                    )
+                    % {
+                        "lot": lot.display_name,
+                        "available": available_quantity,
+                        "required": required_quantity,
+                        "uom": product.uom_id.display_name,
+                        "location": location.display_name,
+                    }
+                )
+
+    def _create_inventory_reversal_for_picking(self, picking):
+        self.ensure_one()
+        reversal_lines = picking.move_line_ids.filtered(
+            lambda line: line.state == "done" and line.lot_id and line.quantity > 0
+        )
+        if not reversal_lines:
+            raise ValidationError(
+                _("Inventory Receipt '%s' has no lot move line to reverse.")
+                % picking.display_name
+            )
+        if self.lot_id and reversal_lines.filtered(lambda line: line.lot_id != self.lot_id):
+            raise ValidationError(
+                _("Inventory Receipt uses a different lot than the Production Receipt.")
+            )
+
+        picking_type = picking.picking_type_id.return_picking_type_id or picking.picking_type_id
+        source_location = picking.location_dest_id
+        destination_location = picking.location_id
+        partner = picking.partner_id
+        picking_model = self.env["stock.picking"].sudo().with_company(self.company_id)
+        reversal = picking_model.create(
+            {
+                "picking_type_id": picking_type.id,
+                "partner_id": partner.id if partner else False,
+                "receive_from_employee_id": picking.receive_from_employee_id.id,
+                "location_id": source_location.id,
+                "location_dest_id": destination_location.id,
+                "origin": _("Cancel %(receipt)s / Return of %(picking)s")
+                % {"receipt": self.name, "picking": picking.name},
+                "return_id": picking.id,
+                "production_receipt_reverse_id": self.id,
+                "move_ids": self._prepare_inventory_reversal_move_commands(
+                    reversal_lines,
+                    picking_type,
+                    source_location,
+                    destination_location,
+                ),
+            }
+        )
+        reversal.action_confirm()
+        self._set_inventory_reversal_done_quantities(
+            reversal,
+            reversal_lines,
+            source_location,
+            destination_location,
+        )
+        reversal.with_context(skip_backorder=True).button_validate()
+        if reversal.state != "done":
+            raise ValidationError(
+                _("Inventory Reversal '%s' could not be validated automatically.")
+                % reversal.display_name
+            )
+        self.with_context(allow_production_receipt_update=True).write(
+            {"reverse_picking_id": reversal.id}
+        )
+        return reversal
+
+    def _prepare_inventory_reversal_move_commands(
+        self,
+        reversal_lines,
+        picking_type,
+        source_location,
+        destination_location,
+    ):
+        commands = []
+        grouped_lines = {}
+        for line in reversal_lines:
+            key = (line.product_id.id, line.product_uom_id.id)
+            grouped_lines.setdefault(key, self.env[line._name])
+            grouped_lines[key] |= line
+        for lines in grouped_lines.values():
+            product = lines[0].product_id
+            uom = lines[0].product_uom_id
+            commands.append(
+                (
+                    0,
+                    0,
+                    {
+                        "product_id": product.id,
+                        "product_uom_qty": sum(lines.mapped("quantity")),
+                        "product_uom": uom.id,
+                        "location_id": source_location.id,
+                        "location_dest_id": destination_location.id,
+                        "picking_type_id": picking_type.id,
+                    },
+                )
+            )
+        return commands
+
+    def _set_inventory_reversal_done_quantities(
+        self,
+        reversal,
+        original_lines,
+        source_location,
+        destination_location,
+    ):
+        move_line_model = self.env["stock.move.line"].sudo().with_company(
+            self.company_id
+        )
+        quantity_field = (
+            "quantity"
+            if "quantity" in move_line_model._fields
+            else "qty_done"
+        )
+        reversal.move_ids.move_line_ids.filtered(
+            lambda line: line.state not in ("done", "cancel")
+        ).unlink()
+        for original_line in original_lines:
+            move = reversal.move_ids.filtered(
+                lambda stock_move: stock_move.product_id == original_line.product_id
+                and stock_move.product_uom == original_line.product_uom_id
+            )[:1]
+            if not move:
+                raise ValidationError(
+                    _("Inventory reversal move is missing for product '%s'.")
+                    % original_line.product_id.display_name
+                )
+            move_line_values = {
+                "picking_id": reversal.id,
+                "move_id": move.id,
+                "company_id": self.company_id.id,
+                "product_id": original_line.product_id.id,
+                "product_uom_id": original_line.product_uom_id.id,
+                "location_id": source_location.id,
+                "location_dest_id": destination_location.id,
+                "lot_id": original_line.lot_id.id,
+                quantity_field: original_line.quantity,
+            }
+            if "picked" in move_line_model._fields:
+                move_line_values["picked"] = True
+            move_line_model.create(move_line_values)
 
 
 class ProductionReceiptLine(models.Model):
@@ -360,9 +1372,9 @@ class ProductionReceiptLine(models.Model):
         store=True,
         readonly=True,
     )
-    weighing_cup_lump_id = fields.Many2one(
-        "wt.weighing.cup.lump",
-        string="Weighing Cup Lump",
+    weighing_id = fields.Many2one(
+        "wt.weighing",
+        string="Weighing",
         required=True,
         ondelete="restrict",
         index=True,
@@ -370,102 +1382,95 @@ class ProductionReceiptLine(models.Model):
     company_id = fields.Many2one(
         "res.company",
         string="Company",
-        related="weighing_cup_lump_id.company_id",
-        store=True,
-        readonly=True,
-    )
-    product_type = fields.Selection(
-        ProductType.SELECTION,
-        string="Product Type",
-        related="weighing_cup_lump_id.product_type",
+        related="weighing_id.company_id",
         store=True,
         readonly=True,
     )
     production_date = fields.Date(
         string="Production Date",
-        related="weighing_cup_lump_id.production_date",
+        related="weighing_id.production_date",
         store=True,
         readonly=True,
     )
     weighing_date = fields.Datetime(
         string="Weighing Date",
-        related="weighing_cup_lump_id.weighing_date",
+        related="weighing_id.weighing_date",
         store=True,
         readonly=True,
     )
     estate_id = fields.Many2one(
         "wt.estate",
         string="Estate",
-        related="weighing_cup_lump_id.estate_id",
+        related="weighing_id.estate_id",
         store=True,
         readonly=True,
     )
     weighing_location_id = fields.Many2one(
         "wt.weighing.location",
         string="Weighing Location",
-        related="weighing_cup_lump_id.weighing_location_id",
+        related="weighing_id.weighing_location_id",
         store=True,
         readonly=True,
     )
     division_id = fields.Many2one(
         "wt.division",
         string="Division",
-        related="weighing_cup_lump_id.division_id",
+        related="weighing_id.division_id",
         store=True,
         readonly=True,
     )
     product_id = fields.Many2one(
         "product.product",
         string="Product",
-        related="weighing_cup_lump_id.product_id",
+        related="weighing_id.product_id",
         store=True,
         readonly=True,
     )
     uom_id = fields.Many2one(
         "uom.uom",
         string="UoM",
-        related="weighing_cup_lump_id.uom_id",
+        related="weighing_id.uom_id",
         store=True,
         readonly=True,
     )
     receipt_rule_id = fields.Many2one(
         "wt.receipt.rule",
         string="Receipt Rule",
-        related="weighing_cup_lump_id.receipt_rule_id",
+        related="weighing_id.receipt_rule_id",
         store=True,
         readonly=True,
     )
     operator_employee_id = fields.Many2one(
         "hr.employee",
         string="Operator",
-        related="weighing_cup_lump_id.operator_employee_id",
+        related="weighing_id.operator_employee_id",
         store=True,
         readonly=True,
     )
     clerk_employee_id = fields.Many2one(
         "hr.employee",
         string="Clerk",
-        related="weighing_cup_lump_id.clerk_employee_id",
+        related="weighing_id.clerk_employee_id",
         store=True,
         readonly=True,
     )
     foreman_employee_id = fields.Many2one(
         "hr.employee",
         string="Foreman",
-        related="weighing_cup_lump_id.foreman_employee_id",
+        related="weighing_id.foreman_employee_id",
         store=True,
         readonly=True,
     )
     tapper_employee_id = fields.Many2one(
         "hr.employee",
         string="Tapper",
-        related="weighing_cup_lump_id.tapper_employee_id",
+        related="weighing_id.tapper_employee_id",
         store=True,
         readonly=True,
     )
     total_bag = fields.Integer(
         string="Total Bag",
-        related="weighing_cup_lump_id.total_bag",
+        related="weighing_id.total_bag",
         store=True,
         readonly=True,
     )
@@ -476,53 +1481,49 @@ class ProductionReceiptLine(models.Model):
     )
     has_data_problem = fields.Boolean(
         string="Has Data Problem",
-        related="weighing_cup_lump_id.has_data_problem",
+        related="weighing_id.has_data_problem",
         store=True,
         readonly=True,
     )
     data_problem_code = fields.Selection(
-        related="weighing_cup_lump_id.data_problem_code",
+        related="weighing_id.data_problem_code",
         store=True,
         readonly=True,
     )
     data_problem_note = fields.Text(
         string="Data Problem Note",
-        related="weighing_cup_lump_id.data_problem_note",
+        related="weighing_id.data_problem_note",
         readonly=True,
     )
 
     @api.depends(
-        "weighing_cup_lump_id",
-        "weighing_cup_lump_id.net_weight",
-        "weighing_cup_lump_id.production_weight",
-        "weighing_cup_lump_id.reject_weight",
-        "weighing_cup_lump_id.slab_weight",
-        "weighing_cup_lump_id.shrinkage_tolerance_weight",
+        "weighing_id",
+        "weighing_id.net_weight",
+        "weighing_id.production_weight",
+        "weighing_id.reject_weight",
+        "weighing_id.slab_weight",
+        "weighing_id.shrinkage_tolerance_weight",
     )
     def _compute_stock_weight(self):
         for line in self:
-            field_name = ProductType.STOCK_QUANTITY_FIELD.get(ProductType.CUP_LUMP)
-            if not field_name or field_name not in line.weighing_cup_lump_id._fields:
-                line.stock_weight = 0.0
-                continue
-            line.stock_weight = line.weighing_cup_lump_id[field_name] or 0.0
+            line.stock_weight = line.weighing_id.net_weight or 0.0
 
-    @api.constrains("receipt_id", "weighing_cup_lump_id")
+    @api.constrains("receipt_id", "weighing_id")
     def _check_unique_active_weighing(self):
         for line in self:
-            if not line.weighing_cup_lump_id or not line.receipt_id:
+            if not line.weighing_id or not line.receipt_id:
                 continue
             duplicate = self.search(
                 [
                     ("id", "!=", line.id),
-                    ("weighing_cup_lump_id", "=", line.weighing_cup_lump_id.id),
+                    ("weighing_id", "=", line.weighing_id.id),
                     ("receipt_id.state", "!=", "cancelled"),
                 ],
                 limit=1,
             )
             if duplicate:
                 raise ValidationError(
-                    _("Weighing Cup Lump already exists in an active Production Receipt.")
+                    _("Weighing already exists in an active Production Receipt.")
                 )
 
     def unlink(self):
@@ -536,15 +1537,15 @@ class ProductionReceiptLine(models.Model):
     def _release_unvalidated_weighing(self):
         lines_to_release = self.filtered(
             lambda line: line.receipt_id.state in ("draft", "processed")
-            and line.weighing_cup_lump_id
-            and line.weighing_cup_lump_id.production_receipt_id == line.receipt_id
-            and line.weighing_cup_lump_id.receipt_status == "in_production_receipt"
+            and line.weighing_id
+            and line.weighing_id.production_receipt_id == line.receipt_id
+            and line.weighing_id.state == "in_production_receipt"
         )
-        weighings = lines_to_release.mapped("weighing_cup_lump_id")
+        weighings = lines_to_release.mapped("weighing_id")
         if weighings:
             weighings.with_context(allow_production_receipt_update=True).write(
                 {
-                    "receipt_status": "not_receipted",
+                    "state": "not_receipted",
                     "production_receipt_id": False,
                 }
             )

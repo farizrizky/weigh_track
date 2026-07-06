@@ -3,29 +3,24 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
-from ..constants.product_types import ProductType
 from ..constants.roles import Role
 
 
-class WeighingCupLump(models.Model):
-    _name = "wt.weighing.cup.lump"
-    _description = "Weighing Cup Lump"
+class Weighing(models.Model):
+    _name = "wt.weighing"
+    _description = "Weighing"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "production_date desc, weighing_date desc, id desc"
 
     STATE_SELECTION = [
-        ("draft", "Draft"),
-        ("validated", "Validated"),
-    ]
-    DATA_SOURCE_SELECTION = [
-        ("manual", "Manual"),
-        ("api", "API"),
-    ]
-    RECEIPT_STATUS_SELECTION = [
         ("not_receipted", "Not Receipted"),
         ("in_production_receipt", "In Production Receipt"),
         ("receipt_validated", "Receipt Validated"),
         ("receipt_cancelled", "Receipt Cancelled"),
+    ]
+    DATA_SOURCE_SELECTION = [
+        ("manual", "Manual"),
+        ("api", "API"),
     ]
 
     DATA_PROBLEM_SELECTION = [
@@ -111,14 +106,6 @@ class WeighingCupLump(models.Model):
         string="Allowed Divisions",
         compute="_compute_allowed_division_ids",
     )
-    product_type = fields.Selection(
-        ProductType.SELECTION,
-        string="Product Type",
-        default=ProductType.CUP_LUMP,
-        required=True,
-        index=True,
-        tracking=True,
-    )
     production_date = fields.Date(
         string="Production Date",
         required=True,
@@ -151,14 +138,6 @@ class WeighingCupLump(models.Model):
     state = fields.Selection(
         STATE_SELECTION,
         string="Status",
-        default="draft",
-        required=True,
-        index=True,
-        tracking=True,
-    )
-    receipt_status = fields.Selection(
-        RECEIPT_STATUS_SELECTION,
-        string="Receipt Status",
         default="not_receipted",
         required=True,
         index=True,
@@ -238,6 +217,7 @@ class WeighingCupLump(models.Model):
     product_id = fields.Many2one(
         "product.product",
         string="Product",
+        default=lambda self: self._configured_product_for_company(self.env.company),
         ondelete="restrict",
         index=True,
         tracking=True,
@@ -252,6 +232,7 @@ class WeighingCupLump(models.Model):
     uom_id = fields.Many2one(
         "uom.uom",
         string="UoM",
+        default=lambda self: self._configured_product_for_company(self.env.company).uom_id,
         ondelete="restrict",
         tracking=True,
     )
@@ -446,6 +427,7 @@ class WeighingCupLump(models.Model):
         sequence_model = self.env["ir.sequence"]
         for vals in vals_list:
             self._set_estate_from_location_vals(vals)
+            self._set_product_from_company_vals(vals)
             self._set_uom_from_product_vals(vals)
             if not vals.get("name") or vals["name"] == "/":
                 sequence_date = (
@@ -454,12 +436,12 @@ class WeighingCupLump(models.Model):
                     else fields.Date.context_today(self)
                 )
                 vals["name"] = sequence_model.next_by_code(
-                    "wt.weighing.cup.lump",
+                    "wt.weighing",
                     sequence_date=sequence_date,
                 )
                 if not vals["name"]:
                     raise ValidationError(
-                        _("Weighing Cup Lump sequence is not configured.")
+                        _("Weighing sequence is not configured.")
                     )
             if vals.get("data_source", "manual") == "manual":
                 vals.update(
@@ -484,9 +466,9 @@ class WeighingCupLump(models.Model):
         vals = dict(vals)
         if not self.env.context.get("allow_production_receipt_update"):
             locked = self.filtered(
-                lambda record: record.receipt_status == "receipt_validated"
+                lambda record: record.state == "receipt_validated"
             )
-            allowed_locked_fields = {"receipt_status", "production_receipt_id"}
+            allowed_locked_fields = {"state", "production_receipt_id"}
             if locked and (set(vals) - allowed_locked_fields):
                 raise ValidationError(
                     _(
@@ -494,6 +476,8 @@ class WeighingCupLump(models.Model):
                     )
                 )
         self._set_estate_from_location_vals(vals)
+        self._set_product_from_company_vals(vals)
+        self._set_uom_from_product_vals(vals)
         result = super().write(vals)
         if set(vals) & {
             "division_id",
@@ -502,7 +486,7 @@ class WeighingCupLump(models.Model):
         }:
             self.filtered(
                 lambda record: record.data_source == "manual"
-                and record.state == "draft"
+                and record.state != "receipt_validated"
             ).with_context(
                 skip_auto_recheck_data_problem=True
             )._sync_assignment_refs_from_employees()
@@ -510,13 +494,12 @@ class WeighingCupLump(models.Model):
             set(vals) & self.DATA_PROBLEM_TRIGGER_FIELDS
         ):
             self.filtered(
-                lambda record: record.state == "draft"
-                and record.receipt_status != "receipt_validated"
+                lambda record: record.state != "receipt_validated"
             ).with_context(skip_auto_recheck_data_problem=True).action_recheck_data_problem()
         return result
 
     def unlink(self):
-        if self.filtered(lambda record: record.receipt_status == "receipt_validated"):
+        if self.filtered(lambda record: record.state == "receipt_validated"):
             raise ValidationError(
                 _(
                     "Weighing detail is locked because its Production Receipt is validated."
@@ -531,9 +514,31 @@ class WeighingCupLump(models.Model):
             vals["estate_id"] = location.estate_id.id
 
     def _set_uom_from_product_vals(self, vals):
-        if vals.get("product_id") and not vals.get("uom_id"):
+        if "product_id" in vals and not vals.get("uom_id"):
             product = self.env["product.product"].browse(vals["product_id"])
+            vals["uom_id"] = product.uom_id.id if product else False
+
+    def _set_product_from_company_vals(self, vals):
+        if not vals.get("company_id"):
+            return
+        product = self._configured_product_for_company(
+            self.env["res.company"].browse(vals["company_id"])
+        )
+        if product:
+            vals["product_id"] = product.id
             vals["uom_id"] = product.uom_id.id
+        else:
+            vals["product_id"] = False
+            vals["uom_id"] = False
+
+    def _configured_product_for_company(self, company):
+        if not company:
+            return self.env["product.product"]
+        product_config = self.env["wt.product"].sudo().search(
+            [("company_id", "=", company.id), ("active", "=", True)],
+            limit=1,
+        )
+        return product_config.product_id
 
     @api.depends_context("lang")
     @api.depends("data_problem_note_en", "data_problem_note_idn")
@@ -556,17 +561,17 @@ class WeighingCupLump(models.Model):
                 IF EXISTS (
                     SELECT 1
                     FROM information_schema.columns
-                    WHERE table_name = 'wt_weighing_cup_lump'
+                    WHERE table_name = 'wt_weighing'
                       AND column_name = 'data_problem_note'
                 )
                 AND EXISTS (
                     SELECT 1
                     FROM information_schema.columns
-                    WHERE table_name = 'wt_weighing_cup_lump'
+                    WHERE table_name = 'wt_weighing'
                       AND column_name = 'data_problem_note_en'
                 )
                 THEN
-                    UPDATE wt_weighing_cup_lump
+                    UPDATE wt_weighing
                        SET data_problem_note_en = data_problem_note
                      WHERE COALESCE(data_problem_note_en, '') = ''
                        AND COALESCE(data_problem_note, '') != '';
@@ -577,15 +582,52 @@ class WeighingCupLump(models.Model):
         )
         self.env.cr.execute(
             """
-            ALTER TABLE wt_weighing_cup_lump
-            DROP CONSTRAINT IF EXISTS wt_weighing_cup_lump_device_product_local_uniq
+            ALTER TABLE wt_weighing
+            DROP CONSTRAINT IF EXISTS wt_weighing_device_product_local_uniq
             """
         )
         self.env.cr.execute(
             """
-            CREATE UNIQUE INDEX IF NOT EXISTS
-                wt_weighing_cup_lump_api_idempotency_uniq
-            ON wt_weighing_cup_lump (device_id, product_type, local_id)
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'wt_weighing'
+                      AND column_name = 'receipt_status'
+                )
+                THEN
+                    UPDATE wt_weighing
+                       SET state = receipt_status
+                     WHERE COALESCE(receipt_status, '') IN (
+                         'not_receipted',
+                         'in_production_receipt',
+                         'receipt_validated',
+                         'receipt_cancelled'
+                     );
+                END IF;
+
+                UPDATE wt_weighing
+                   SET state = 'not_receipted'
+                 WHERE COALESCE(state, '') NOT IN (
+                     'not_receipted',
+                     'in_production_receipt',
+                     'receipt_validated',
+                     'receipt_cancelled'
+                 );
+            END
+            $$;
+            """
+        )
+        self.env.cr.execute(
+            """
+            DROP INDEX IF EXISTS wt_weighing_api_idempotency_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS wt_weighing_api_idempotency_uniq
+            ON wt_weighing (device_id, local_id)
             WHERE data_source = 'api'
             """
         )
@@ -659,15 +701,16 @@ class WeighingCupLump(models.Model):
         if self.weighing_location_id:
             self.estate_id = self.weighing_location_id.estate_id
             self.company_id = self.weighing_location_id.company_id
+            product = self._configured_product_for_company(self.company_id)
+            self.product_id = product
+            self.uom_id = product.uom_id if product else False
             if self.division_id not in self.weighing_location_id.allowed_division_ids:
                 self.division_id = False
                 self.receipt_rule_id = False
             self._set_receipt_rule_from_scope()
 
-    @api.onchange("division_id", "product_id")
+    @api.onchange("division_id")
     def _onchange_receipt_rule_scope(self):
-        if self.product_id:
-            self.uom_id = self.product_id.uom_id
         self._set_receipt_rule_from_scope()
 
     @api.onchange("company_id")
@@ -678,9 +721,13 @@ class WeighingCupLump(models.Model):
             and self.initial_device_id.company_id != self.company_id
         ):
             self.initial_device_id = False
+        product = self._configured_product_for_company(self.company_id)
+        self.product_id = product
+        self.uom_id = product.uom_id if product else False
+        self.receipt_rule_id = False
 
     def _set_receipt_rule_from_scope(self):
-        if not (self.weighing_location_id and self.division_id and self.product_id):
+        if not (self.weighing_location_id and self.division_id):
             self.receipt_rule_id = False
             return
         self.receipt_rule_id = self.env["wt.receipt.rule"].search(
@@ -688,7 +735,6 @@ class WeighingCupLump(models.Model):
                 ("company_id", "=", self.company_id.id),
                 ("weighing_location_id", "=", self.weighing_location_id.id),
                 ("division_id", "=", self.division_id.id),
-                ("product_id", "=", self.product_id.id),
             ],
             limit=1,
         )
@@ -756,7 +802,7 @@ class WeighingCupLump(models.Model):
 
     def action_recheck_data_problem(self):
         locked = self.filtered(
-            lambda detail: detail.receipt_status == "receipt_validated"
+            lambda detail: detail.state == "receipt_validated"
         )
         if locked:
             raise ValidationError(
@@ -764,7 +810,7 @@ class WeighingCupLump(models.Model):
                     "Data problem cannot be rechecked because the Production Receipt is validated."
                 )
             )
-        service = self.env["wt.cup.lump.service"].sudo()
+        service = self.env["wt.weighing.service"].sudo()
         for detail in self:
             result = service.evaluate_data_problem_from_record(detail)
             detail.write(
