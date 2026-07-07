@@ -510,6 +510,99 @@ class DeliveryDoLine(models.Model):
         self.picking_id = picking.id
         return picking
 
+    @api.constrains("lot_line_ids", "lot_line_ids.qty", "lot_line_ids.lot_id")
+    def _check_lot_stock_limits(self):
+        for line in self:
+            if not line.lot_line_ids:
+                continue
+            # Kelompokkan baris berdasarkan lot_id
+            lot_groups = {}
+            for lot_line in line.lot_line_ids:
+                if not lot_line.lot_id:
+                    continue
+                lot_groups.setdefault(lot_line.lot_id, []).append(lot_line)
+
+            for lot, lot_lines in lot_groups.items():
+                total_planned_qty = sum(l.qty for l in lot_lines)
+                
+                # Cari stok fisik di lokasi asal
+                locations = self.env["stock.location"].search([("id", "child_of", line.location_id.id)])
+                quants = self.env["stock.quant"].search([
+                    ("product_id", "=", line.product_id.id),
+                    ("location_id", "in", locations.ids),
+                    ("lot_id", "=", lot.id),
+                ])
+                total_on_hand = sum(quants.mapped("quantity"))
+
+                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya
+                other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                    ("lot_id", "=", lot.id),
+                    ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+                    ("delivery_id", "!=", line.delivery_id.id),
+                    ("wt_skip_line", "=", False),
+                ])
+                other_active_qty = sum(other_active_lines.mapped("qty"))
+                
+                if total_planned_qty + other_active_qty > total_on_hand:
+                    available_qty = max(0.0, total_on_hand - other_active_qty)
+                    raise ValidationError(_(
+                        "Total rencana demand untuk Lot '%s' (%s kg) melebihi stok fisik bebas yang tersedia (%s kg).\n"
+                        "Stok Fisik: %s kg, Sedang Dipesan di Tugas Pengiriman Lain: %s kg."
+                    ) % (
+                        lot.name,
+                        f"{total_planned_qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                        f"{available_qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                        f"{total_on_hand:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                        f"{other_active_qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    ))
+
+    @api.onchange("lot_line_ids")
+    def _onchange_lot_line_ids(self):
+        # Validasi interaktif saat user mengedit atau menambah lot di UI (sebelum disave ke DB)
+        if not self.lot_line_ids:
+            return
+        
+        # Kelompokkan baris berdasarkan lot_id
+        lot_groups = {}
+        for lot_line in self.lot_line_ids:
+            if not lot_line.lot_id:
+                continue
+            lot_groups.setdefault(lot_line.lot_id, []).append(lot_line)
+
+        for lot, lot_lines in lot_groups.items():
+            total_planned_qty = sum(l.qty for l in lot_lines)
+            
+            # Cari stok fisik di lokasi asal
+            locations = self.env["stock.location"].search([("id", "child_of", self.location_id.id)])
+            quants = self.env["stock.quant"].search([
+                ("product_id", "=", self.product_id.id),
+                ("location_id", "in", locations.ids),
+                ("lot_id", "=", lot.id),
+            ])
+            total_on_hand = sum(quants.mapped("quantity"))
+
+            # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya
+            other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                ("lot_id", "=", lot.id),
+                ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+                ("delivery_id", "!=", self.delivery_id.id),
+                ("wt_skip_line", "=", False),
+            ])
+            other_active_qty = sum(other_active_lines.mapped("qty"))
+            
+            if total_planned_qty + other_active_qty > total_on_hand:
+                available_qty = max(0.0, total_on_hand - other_active_qty)
+                raise ValidationError(_(
+                    "Total rencana demand untuk Lot '%s' (%s kg) melebihi stok fisik bebas yang tersedia (%s kg).\n"
+                    "Stok Fisik: %s kg, Sedang Dipesan di Tugas Pengiriman Lain: %s kg."
+                ) % (
+                    lot.name,
+                    f"{total_planned_qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    f"{available_qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    f"{total_on_hand:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                    f"{other_active_qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                ))
+
     def action_validate_line(self):
         """Validasi baris DO ini secara mandiri (membuat & memvalidasi stock.picking)."""
         for line in self:

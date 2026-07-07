@@ -155,7 +155,13 @@ class DeliveryDoLineLot(models.Model):
             demand = line.wt_original_qty if line.wt_original_qty > 0.0 else line.qty
             line.wt_difference_qty = line.wt_physical_qty - demand
 
-    @api.depends("lot_id", "do_line_id.location_id", "product_id")
+    @api.depends(
+        "lot_id",
+        "do_line_id.location_id",
+        "product_id",
+        "do_line_id.lot_line_ids.qty",
+        "do_line_id.lot_line_ids.lot_id",
+    )
     def _compute_qty_available(self):
         for rec in self:
             if rec.lot_id and rec.do_line_id.location_id and rec.product_id:
@@ -168,9 +174,24 @@ class DeliveryDoLineLot(models.Model):
                 total_qty = sum(quants.mapped("quantity"))
                 total_reserved = sum(quants.mapped("reserved_quantity"))
                 
+                # Hitung demand dari baris-baris LAIN dalam satu Rencana DO yang menggunakan lot yang sama
+                other_lines = rec.do_line_id.lot_line_ids.filtered(
+                    lambda l: l.lot_id == rec.lot_id and l != rec
+                )
+                other_planned_qty = sum(other_lines.mapped("qty"))
+                
+                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya (Draft, Confirmed, In Progress, Completed)
+                other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                    ("lot_id", "=", rec.lot_id.id),
+                    ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+                    ("delivery_id", "!=", rec.delivery_id.id),
+                    ("wt_skip_line", "=", False),
+                ])
+                other_active_qty = sum(other_active_lines.mapped("qty"))
+                
                 rec.wt_qty_on_hand = total_qty
-                rec.wt_qty_reserved = total_reserved
-                rec.qty_available = max(0.0, total_qty - total_reserved)
+                rec.wt_qty_reserved = total_reserved + other_planned_qty + other_active_qty
+                rec.qty_available = max(0.0, total_qty - rec.wt_qty_reserved)
             else:
                 rec.wt_qty_on_hand = 0.0
                 rec.wt_qty_reserved = 0.0
@@ -232,6 +253,8 @@ class DeliveryDoLineLot(models.Model):
         for rec in self:
             if rec.qty <= 0:
                 raise ValidationError(_("Demand quantity untuk lot harus lebih dari nol."))
+
+
 
     def action_configure_allocation(self):
         """Buka popup alokasi selisih untuk lot rencana DO."""
