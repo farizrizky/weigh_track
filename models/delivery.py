@@ -159,19 +159,19 @@ class Delivery(models.Model):
         tracking=True,
     )
     total_demand_qty = fields.Float(
-        string="Total Demand (kg)",
+        string="Total Rencana Awal (kg)",
         compute="_compute_totals",
         store=True,
         digits="Product Unit of Measure",
     )
     total_physical_qty = fields.Float(
-        string="Total Fisik (kg)",
+        string="Total Fisik Terkirim (kg)",
         compute="_compute_totals",
         store=True,
         digits="Product Unit of Measure",
     )
     total_difference_qty = fields.Float(
-        string="Total Selisih (kg)",
+        string="Total Selisih/Susut (kg)",
         compute="_compute_totals",
         store=True,
         digits="Product Unit of Measure",
@@ -223,23 +223,41 @@ class Delivery(models.Model):
             if rec.do_line_ids:
                 # Alur baru (rencana DO -> rincian lot)
                 active_lots = rec.do_lot_line_ids.filtered(lambda l: l.wt_is_pulled)
-                rec.total_demand_qty = sum(
-                    l.wt_original_qty if l.wt_original_qty > 0.0 else l.qty
-                    for l in active_lots
+                
+                # 1. Total Selisih: jumlahkan seluruh selisih dari semua rute (transit & outgoing)
+                rec.total_difference_qty = sum(active_lots.mapped("wt_difference_qty"))
+                
+                # 2. Total Fisik Terkirim: hanya hitung rute outgoing jika ada, fallback ke seluruh jika tidak ada
+                outgoing_lots = active_lots.filtered(
+                    lambda l: l.do_line_id.picking_type_id.code == "outgoing"
                 )
-                rec.total_physical_qty = sum(active_lots.mapped("wt_physical_qty"))
-                rec.total_difference_qty = rec.total_physical_qty - rec.total_demand_qty
+                if outgoing_lots:
+                    rec.total_physical_qty = sum(outgoing_lots.mapped("wt_physical_qty"))
+                else:
+                    rec.total_physical_qty = sum(active_lots.mapped("wt_physical_qty"))
+                    
+                # 3. Total Permintaan Rencana (Awal): dihitung mundur dari Fisik - Selisih
+                rec.total_demand_qty = rec.total_physical_qty - rec.total_difference_qty
             else:
                 # Alur lama (picking_ids -> move_line_ids)
                 active_lines = rec.move_line_ids.filtered(
                     lambda l: l.wt_is_pulled and (l.quantity > 0 or l.wt_original_demand_qty > 0)
                 )
-                rec.total_demand_qty = sum(
-                    l.wt_original_demand_qty if l.wt_original_demand_qty > 0.001 else l.quantity
-                    for l in active_lines
+                
+                # 1. Total Selisih
+                rec.total_difference_qty = sum(active_lines.mapped("wt_difference_qty"))
+                
+                # 2. Total Fisik Terkirim
+                outgoing_lines = active_lines.filtered(
+                    lambda l: l.picking_id.picking_type_id.code == "outgoing"
                 )
-                rec.total_physical_qty = sum(active_lines.mapped("wt_physical_qty"))
-                rec.total_difference_qty = rec.total_physical_qty - rec.total_demand_qty
+                if outgoing_lines:
+                    rec.total_physical_qty = sum(outgoing_lines.mapped("wt_physical_qty"))
+                else:
+                    rec.total_physical_qty = sum(active_lines.mapped("wt_physical_qty"))
+                    
+                # 3. Total Permintaan Rencana (Awal)
+                rec.total_demand_qty = rec.total_physical_qty - rec.total_difference_qty
 
     @api.depends(
         "move_line_ids.wt_difference_qty",

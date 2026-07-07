@@ -86,7 +86,7 @@
                     <div class="row" style="margin-bottom: 30px;">
                         <div class="col-4">
                             <div style="background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; text-align: center;">
-                                <div style="font-size: 11px; color: #4b5563; font-weight: bold;">TOTAL DEMAND RENCANA</div>
+                                <div style="font-size: 11px; color: #4b5563; font-weight: bold;">TOTAL RENCANA AWAL</div>
                                 <div style="font-size: 18px; font-weight: bold; color: #111827; margin-top: 3px;">
                                     <span t-out="('{:,.2f}'.format(doc.total_demand_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/> kg
                                 </div>
@@ -94,7 +94,7 @@
                         </div>
                         <div class="col-4">
                             <div style="background-color: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; text-align: center;">
-                                <div style="font-size: 11px; color: #4b5563; font-weight: bold;">TOTAL FISIK TIMBANG</div>
+                                <div style="font-size: 11px; color: #4b5563; font-weight: bold;">TOTAL FISIK TERKIRIM</div>
                                 <div style="font-size: 18px; font-weight: bold; color: #111827; margin-top: 3px;">
                                     <span t-out="('{:,.2f}'.format(doc.total_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/> kg
                                 </div>
@@ -102,7 +102,7 @@
                         </div>
                         <div class="col-4">
                             <div style="background-color: #fee2e2; border: 1px solid #fca5a5; border-radius: 6px; padding: 12px; text-align: center;">
-                                <div style="font-size: 11px; color: #991b1b; font-weight: bold;">TOTAL SUSUT / SELISIH</div>
+                                <div style="font-size: 11px; color: #991b1b; font-weight: bold;">TOTAL SELISIH</div>
                                 <div style="font-size: 18px; font-weight: bold; color: #991b1b; margin-top: 3px;">
                                     <span t-out="('{:,.2f}'.format(doc.total_difference_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/> kg
                                 </div>
@@ -111,7 +111,7 @@
                     </div>
 
                     <!-- Details Section -->
-                    <h4 style="font-weight: bold; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 6px; margin-top: 30px; margin-bottom: 20px;">RINCIAN PENGIRIMAN &amp; SUSUT PER RUTE TRANSIT</h4>
+                    <h4 style="font-weight: bold; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 6px; margin-top: 30px; margin-bottom: 20px;">RINCIAN PENGIRIMAN &amp; SELISIH PER RUTE</h4>
                     
                     <t t-foreach="doc.do_line_ids" t-as="line">
                         <div style="border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; page-break-inside: avoid; margin-bottom: 25px;">
@@ -143,8 +143,8 @@
                                             <th style="width: 25%; padding: 8px; font-weight: bold; color: #374151;">Lokasi Asal</th>
                                             <th class="text-end" style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Demand (kg)</th>
                                             <th class="text-end" style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Berat Fisik (kg)</th>
-                                            <th class="text-end" style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Susut / Selisih (kg)</th>
-                                            <th style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Alokasi Susut</th>
+                                            <th class="text-end" style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Selisih (kg)</th>
+                                            <th style="width: 15%; padding: 8px; font-weight: bold; color: #374151;">Alokasi Selisih</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -153,7 +153,7 @@
                                                  <td style="padding: 8px; vertical-align: middle;"><span t-field="lot_line.lot_id.name"/></td>
                                                  <td style="padding: 8px; vertical-align: middle;"><span t-field="lot_line.location_id.display_name"/></td>
                                                  <td class="text-end" style="padding: 8px; vertical-align: middle;">
-                                                     <span t-out="('{:,.2f}'.format(lot_line.qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                                     <span t-out="('{:,.2f}'.format(lot_line.wt_original_qty if lot_line.wt_original_qty > 0.0 else lot_line.qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
                                                  </td>
                                                  <td class="text-end" style="padding: 8px; vertical-align: middle;">
                                                      <span t-out="('{:,.2f}'.format(lot_line.wt_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>

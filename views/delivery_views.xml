@@ -18,9 +18,9 @@
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="step_count" string="Steps" optional="show"/>
                 <field name="picking_count" string="Jumlah DO"/>
-                <field name="total_demand_qty" string="Total Demand (kg)"/>
-                <field name="total_physical_qty" string="Total Fisik (kg)"/>
-                <field name="total_difference_qty" string="Total Selisih (kg)"/>
+                <field name="total_demand_qty" string="Total Rencana Awal (kg)"/>
+                <field name="total_physical_qty" string="Total Fisik Terkirim (kg)"/>
+                <field name="total_difference_qty" string="Total Selisih/Susut (kg)"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-primary="state in ('confirmed','in_progress')"
