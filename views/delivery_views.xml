@@ -60,19 +60,28 @@
                             invisible="state != 'completed'"
                             confirm="Aksi ini akan mengupdate DO dan membuat dokumen Scrap susut secara otomatis. Lanjutkan?"/>
                     <button name="action_cancel"
-                            string="Batalkan"
-                            type="object"
-                            class="btn-danger"
-                            invisible="state in ('validated','done','cancelled')"
-                            confirm="Yakin ingin membatalkan tugas pengiriman ini?"/>
+                             string="Batalkan"
+                             type="object"
+                             class="btn-danger"
+                             invisible="state in ('validated','done','returned','cancelled')"
+                             confirm="Yakin ingin membatalkan tugas pengiriman ini?"/>
                     <button name="action_draft"
                             string="Set ke Draft"
                             type="object"
                             invisible="state != 'cancelled'"/>
+                    <button name="action_return_delivery"
+                            string="Retur Pengiriman"
+                            type="object"
+                            class="btn-danger"
+                            invisible="state not in ('validated', 'done') or wt_is_returned"
+                            confirm="Yakin ingin melakukan retur pada semua barang yang terkirim dari tugas pengiriman ini? Tindakan ini akan mengembalikan stok fisik dari customer ke gudang."/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,in_progress,completed,validated,done"/>
+                           statusbar_visible="draft,confirmed,in_progress,completed,validated,done,returned"/>
                 </header>
                 <sheet>
+                    <field name="wt_is_returned" invisible="1"/>
+                    <widget name="web_ribbon" title="Returned" bg_color="bg-danger"
+                            invisible="not wt_is_returned"/>
                     <!-- Smart Buttons -->
                     <div class="oe_button_box" name="button_box">
                         <!-- Smart button DO: muncul setelah validated (picking dari do_lines) -->
@@ -116,7 +125,19 @@
                         </div>
                     </div>
 
+                    <!-- Banner Retur -->
+                    <div class="alert alert-danger d-flex align-items-center" role="alert"
+                         invisible="not wt_is_returned">
+                        <i class="fa fa-undo me-2" style="font-size: 1.5em;"/>
+                        <div>
+                            <strong>Pengiriman ini telah diretur dengan alasan:</strong>
+                            <br/>
+                            <field name="wt_return_reason" readonly="1" class="font-weight-bold"/>
+                        </div>
+                    </div>
+
                     <field name="wt_has_unpulled_lines" invisible="1"/>
+
 
                     <notebook>
 
@@ -393,7 +414,12 @@
 
                         <!-- Tab 3: Catatan -->
                         <page string="Catatan">
-                            <field name="note"/>
+                            <group>
+                                <field name="note" placeholder="Tambahkan catatan di sini..."/>
+                            </group>
+                            <group string="Informasi Retur" invisible="not wt_is_returned">
+                                <field name="wt_return_reason" readonly="1"/>
+                            </group>
                         </page>
                     </notebook>
 

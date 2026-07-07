@@ -39,6 +39,7 @@
         "views/stock_opname_line_views.xml",
         "views/stock_opname_views.xml",
         "views/delivery_do_wizard_views.xml",
+        "views/delivery_return_wizard_views.xml",
         "views/delivery_line_allocation_views.xml",
         "views/delivery_route_views.xml",
         "views/delivery_step_views.xml",

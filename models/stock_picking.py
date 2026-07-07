@@ -66,6 +66,17 @@ class StockPicking(models.Model):
                         "di dokumen Tugas Pengiriman WeighTrack."
                     ) % picking.origin)
         return super().button_validate()
+
+    def action_view_stock_return_picking(self):
+        """Mencegah retur DO individual jika berasal dari Tugas Pengiriman WeighTrack."""
+        for picking in self:
+            if picking.wt_delivery_id:
+                raise UserError(_(
+                    "DO ini dibuat dari Tugas Pengiriman '%s'.\n\n"
+                    "Proses retur hanya dapat dilakukan melalui tombol 'Retur Pengiriman' "
+                    "di dokumen Tugas Pengiriman WeighTrack."
+                ) % picking.origin)
+        return super().action_view_stock_return_picking()
     production_receipt_id = fields.Many2one(
         "wt.production.receipt",
         string="Production Receipt",

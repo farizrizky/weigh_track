@@ -18,6 +18,7 @@ class Delivery(models.Model):
         ("completed", "Completed"),
         ("validated", "Validated"),
         ("done", "Done"),
+        ("returned", "Retur"),
         ("cancelled", "Cancelled"),
     ]
 
@@ -196,6 +197,17 @@ class Delivery(models.Model):
         readonly=True,
         copy=False,
         tracking=True,
+    )
+    wt_is_returned = fields.Boolean(
+        string="Sudah Diretur",
+        default=False,
+        copy=False,
+        readonly=True,
+    )
+    wt_return_reason = fields.Text(
+        string="Alasan Retur",
+        readonly=True,
+        copy=False,
     )
 
     # ── Computed ──────────────────────────────────────────────────────────────
@@ -610,6 +622,17 @@ class Delivery(models.Model):
                     raise ValidationError(_(
                         "Baris DO berikut belum lengkap (Tipe Operasi / Operator / Produk): %s"
                     ) % seqs)
+
+                # Validasi: Wajib memiliki tepat 1 baris Outgoing (Order Pengiriman)
+                outgoing_lines = delivery.do_line_ids.filtered(
+                    lambda l: l.picking_type_id.code == "outgoing"
+                )
+                if len(outgoing_lines) != 1:
+                    raise ValidationError(_(
+                        "Tugas Pengiriman wajib memiliki tepat 1 baris Rencana DO "
+                        "dengan Tipe Operasi 'Order Pengiriman' (Outgoing ke Customer)."
+                    ))
+
                 delivery.write({"state": "confirmed"})
                 continue
 
@@ -824,6 +847,28 @@ class Delivery(models.Model):
 
         self.message_post(body=Markup(msg))
 
+    def action_return_delivery(self):
+        """Buka popup wizard untuk memasukkan alasan retur sebelum memproses retur."""
+        self.ensure_one()
+        if self.wt_is_returned:
+            raise ValidationError(_("Pengiriman ini sudah diretur."))
+
+        # Cari picking yang berasosiasi dengan delivery ini yang statusnya 'done'
+        pickings = self.picking_ids.filtered(lambda p: p.state == "done")
+        if not pickings:
+            raise ValidationError(_("Tidak ada DO selesai yang dapat diretur."))
+
+        return {
+            "name": _("Alasan Retur Pengiriman"),
+            "type": "ir.actions.act_window",
+            "res_model": "wt.delivery.return.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_delivery_id": self.id,
+            }
+        }
+
     def _action_validate_one(self):
         self.ensure_one()
         if self.state != "completed":
@@ -949,9 +994,9 @@ class Delivery(models.Model):
 
     def action_cancel(self):
         for delivery in self:
-            if delivery.state in ("validated", "done"):
+            if delivery.state in ("validated", "done", "returned"):
                 raise ValidationError(_(
-                    "Dokumen yang sudah divalidasi atau selesai tidak dapat dibatalkan."
+                    "Dokumen yang sudah divalidasi, selesai, atau diretur tidak dapat dibatalkan."
                 ))
             # Cancel semua DO yang terhubung dan belum selesai/dibatalkan
             pickings_to_cancel = delivery.picking_ids.filtered(
