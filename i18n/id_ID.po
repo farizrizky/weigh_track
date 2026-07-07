@@ -442,7 +442,7 @@ msgstr "Produk"
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__product
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__product
 msgid "Product"
-msgstr "Tipe Produk"
+msgstr "Produk"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__uom_id
@@ -555,7 +555,7 @@ msgstr "Gudang"
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance__product__weighing
 msgid "Weighing"
-msgstr "Weighing"
+msgstr "Penimbangan"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__operator_id
@@ -889,8 +889,8 @@ msgstr "Data cuaca untuk estate '%(estate)s' dan tanggal '%(date)s' sudah ada."
 
 #. module: weightrack
 #: code:addons/weightrack/models/division.py:0
-msgid "Division code must be unique per estate."
-msgstr "Kode divisi harus unik per estate."
+msgid "Division code must be unique per company."
+msgstr "Kode divisi harus unik per perusahaan."
 
 #. module: weightrack
 #: code:addons/weightrack/models/employee_role.py:0
@@ -909,35 +909,19 @@ msgstr "Role karyawan harus unik per perusahaan, role, dan jabatan."
 
 #. module: weightrack
 #: code:addons/weightrack/models/product.py:0
-#: model:ir.model.constraint,message:weightrack.constraint_wt_product_company_product_uniq
-msgid "Product mapping must be unique per company and product."
-msgstr "Mapping produk harus unik per perusahaan dan tipe produk."
+msgid "Only one weighing product is allowed per company."
+msgstr "Hanya boleh ada satu produk timbang aktif per perusahaan."
 
 #. module: weightrack
 #: code:addons/weightrack/models/product.py:0
-msgid "Only one product mapping is allowed per company and product."
-msgstr "Hanya boleh ada satu mapping produk untuk setiap perusahaan dan tipe produk."
-
-#. module: weightrack
-#: code:addons/weightrack/models/product.py:0
-#: code:addons/weightrack/models/receipt_rule.py:0
+#: code:addons/weightrack/models/production_receipt.py:0
 msgid "Product must belong to the same company or be a global product."
 msgstr "Produk harus berada di perusahaan yang sama atau berupa produk global."
 
 #. module: weightrack
 #: code:addons/weightrack/models/receipt_rule.py:0
-msgid "Product must be configured in Product for the same company."
-msgstr "Produk harus dikonfigurasi di Product untuk perusahaan yang sama."
-
-#. module: weightrack
-#: model:ir.model.constraint,message:weightrack.constraint_wt_receipt_rule_receipt_rule_uniq
-msgid "Receipt Rule must be unique per company, weighing location, division, and product."
-msgstr "Aturan Penerimaan harus unik per perusahaan, lokasi timbang, divisi, dan produk."
-
-#. module: weightrack
-#: code:addons/weightrack/models/receipt_rule.py:0
-msgid "Receipt Rule already exists for company '%(company)s', weighing location '%(location)s', division '%(division)s', and product '%(product)s'. Please use the existing rule or change one of those values."
-msgstr "Aturan Penerimaan untuk perusahaan '%(company)s', lokasi timbang '%(location)s', divisi '%(division)s', dan produk '%(product)s' sudah ada. Gunakan aturan yang sudah ada atau ubah salah satu nilai tersebut."
+msgid "Receipt Rule already exists for company '%(company)s', weighing location '%(location)s', and division '%(division)s'. Please use the existing rule or change one of those values."
+msgstr "Aturan Penerimaan untuk perusahaan '%(company)s', lokasi timbang '%(location)s', dan divisi '%(division)s' sudah ada. Gunakan aturan yang sudah ada atau ubah salah satu nilai tersebut."
 
 #. module: weightrack
 #: code:addons/weightrack/models/receipt_rule.py:0
@@ -952,14 +936,8 @@ msgstr "Divisi harus berada di perusahaan yang sama."
 
 #. module: weightrack
 #: code:addons/weightrack/models/shrinkage_tolerance.py:0
-#: model:ir.model.constraint,message:weightrack.constraint_wt_shrinkage_tolerance_company_product_division_uniq
-msgid "Shrinkage tolerance must be unique per company, product, and division."
-msgstr "Toleransi penyusutan harus unik per perusahaan, tipe produk, dan divisi."
-
-#. module: weightrack
-#: code:addons/weightrack/models/shrinkage_tolerance.py:0
-msgid "Shrinkage tolerance already exists for company '%(company)s', product '%(product)s', and division '%(division)s'."
-msgstr "Toleransi penyusutan untuk perusahaan '%(company)s', tipe produk '%(product)s', dan divisi '%(division)s' sudah ada."
+msgid "Shrinkage tolerance already exists for company '%(company)s', and division '%(division)s'."
+msgstr "Toleransi penyusutan untuk perusahaan '%(company)s' dan divisi '%(division)s' sudah ada."
 
 #. module: weightrack
 #: code:addons/weightrack/models/shrinkage_tolerance.py:0
@@ -990,6 +968,16 @@ msgstr "Estate gudang harus berada di perusahaan yang sama."
 #: code:addons/weightrack/models/receipt_rule.py:0
 msgid "Location must belong to the same company or be a shared location."
 msgstr "Lokasi harus berada di perusahaan yang sama atau berupa lokasi bersama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Location must be an internal stock location."
+msgstr "Lokasi harus berupa lokasi stock internal."
+
+#. module: weightrack
+#: code:addons/weightrack/models/receipt_rule.py:0
+msgid "Location must be under the selected warehouse."
+msgstr "Lokasi harus berada di bawah gudang yang dipilih."
 
 #. module: weightrack
 #: code:addons/weightrack/models/receipt_rule.py:0
@@ -1223,7 +1211,7 @@ msgstr "Produk Inbound Penimbangan"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_list
 msgid "Weighing"
-msgstr "Penimbangan Weighing"
+msgstr "Penimbangan"
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_api_push_inbound_weighing_service
@@ -1359,11 +1347,11 @@ msgstr "Jumlah Data OK"
 
 #. module: weightrack
 msgid "Clean Weighing Details"
-msgstr "Detail Weighing Bersih"
+msgstr "Detail Penimbangan Bersih"
 
 #. module: weightrack
 msgid "Weighing Details"
-msgstr "Detail Weighing"
+msgstr "Detail Penimbangan"
 
 #. module: weightrack
 msgid "Data OK"
@@ -1371,7 +1359,7 @@ msgstr "Data OK"
 
 #. module: weightrack
 msgid "Problem Weighing Details"
-msgstr "Detail Weighing Bermasalah"
+msgstr "Detail Penimbangan Bermasalah"
 
 #. module: weightrack
 msgid "Data with Problem"
@@ -1379,11 +1367,11 @@ msgstr "Data with Problem"
 
 #. module: weightrack
 msgid "Clean Weighing"
-msgstr "Penimbangan Weighing Bersih"
+msgstr "Penimbangan Bersih"
 
 #. module: weightrack
 msgid "Problem Weighing"
-msgstr "Penimbangan Weighing Bermasalah"
+msgstr "Penimbangan Bermasalah"
 
 #. module: weightrack
 msgid "Inbound Stock"
@@ -1420,17 +1408,17 @@ msgstr "Snapshot Odoo"
 #. module: weightrack
 #: code:addons/weightrack/services/weighing_service.py:0
 msgid "Each inbound weighing item must be an object."
-msgstr "Setiap item inbound weighing harus berupa object."
+msgstr "Setiap item inbound penimbangan harus berupa object."
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_weighing_service
 msgid "Weighing Service"
-msgstr "Layanan Weighing"
+msgstr "Layanan Penimbangan"
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_api_push_weighing_service
 msgid "API Push Weighing Service"
-msgstr "Layanan API Push Penimbangan Weighing"
+msgstr "Layanan API Push Penimbangan"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__data_problem_code__none
@@ -1600,7 +1588,7 @@ msgstr "Produk pada aturan penerimaan tidak sesuai."
 #. module: weightrack
 #: code:addons/weightrack/services/weighing_service.py:0
 msgid "Product is not configured as Weighing for the weighing company."
-msgstr "Produk belum dikonfigurasi sebagai Weighing untuk perusahaan penimbangan."
+msgstr "Produk belum dikonfigurasi sebagai produk timbang untuk perusahaan penimbangan."
 
 #. module: weightrack
 #: code:addons/weightrack/services/weighing_service.py:0
@@ -1894,12 +1882,12 @@ msgstr "Catatan Penimbangan Lapangan"
 #. module: weightrack
 #: code:addons/weightrack/services/api_push_weighing_service.py:0
 msgid "Weighing weighing items are required."
-msgstr "Item penimbangan Weighing wajib dikirim."
+msgstr "Item penimbangan wajib dikirim."
 
 #. module: weightrack
 #: code:addons/weightrack/services/api_push_weighing_service.py:0
 msgid "Weighing weighing items are empty."
-msgstr "Item penimbangan Weighing kosong."
+msgstr "Item penimbangan kosong."
 
 #. module: weightrack
 #: code:addons/weightrack/services/api_push_weighing_service.py:0
@@ -1919,7 +1907,7 @@ msgstr "Tipe produk tidak didukung: %s."
 #. module: weightrack
 #: code:addons/weightrack/models/weighing.py:0
 msgid "Weighing sequence is not configured."
-msgstr "Sequence Penimbangan Weighing belum dikonfigurasi."
+msgstr "Sequence Penimbangan belum dikonfigurasi."
 
 #. module: weightrack
 msgid "Production Receipt sequence is not configured."
@@ -2053,6 +2041,11 @@ msgid "Inventory Reversals"
 msgstr "Reversal Inventory"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__note
+msgid "Note"
+msgstr "Catatan"
+
+#. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__stock_picking_count
 msgid "Inventory Receipt Count"
 msgstr "Jumlah Penerimaan Inventory"
@@ -2086,7 +2079,7 @@ msgstr "Hanya Penerimaan Produksi draft atau diproses yang dapat diproses."
 
 #. module: weightrack
 msgid "Only Weighing Production Receipt is supported."
-msgstr "Hanya Penerimaan Produksi Weighing yang didukung."
+msgstr "Hanya Penerimaan Produksi Penimbangan yang didukung."
 
 #. module: weightrack
 msgid "No weighing data found for this Production Receipt."
@@ -2186,7 +2179,7 @@ msgstr "Penerimaan Inventory dari Penerimaan Produksi tidak dapat direturn manua
 
 #. module: weightrack
 msgid "Weighing already exists in an active Production Receipt."
-msgstr "Penimbangan Weighing sudah ada di Penerimaan Produksi aktif."
+msgstr "Penimbangan sudah ada di Penerimaan Produksi aktif."
 
 #. module: weightrack
 msgid "Cannot release weighing from a validated Production Receipt."
@@ -2203,3 +2196,204 @@ msgstr "Data problem tidak dapat dicek ulang karena Penerimaan Produksinya sudah
 #. module: weightrack
 msgid "Weighing detail validation is handled from Production Receipt."
 msgstr "Validasi detail timbang dilakukan dari Penerimaan Produksi."
+
+# -----------------------------------------------------------------------------
+# Updates after single-product weighing and Production Receipt destination flow
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__received_date
+msgid "Received Date"
+msgstr "Tanggal Diterima"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__allowed_operation_type_ids
+msgid "Allowed Operation Types"
+msgstr "Tipe Operasi yang Diizinkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__allowed_location_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__allowed_location_ids
+msgid "Allowed Locations"
+msgstr "Lokasi yang Diizinkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__location_id
+msgid "Receiving Location"
+msgstr "Lokasi Penerimaan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__lot_id
+msgid "Lot"
+msgstr "Lot"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__stock_picking_id
+msgid "Inventory Receipt"
+msgstr "Penerimaan Inventory"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__reverse_picking_id
+msgid "Inventory Reversal"
+msgstr "Reversal Inventory"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_cancel_wizard_form
+msgid "Cancel Production Receipt"
+msgstr "Batalkan Penerimaan Produksi"
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Clerk on Production Receipt is determined by Division and cannot be changed manually."
+msgstr "Kerani pada Penerimaan Produksi ditentukan oleh Divisi dan tidak dapat diubah manual."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Division must belong to the selected company."
+msgstr "Divisi harus berada di perusahaan yang dipilih."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Received Date cannot be before Production Date."
+msgstr "Tanggal Diterima tidak boleh sebelum Tanggal Produksi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Product must match the active Weighing Product for the company."
+msgstr "Produk harus sesuai dengan Produk Timbang aktif untuk perusahaan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Receiving Location must belong to the same company or be a shared location."
+msgstr "Lokasi Penerimaan harus berada di perusahaan yang sama atau berupa lokasi bersama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Receiving Location must be an internal stock location."
+msgstr "Lokasi Penerimaan harus berupa lokasi stock internal."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Warehouse must belong to the same estate as the division."
+msgstr "Gudang harus berada di estate yang sama dengan divisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Receiving Location must be under the selected warehouse."
+msgstr "Lokasi Penerimaan harus berada di bawah gudang yang dipilih."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "No active Receipt Rule exists for this division, operation type, and receiving location."
+msgstr "Tidak ada Aturan Penerimaan aktif untuk divisi, tipe operasi, dan lokasi penerimaan ini."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Please complete required fields before process: %s."
+msgstr "Lengkapi field wajib sebelum proses: %s."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "No active Receipt Rule exists for this Production Receipt destination."
+msgstr "Tidak ada Aturan Penerimaan aktif untuk tujuan Penerimaan Produksi ini."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Please set Clerk on this Production Receipt."
+msgstr "Isi Kerani pada Penerimaan Produksi ini."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Inventory lot sequence for '%s' has reached the 999 limit."
+msgstr "Sequence lot inventory untuk '%s' sudah mencapai batas 999."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Cancel reason is required."
+msgstr "Alasan pembatalan wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Inventory Receipt uses a different lot than the Production Receipt."
+msgstr "Penerimaan Inventory menggunakan lot yang berbeda dari Penerimaan Produksi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_push_weighing_service.py:0
+msgid "Weighing items are required."
+msgstr "Item penimbangan wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/services/api_push_weighing_service.py:0
+msgid "Weighing items are empty."
+msgstr "Item penimbangan kosong."
+
+#. module: weightrack
+#: code:addons/weightrack/services/weighing_service.py:0
+msgid "Each weighing item must be an object."
+msgstr "Setiap item penimbangan harus berupa object."
+# -----------------------------------------------------------------------------
+# Production Receipt field labels
+# -----------------------------------------------------------------------------
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__product_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__product_id
+msgid "Product"
+msgstr "Produk"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__clerk_employee_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__clerk_employee_id
+msgid "Clerk"
+msgstr "Kerani"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__operation_type_id
+msgid "Operation Type"
+msgstr "Tipe Operasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__warehouse_id
+msgid "Warehouse"
+msgstr "Gudang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__weighing_location_id
+msgid "Weighing Location"
+msgstr "Lokasi Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__has_data_problem
+msgid "Has Data Problem"
+msgstr "Ada Masalah Data"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__stock_weight
+msgid "Stock Weight"
+msgstr "Berat Stock"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+msgid "Weighing Number"
+msgstr "Nomor Timbang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+msgid "Weight"
+msgstr "Berat"
+
+#. module: weightrack
+msgid "Allowed Warehouses"
+msgstr "Gudang yang Diizinkan"
+
+#. module: weightrack
+msgid "Lots"
+msgstr "Lot"
+
+#. module: weightrack
+msgid "Lot Count"
+msgstr "Jumlah Lot"
+
+#. module: weightrack
+msgid "No active Receipt Rule exists for this Production Receipt scope."
+msgstr "Tidak ada Aturan Penerimaan aktif untuk scope Penerimaan Produksi ini."
