@@ -214,6 +214,7 @@ class Delivery(models.Model):
         "move_line_ids.wt_original_demand_qty",
         "move_line_ids.wt_is_pulled",
         "do_line_ids.lot_line_ids.qty",
+        "do_line_ids.lot_line_ids.wt_original_qty",
         "do_line_ids.lot_line_ids.wt_physical_qty",
         "do_line_ids.lot_line_ids.wt_is_pulled",
     )
@@ -222,7 +223,10 @@ class Delivery(models.Model):
             if rec.do_line_ids:
                 # Alur baru (rencana DO -> rincian lot)
                 active_lots = rec.do_lot_line_ids.filtered(lambda l: l.wt_is_pulled)
-                rec.total_demand_qty = sum(active_lots.mapped("qty"))
+                rec.total_demand_qty = sum(
+                    l.wt_original_qty if l.wt_original_qty > 0.0 else l.qty
+                    for l in active_lots
+                )
                 rec.total_physical_qty = sum(active_lots.mapped("wt_physical_qty"))
                 rec.total_difference_qty = rec.total_physical_qty - rec.total_demand_qty
             else:

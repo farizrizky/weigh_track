@@ -85,6 +85,11 @@ class DeliveryDoLineLot(models.Model):
         required=True,
         help="Kuantitas rencana yang akan diambil dari lot ini.",
     )
+    wt_original_qty = fields.Float(
+        string="Demand Awal (kg)",
+        digits="Product Unit of Measure",
+        help="Kuantitas demand rencana awal sebelum adjustment.",
+    )
 
     wt_physical_qty = fields.Float(
         string="Berat Fisik (kg)",
@@ -97,7 +102,7 @@ class DeliveryDoLineLot(models.Model):
         compute="_compute_wt_difference_qty",
         store=True,
         digits="Product Unit of Measure",
-        help="Berat fisik dikurangi demand rencana.",
+        help="Berat fisik dikurangi demand awal.",
     )
     wt_skip_line = fields.Boolean(
         string="Lewati",
@@ -144,10 +149,11 @@ class DeliveryDoLineLot(models.Model):
     )
 
 
-    @api.depends("wt_physical_qty", "qty")
+    @api.depends("wt_physical_qty", "wt_original_qty", "qty")
     def _compute_wt_difference_qty(self):
         for line in self:
-            line.wt_difference_qty = line.wt_physical_qty - line.qty
+            demand = line.wt_original_qty if line.wt_original_qty > 0.0 else line.qty
+            line.wt_difference_qty = line.wt_physical_qty - demand
 
     @api.depends("lot_id", "do_line_id.location_id", "product_id")
     def _compute_qty_available(self):
@@ -201,6 +207,9 @@ class DeliveryDoLineLot(models.Model):
     def create(self, vals_list):
         """Jika lot baru ditambahkan saat delivery sudah 'completed',
         revert ke 'in_progress' agar operator bisa pull dan menimbang lot baru."""
+        for vals in vals_list:
+            if "qty" in vals and "wt_original_qty" not in vals:
+                vals["wt_original_qty"] = vals["qty"]
         records = super().create(vals_list)
         deliveries = records.mapped("delivery_id").filtered(
             lambda d: d.state == "completed"
@@ -208,6 +217,15 @@ class DeliveryDoLineLot(models.Model):
         if deliveries:
             deliveries.write({"state": "in_progress"})
         return records
+
+    def write(self, vals):
+        if "qty" in vals and "wt_original_qty" not in vals and not vals.get("wt_adjustment_applied"):
+            # Jika qty diubah manual oleh user (bukan dari adjustment),
+            # rekam juga ke wt_original_qty untuk record yang belum di-adjust.
+            for rec in self:
+                if not rec.wt_adjustment_applied:
+                    super(DeliveryDoLineLot, rec).write({"wt_original_qty": vals["qty"]})
+        return super().write(vals)
 
     @api.constrains("qty")
     def _check_qty_positive(self):

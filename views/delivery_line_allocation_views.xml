@@ -116,7 +116,8 @@
                             <field name="lot_id" readonly="1"/>
                         </group>
                         <group string="Qty">
-                            <field name="qty" readonly="1" string="Demand Rencana (kg)"/>
+                            <field name="wt_original_qty" readonly="1" string="Demand Rencana (kg)"/>
+                            <field name="qty" readonly="1" string="Demand DO (kg)"/>
                             <field name="wt_physical_qty" readonly="1" string="Berat Fisik (kg)"/>
                             <field name="wt_difference_qty" readonly="1" string="Selisih (kg)"/>
                             <field name="wt_allocated_qty" readonly="1" string="Qty Teralokasi"/>

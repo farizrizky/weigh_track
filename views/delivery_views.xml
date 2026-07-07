@@ -293,7 +293,8 @@
                                     <field name="route_id" string="Rute" readonly="1"/>
                                     <field name="product_id" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
-                                    <field name="qty" string="Demand Rencana (kg)" readonly="1"/>
+                                    <field name="wt_original_qty" string="Demand Rencana (kg)" readonly="1"/>
+                                    <field name="qty" string="Demand DO (kg)" readonly="1" optional="hide"/>
                                     <field name="wt_physical_qty" string="Berat Fisik (kg)" readonly="1"/>
                                     <field name="wt_difference_qty" string="Selisih (kg)" readonly="1"
                                            decoration-danger="wt_difference_qty &lt; -0.001"
