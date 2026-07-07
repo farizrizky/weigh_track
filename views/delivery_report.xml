@@ -120,7 +120,7 @@
                                 <div class="row align-items-center">
                                     <div class="col-8">
                                         <span style="font-weight: bold; font-size: 14px; color: #0f172a;">
-                                            Rute Transit: <span t-field="line.route_id.display_name"/>
+                                            Rute: <span t-field="line.route_id.display_name"/>
                                         </span>
                                         <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
                                             Tipe Operasi: <span t-field="line.picking_type_id.display_name"/> | 

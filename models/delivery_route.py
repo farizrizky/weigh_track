@@ -43,6 +43,15 @@ class DeliveryRoute(models.Model):
         string="Aktif",
         default=True,
     )
+    is_transit = fields.Boolean(
+        string="Lokasi Tujuan adalah Transit",
+        default=False,
+        help=(
+            "Centang jika lokasi tujuan rute ini adalah lokasi transit/holding internal "
+            "(bukan customer langsung). Digunakan oleh aplikasi timbangan untuk menentukan "
+            "mode penimbangan: Transit → timbangan RAM (manual), Stok/Divisi → timbangan digital (otomatis)."
+        ),
+    )
 
     @api.constrains("source_location_id", "transit_location_id")
     def _check_locations_different(self):
@@ -51,5 +60,6 @@ class DeliveryRoute(models.Model):
                 raise ValidationError(_(
                     "Lokasi asal dan lokasi transit tidak boleh sama pada rute '%s'."
                 ) % rec.name)
+
 
 

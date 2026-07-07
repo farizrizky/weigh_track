@@ -6,11 +6,12 @@
         <field name="name">wt.delivery.route.list</field>
         <field name="model">wt.delivery.route</field>
         <field name="arch" type="xml">
-            <list string="Rute Transit Pengiriman">
+            <list string="Rute Pengiriman">
                 <field name="name"/>
                 <field name="picking_type_id"/>
                 <field name="source_location_id"/>
                 <field name="transit_location_id"/>
+                <field name="is_transit" widget="boolean_toggle" string="Tujuan Transit?"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
@@ -22,7 +23,7 @@
         <field name="name">wt.delivery.route.form</field>
         <field name="model">wt.delivery.route</field>
         <field name="arch" type="xml">
-            <form string="Rute Transit Pengiriman">
+            <form string="Rute Pengiriman">
                 <sheet>
                     <div class="oe_title">
                         <h1>
@@ -37,6 +38,9 @@
                             <field name="transit_location_id"/>
                         </group>
                         <group>
+                            <field name="is_transit"
+                                   string="Lokasi Tujuan adalah Transit"
+                                   widget="boolean_toggle"/>
                             <field name="active"/>
                         </group>
                     </group>
@@ -47,12 +51,12 @@
 
     <!-- WINDOW ACTION -->
     <record id="action_wt_delivery_route" model="ir.actions.act_window">
-        <field name="name">Rute Transit Pengiriman</field>
+        <field name="name">Rute Pengiriman</field>
         <field name="res_model">wt.delivery.route</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Buat Konfigurasi Rute Transit Baru
+                Buat Konfigurasi Rute Baru
             </p>
             <p>
                 Tentukan mapping dari Lokasi Asal ke Lokasi Transit tujuan.

@@ -35,12 +35,24 @@ class ApiDeliveryService(models.AbstractModel):
         # (baik via picking.wt_operator_id untuk alur lama maupun do_line_ids.operator_id untuk alur baru)
         domain = [
             ("company_id", "=", device.company_id.id),
-            ("state", "in", ["confirmed", "in_progress"]),
+            ("state", "in", ["confirmed", "in_progress", "completed"]),
             "|",
             ("picking_ids.wt_operator_id", "=", device.employee_id.id),
             ("do_line_ids.operator_id", "=", device.employee_id.id),
         ]
         deliveries = self.env["wt.delivery"].sudo().search(domain)
+
+        # Kumpulkan transit_location_id dari semua rute yang ditandai is_transit=True.
+        # Field ini diset manual oleh admin di Konfigurasi → Rute Transit Pengiriman,
+        # sehingga deteksi transit sepenuhnya dikontrol user — tidak bergantung pada
+        # tipe/usage lokasi secara otomatis.
+        transit_loc_ids = set(
+            self.env["wt.delivery.route"].sudo().search([
+                ("is_transit", "=", True),
+                ("transit_location_id", "!=", False),
+                ("company_id", "=", device.company_id.id),
+            ]).mapped("transit_location_id.id")
+        )
 
         deliveries_data = []
         for delivery in deliveries:
@@ -59,6 +71,8 @@ class ApiDeliveryService(models.AbstractModel):
                     and not l.wt_skip_line
                     and l.wt_physical_qty == 0.0
                 ):
+                    # Lokasi fisik lot saat ini (dari stock.quant via computed field)
+                    loc = ml.location_id
                     lines_data.append({
                         "move_line_id": ml.id,
                         "picking_id": ml.do_line_id.id,
@@ -85,6 +99,10 @@ class ApiDeliveryService(models.AbstractModel):
                         ],
                         "note": ml.wt_note or "",
                         "skip_line": ml.wt_skip_line,
+                        # ── Info lokasi lot ────────────────────────────────
+                        "location_id": loc.id if loc else False,
+                        "location_name": loc.complete_name if loc else "",
+                        "is_transit": (loc.id in transit_loc_ids) if loc else False,
                     })
                     pulled_line_ids.append(ml.id)
 
@@ -100,6 +118,7 @@ class ApiDeliveryService(models.AbstractModel):
                     and not l.wt_skip_line
                     and l.wt_physical_qty == 0.0
                 ):
+                    loc = ml.location_id
                     lines_data.append({
                         "move_line_id": ml.id,
                         "picking_id": ml.picking_id.id,
@@ -126,6 +145,10 @@ class ApiDeliveryService(models.AbstractModel):
                         ],
                         "note": ml.wt_note or "",
                         "skip_line": ml.wt_skip_line,
+                        # ── Info lokasi lot ────────────────────────────────
+                        "location_id": loc.id if loc else False,
+                        "location_name": loc.complete_name if loc else "",
+                        "is_transit": (loc.id in transit_loc_ids) if loc else False,
                     })
                     pulled_line_ids.append(ml.id)
 

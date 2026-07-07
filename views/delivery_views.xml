@@ -137,7 +137,7 @@
 
                             <!-- Tabel Rencana DO (satu field, perilaku berubah berdasarkan state) -->
                             <field name="do_line_ids"
-                                   readonly="state not in ('draft', 'confirmed')"
+                                   readonly="state in ('validated', 'done', 'cancelled')"
                                    context="{'default_delivery_id': id, 'default_company_id': company_id}">
                                 <list string="Rencana DO"
                                       decoration-success="picking_state == 'done'">
@@ -158,7 +158,7 @@
                                            options="{'no_create': True}"
                                            string="Lokasi Tujuan"/>
                                     <field name="route_id"
-                                           string="Rute Transit"
+                                           string="Rute"
                                            optional="show"/>
                                     <field name="demand_qty"
                                            string="Demand (kg)"/>
@@ -205,31 +205,38 @@
                                          <field name="picking_id" invisible="1"/>
                                         <group>
                                              <group string="Konfigurasi Operasi">
-                                                <field name="route_id" options="{'no_create': True}" force_save="1"/>
+                                                <field name="route_id" options="{'no_create': True}" force_save="1"
+                                                       readonly="picking_state == 'done'"/>
                                                 <field name="picking_type_id"
                                                        options="{'no_create': True, 'no_open': True}"
-                                                       readonly="route_id"
+                                                       readonly="route_id or picking_state == 'done'"
                                                        force_save="1"/>
-                                                <field name="product_id" options="{'no_create': True}"/>
-                                                <field name="operator_id" options="{'no_create': True}"/>
+                                                <field name="product_id" options="{'no_create': True}"
+                                                       readonly="picking_state == 'done'"/>
+                                                <field name="operator_id" options="{'no_create': True}"
+                                                       readonly="picking_state == 'done'"/>
                                             </group>
                                             <group string="Lokasi &amp; Tanggal">
                                                 <field name="location_id"
                                                        options="{'no_create': True}"
-                                                       readonly="route_id"
+                                                       readonly="route_id or picking_state == 'done'"
                                                        force_save="1"/>
                                                 <field name="location_dest_id"
                                                        options="{'no_create': True}"
-                                                       readonly="route_id"
+                                                       readonly="route_id or picking_state == 'done'"
                                                        force_save="1"/>
-                                                <field name="scheduled_date"/>
-                                                <field name="demand_qty" force_save="1"/>
-                                                <field name="partner_id" options="{'no_create': True}"/>
+                                                <field name="scheduled_date"
+                                                       readonly="picking_state == 'done'"/>
+                                                <field name="demand_qty" force_save="1"
+                                                       readonly="picking_state == 'done'"/>
+                                                <field name="partner_id" options="{'no_create': True}"
+                                                       readonly="picking_state == 'done'"/>
                                             </group>
                                         </group>
                                         <notebook>
                                             <page string="Perincian Lot (Lot Details)">
-                                                <field name="lot_line_ids" context="{'default_do_line_id': id}">
+                                                <field name="lot_line_ids" context="{'default_do_line_id': id}"
+                                                       readonly="picking_state == 'done'">
                                                     <list string="Perincian Lot" editable="bottom">
                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}"/>
                                                         <field name="location_id" readonly="1" string="Lokasi"/>
@@ -283,7 +290,7 @@
                                       decoration-danger="not wt_skip_line and wt_physical_qty == 0.0"
                                       decoration-warning="wt_difference_qty &lt; -0.001 and not wt_is_fully_allocated"
                                       decoration-success="wt_physical_qty &gt; 0.0 and (wt_difference_qty == 0.0 or wt_is_fully_allocated)">
-                                    <field name="route_id" string="Rute Transit" readonly="1"/>
+                                    <field name="route_id" string="Rute" readonly="1"/>
                                     <field name="product_id" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
                                     <field name="qty" string="Demand Rencana (kg)" readonly="1"/>
@@ -356,7 +363,7 @@
                                 </h4>
                                 <field name="unpulled_do_lot_line_ids" readonly="1">
                                     <list string="Lot Rencana Belum Di-Push" create="false" delete="false" edit="false">
-                                        <field name="route_id" string="Rute Transit"/>
+                                        <field name="route_id" string="Rute"/>
                                         <field name="product_id" string="Produk"/>
                                         <field name="lot_id" string="Nomor Seri/Lot"/>
                                         <field name="qty" string="Qty Demand (kg)"/>

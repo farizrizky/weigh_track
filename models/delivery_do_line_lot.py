@@ -195,6 +195,20 @@ class DeliveryDoLineLot(models.Model):
             line.wt_unallocated_qty = max(0.0, diff_abs - allocated)
             line.wt_is_fully_allocated = line.wt_unallocated_qty <= 0.001
 
+    # ── ORM ───────────────────────────────────────────────────────────────────
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Jika lot baru ditambahkan saat delivery sudah 'completed',
+        revert ke 'in_progress' agar operator bisa pull dan menimbang lot baru."""
+        records = super().create(vals_list)
+        deliveries = records.mapped("delivery_id").filtered(
+            lambda d: d.state == "completed"
+        )
+        if deliveries:
+            deliveries.write({"state": "in_progress"})
+        return records
+
     @api.constrains("qty")
     def _check_qty_positive(self):
         for rec in self:

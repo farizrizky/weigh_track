@@ -84,11 +84,11 @@ class DeliveryDoLine(models.Model):
         copy=True,
     )
 
-    # ── Info Rute Transit ────────────────────────────────────────────────────
+    # ── Info Rute ─────────────────────────────────────────────────────────────
     route_id = fields.Many2one(
         "wt.delivery.route",
-        string="Rute Transit",
-        help="Pilih Rute Transit untuk mengisi otomatis lokasi sumber dan tujuan.",
+        string="Rute",
+        help="Pilih Rute untuk mengisi otomatis lokasi sumber dan tujuan.",
     )
 
     # ── Hasil generate (terisi setelah Validasi) ──────────────────────────────
@@ -368,12 +368,38 @@ class DeliveryDoLine(models.Model):
                 "company_id": delivery.company_id.id,
             })
 
-        # Validasi langsung ke done
+        # ── Sesuaikan demand move ke total qty fisik aktual ──────────────────
+        # Ini mencegah Odoo membuat backorder karena demand > done.
+        # Selisih (susut/rusak/hilang) sudah ditangani via alokasi adjustment terpisah.
+        if self.lot_line_ids:
+            total_physical = sum(
+                (lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty)
+                for lot_line in self.lot_line_ids
+                if not lot_line.wt_skip_line
+            )
+        else:
+            total_physical = self.demand_qty
+
+        if total_physical > 0:
+            move.sudo().with_context(do_not_unreserve=True).write({
+                "product_uom_qty": total_physical,
+            })
+
+        # Validasi langsung ke done — tanpa backorder karena demand sudah disesuaikan ke fisik
         picking.with_context(
             skip_backorder=True,
+            no_backorder=True,
             skip_immediate=True,
             wt_force_validate=True,
         ).button_validate()
+
+        # Batalkan paksa backorder yang mungkin terbentuk (safety net)
+        backorders = self.env["stock.picking"].search([
+            ("backorder_id", "=", picking.id),
+            ("state", "not in", ("done", "cancel")),
+        ])
+        if backorders:
+            backorders.action_cancel()
 
         if picking.state != "done":
             raise ValidationError(_(
@@ -452,22 +478,6 @@ class DeliveryDoLine(models.Model):
                     "sticky": True,
                 }
             }
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        import logging
-        _logger = logging.getLogger(__name__)
-        _logger.info("=== DEBUG CREATE wt.delivery.do.line ===")
-        for vals in vals_list:
-            _logger.info("  Create vals: %s", vals)
-        return super().create(vals_list)
-
-    def write(self, vals):
-        import logging
-        _logger = logging.getLogger(__name__)
-        _logger.info("=== DEBUG WRITE wt.delivery.do.line ===")
-        _logger.info("  Write vals: %s", vals)
-        return super().write(vals)
 
     def unlink(self):
         for rec in self:

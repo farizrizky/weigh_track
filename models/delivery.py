@@ -438,11 +438,14 @@ class Delivery(models.Model):
                 moves = self.env["stock.move"].sudo().with_context(**ctx).create(move_vals_list)
                 moves.with_context(**ctx)._action_done()
 
-            # Update qty lot rencana menjadi berat fisik riil, tandai adjustment diterapkan
+            # Update qty lot rencana ke berat fisik riil dan tandai adjustment diterapkan.
+            # Tujuan: saat Validasi & Kirim, DO dibuat dengan demand = fisik aktual
+            # sehingga tidak ada selisih demand → tidak ada backorder.
             for line in adjustable_lines:
-                line.sudo().write({
-                    "wt_adjustment_applied": True,
-                })
+                write_vals = {"wt_adjustment_applied": True}
+                if line.wt_physical_qty > 0:
+                    write_vals["qty"] = line.wt_physical_qty
+                line.sudo().write(write_vals)
 
             lots = ", ".join(
                 l.lot_id.name or l.product_id.display_name
