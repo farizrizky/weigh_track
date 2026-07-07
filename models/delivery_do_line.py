@@ -297,6 +297,66 @@ class DeliveryDoLine(models.Model):
         )
         product = self.product_id
 
+        # Hitung total physical qty
+        if self.lot_line_ids:
+            total_physical = sum(
+                (lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty)
+                for lot_line in self.lot_line_ids
+                if not lot_line.wt_skip_line
+            )
+        else:
+            total_physical = self.demand_qty
+
+        # Cek jika rute ini adalah rute transit (is_transit)
+        is_transit_merge = self.route_id.is_transit and self.lot_line_ids
+
+        move_vals = []
+        if is_transit_merge:
+            # Cari inventory loss location
+            inventory_loss_loc = self.env["stock.location"].sudo().search([
+                ("usage", "=", "inventory"),
+                ("company_id", "=", delivery.company_id.id),
+            ], limit=1)
+            if not inventory_loss_loc:
+                inventory_loss_loc = self.env["stock.location"].sudo().search([
+                    ("usage", "=", "inventory"),
+                ], limit=1)
+
+            # Move 1: Consume old lots (Src -> Inventory Loss)
+            move_vals.append({
+                "description_picking": f"Consume old lots for transit merge - {product.display_name}",
+                "product_id": product.id,
+                "product_uom": product.uom_id.id,
+                "product_uom_qty": total_physical,
+                "location_id": src_location.id,
+                "location_dest_id": inventory_loss_loc.id,
+                "company_id": delivery.company_id.id,
+                "origin": delivery.name,
+            })
+            # Move 2: Produce new merged lot (Inventory Loss -> Dest)
+            move_vals.append({
+                "description_picking": f"Produce new merged lot for transit - {product.display_name}",
+                "product_id": product.id,
+                "product_uom": product.uom_id.id,
+                "product_uom_qty": total_physical,
+                "location_id": inventory_loss_loc.id,
+                "location_dest_id": dest_location.id,
+                "company_id": delivery.company_id.id,
+                "origin": delivery.name,
+            })
+        else:
+            # Normal direct internal transfer/delivery move
+            move_vals.append({
+                "description_picking": product.display_name,
+                "product_id": product.id,
+                "product_uom": product.uom_id.id,
+                "product_uom_qty": total_physical,
+                "location_id": src_location.id,
+                "location_dest_id": dest_location.id,
+                "company_id": delivery.company_id.id,
+                "origin": delivery.name,
+            })
+
         picking = self.env["stock.picking"].sudo().with_company(delivery.company_id).create({
             "picking_type_id": self.picking_type_id.id,
             "location_id": src_location.id,
@@ -307,16 +367,7 @@ class DeliveryDoLine(models.Model):
             "wt_operator_id": self.operator_id.id,
             "origin": delivery.name,
             "company_id": delivery.company_id.id,
-            "move_ids": [(0, 0, {
-                "description_picking": product.display_name,
-                "product_id": product.id,
-                "product_uom": product.uom_id.id,
-                "product_uom_qty": self.demand_qty,
-                "location_id": src_location.id,
-                "location_dest_id": dest_location.id,
-                "company_id": delivery.company_id.id,
-                "origin": delivery.name,
-            })],
+            "move_ids": [(0, 0, val) for val in move_vals],
         })
 
         # Konfirmasi picking
@@ -324,15 +375,40 @@ class DeliveryDoLine(models.Model):
 
         # Odoo 19: Hapus default move line otomatis agar kita bisa force buat sesuai rincian lot kita
         picking.move_line_ids.unlink()
-        move = picking.move_ids[:1]
 
-        if self.lot_line_ids:
+        if is_transit_merge:
+            move_1 = picking.move_ids[0]
+            move_2 = picking.move_ids[1]
+
+            # Generate new lot
+            today_str = fields.Date.today().strftime("%Y%m%d")
+            prefix = f"TR/{today_str}/"
+            last_lot = self.env["stock.lot"].sudo().search([
+                ("name", "=like", prefix + "%"),
+                ("product_id", "=", product.id),
+                ("company_id", "=", delivery.company_id.id),
+            ], order="name desc", limit=1)
+            if last_lot:
+                try:
+                    last_seq = int(last_lot.name.split("/")[-1])
+                    new_seq = last_seq + 1
+                except (ValueError, IndexError):
+                    new_seq = 1
+            else:
+                new_seq = 1
+            new_lot_name = f"{prefix}{new_seq:03d}"
+
+            new_lot = self.env["stock.lot"].sudo().create({
+                "name": new_lot_name,
+                "product_id": product.id,
+                "company_id": delivery.company_id.id,
+            })
+
+            # 1. Consume old lots
             for lot_line in self.lot_line_ids:
                 if lot_line.wt_skip_line:
                     continue
-                # Jika timbang kosong, default pakai demand
                 qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
-                # Cari lokasi fisik lot yang tepat (di bawah src_location)
                 exact_loc = src_location
                 locations = self.env["stock.location"].search([("id", "child_of", src_location.id)])
                 quant = self.env["stock.quant"].search([
@@ -345,45 +421,69 @@ class DeliveryDoLine(models.Model):
                     exact_loc = quant.location_id
 
                 self.env["stock.move.line"].sudo().create({
-                    "move_id": move.id,
+                    "move_id": move_1.id,
                     "picking_id": picking.id,
                     "product_id": product.id,
                     "product_uom_id": product.uom_id.id,
                     "lot_id": lot_line.lot_id.id,
                     "quantity": qty_done,
                     "location_id": exact_loc.id,
-                    "location_dest_id": dest_location.id,
+                    "location_dest_id": inventory_loss_loc.id,
                     "company_id": delivery.company_id.id,
                 })
-        else:
-            # Fallback jika tidak ada rincian lot sama sekali
+
+            # 2. Produce new merged lot
             self.env["stock.move.line"].sudo().create({
-                "move_id": move.id,
+                "move_id": move_2.id,
                 "picking_id": picking.id,
                 "product_id": product.id,
                 "product_uom_id": product.uom_id.id,
-                "quantity": self.demand_qty,
-                "location_id": src_location.id,
+                "lot_id": new_lot.id,
+                "quantity": total_physical,
+                "location_id": inventory_loss_loc.id,
                 "location_dest_id": dest_location.id,
                 "company_id": delivery.company_id.id,
             })
-
-        # ── Sesuaikan demand move ke total qty fisik aktual ──────────────────
-        # Ini mencegah Odoo membuat backorder karena demand > done.
-        # Selisih (susut/rusak/hilang) sudah ditangani via alokasi adjustment terpisah.
-        if self.lot_line_ids:
-            total_physical = sum(
-                (lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty)
-                for lot_line in self.lot_line_ids
-                if not lot_line.wt_skip_line
-            )
         else:
-            total_physical = self.demand_qty
+            move = picking.move_ids[:1]
+            if self.lot_line_ids:
+                for lot_line in self.lot_line_ids:
+                    if lot_line.wt_skip_line:
+                        continue
+                    qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
+                    exact_loc = src_location
+                    locations = self.env["stock.location"].search([("id", "child_of", src_location.id)])
+                    quant = self.env["stock.quant"].search([
+                        ("product_id", "=", product.id),
+                        ("location_id", "in", locations.ids),
+                        ("lot_id", "=", lot_line.lot_id.id),
+                        ("quantity", ">", 0),
+                    ], limit=1)
+                    if quant:
+                        exact_loc = quant.location_id
 
-        if total_physical > 0:
-            move.sudo().with_context(do_not_unreserve=True).write({
-                "product_uom_qty": total_physical,
-            })
+                    self.env["stock.move.line"].sudo().create({
+                        "move_id": move.id,
+                        "picking_id": picking.id,
+                        "product_id": product.id,
+                        "product_uom_id": product.uom_id.id,
+                        "lot_id": lot_line.lot_id.id,
+                        "quantity": qty_done,
+                        "location_id": exact_loc.id,
+                        "location_dest_id": dest_location.id,
+                        "company_id": delivery.company_id.id,
+                    })
+            else:
+                self.env["stock.move.line"].sudo().create({
+                    "move_id": move.id,
+                    "picking_id": picking.id,
+                    "product_id": product.id,
+                    "product_uom_id": product.uom_id.id,
+                    "quantity": self.demand_qty,
+                    "location_id": src_location.id,
+                    "location_dest_id": dest_location.id,
+                    "company_id": delivery.company_id.id,
+                })
 
         # Validasi langsung ke done — tanpa backorder karena demand sudah disesuaikan ke fisik
         picking.with_context(
