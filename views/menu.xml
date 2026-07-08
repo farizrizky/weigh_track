@@ -14,7 +14,12 @@
             <menuitem id="menu_wt_production_receipt" name="Production Receipt" parent="menu_wt_operations" action="action_wt_production_receipt" sequence="20" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_stock_opname" name="Stock Opname" parent="menu_wt_operations" action="action_wt_stock_opname" sequence="20" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_device" name="Device" parent="menu_wt_root" action="action_wt_device" sequence="12" groups="weightrack.group_admin"/>
-        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="13" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_reports" name="Reports" parent="menu_wt_root" sequence="13" groups="weightrack.group_admin"/>
+        <record id="menu_wt_reports" model="ir.ui.menu">
+            <field name="action" eval="False"/>
+        </record>
+            <menuitem id="menu_wt_weighing_production_report" name="Laporan Penimbangan Produksi" parent="menu_wt_reports" action="action_wt_weighing_production_report" sequence="10" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="14" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_api" name="API" parent="menu_wt_configuration" action="action_wt_api" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_api_request_log" name="API Request Logs" parent="menu_wt_configuration" action="action_wt_api_request_log" sequence="15" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_employee_role" name="Employee Roles" parent="menu_wt_configuration" action="action_wt_employee_role" sequence="20" groups="weightrack.group_admin"/>

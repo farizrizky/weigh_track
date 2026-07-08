@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_weighing_production_report" model="report.paperformat">
+        <field name="name">Weighing Production Report A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_weighing_production_pdf" model="ir.actions.report">
+        <field name="name">Laporan Penimbangan Produksi</field>
+        <field name="model">wt.weighing.production.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_weighing_production_document</field>
+        <field name="report_file">weightrack.report_weighing_production_document</field>
+        <field name="paperformat_id" ref="paperformat_weighing_production_report"/>
+        <field name="print_report_name">'Laporan Penimbangan Produksi - %s' % (object.production_date)</field>
+    </record>
+
+    <template id="report_weighing_production_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page wt-weighing-production-report">
+                    <style>
+                        .wt-weighing-production-report {
+                            color: #111;
+                            font-family: "Times New Roman", Times, serif;
+                            font-size: 11px;
+                        }
+                        .wt-weighing-production-report .header-table {
+                            border-collapse: collapse;
+                            margin-bottom: 16px;
+                            width: 100%;
+                        }
+                        .wt-weighing-production-report .logo-cell {
+                            vertical-align: top;
+                            width: 24%;
+                        }
+                        .wt-weighing-production-report .logo {
+                            max-height: 58px;
+                            max-width: 155px;
+                        }
+                        .wt-weighing-production-report .title-cell {
+                            text-align: center;
+                            vertical-align: top;
+                            width: 52%;
+                        }
+                        .wt-weighing-production-report .company-title {
+                            font-size: 19px;
+                            font-weight: 700;
+                            line-height: 1.12;
+                            text-transform: uppercase;
+                        }
+                        .wt-weighing-production-report .report-title {
+                            font-size: 19px;
+                            font-weight: 700;
+                            line-height: 1.12;
+                            text-transform: uppercase;
+                        }
+                        .wt-weighing-production-report .title-line {
+                            font-family: "Courier New", monospace;
+                            font-size: 17px;
+                            font-weight: 700;
+                            letter-spacing: 1px;
+                            line-height: 1;
+                        }
+                        .wt-weighing-production-report .meta-table {
+                            border-collapse: collapse;
+                            margin-bottom: 16px;
+                            width: 62%;
+                        }
+                        .wt-weighing-production-report .meta-table td {
+                            font-size: 14px;
+                            line-height: 1.35;
+                            padding: 1px 4px;
+                        }
+                        .wt-weighing-production-report .meta-label {
+                            width: 150px;
+                        }
+                        .wt-weighing-production-report .meta-separator {
+                            text-align: center;
+                            width: 10px;
+                        }
+                        .wt-weighing-production-report .meta-value {
+                            min-width: 230px;
+                        }
+                        .wt-weighing-production-report .data-table {
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-weighing-production-report .data-table th,
+                        .wt-weighing-production-report .data-table td {
+                            border: 1px solid #111;
+                            font-size: 9px;
+                            line-height: 1.2;
+                            padding: 3px 4px;
+                            vertical-align: middle;
+                        }
+                        .wt-weighing-production-report .data-table th {
+                            font-size: 9px;
+                            font-weight: 700;
+                            text-align: center;
+                        }
+                        .wt-weighing-production-report .text-center {
+                            text-align: center;
+                        }
+                        .wt-weighing-production-report .text-right {
+                            text-align: right;
+                            padding-right: 7px !important;
+                            white-space: nowrap;
+                        }
+                        .wt-weighing-production-report .total-row td {
+                            font-weight: 700;
+                        }
+                        .wt-weighing-production-report .empty-row {
+                            height: 20px;
+                        }
+                    </style>
+
+                    <table class="header-table">
+                        <tr>
+                            <td class="logo-cell">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
+                                </t>
+                                <t t-else="">
+                                    <strong t-esc="doc.company_id.name"/>
+                                </t>
+                            </td>
+                            <td class="title-cell">
+                                <div class="company-title" t-esc="doc.company_id.name"/>
+                                <div class="report-title">Laporan Penimbangan Produksi</div>
+                                <div class="title-line">===============================</div>
+                            </td>
+                            <td style="width: 24%;"></td>
+                        </tr>
+                    </table>
+
+                    <table class="meta-table">
+                        <tr>
+                            <td class="meta-label">Divisi</td>
+                            <td class="meta-separator">:</td>
+                            <td class="meta-value">
+                                <span t-if="doc.division_id" t-esc="doc.division_id.name"/>
+                                <span t-else="">Semua Divisi</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">Tanggal Produksi</td>
+                            <td class="meta-separator">:</td>
+                            <td class="meta-value"><span t-field="doc.production_date"/></td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">Cuaca</td>
+                            <td class="meta-separator">:</td>
+                            <td class="meta-value">
+                                <span t-esc="doc.weather_display or '-'"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 4%;">No</th>
+                                <th style="width: 14%;">Nama Tapper</th>
+                                <th style="width: 12%;">Mandor</th>
+                                <th style="width: 9%;">Timbangan<br/>Lapangan</th>
+                                <th style="width: 9%;">Timbangan<br/>Gudang</th>
+                                <th style="width: 7%;">Reject</th>
+                                <th style="width: 7%;">Slab</th>
+                                <th style="width: 9%;">Cup Lump<br/>Bersih</th>
+                                <th style="width: 7%;">Jml.<br/>Karung</th>
+                                <th style="width: 7%;">Susut</th>
+                                <th style="width: 6%;">Susut<br/>%</th>
+                                <th style="width: 9%;">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="doc.line_ids">
+                                <t t-foreach="doc.line_ids" t-as="line">
+                                    <tr>
+                                        <td class="text-center" t-esc="line.sequence"/>
+                                        <td><span t-esc="line.tapper_name"/></td>
+                                        <td><span t-esc="line.foreman_name"/></td>
+                                        <td class="text-right">
+                                            <span t-if="line.field_weight" t-esc="'%.2f' % line.field_weight"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-if="line.warehouse_weight" t-esc="'%.2f' % line.warehouse_weight"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-if="line.reject_weight" t-esc="'%.2f' % line.reject_weight"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-if="line.slab_weight" t-esc="'%.2f' % line.slab_weight"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-if="line.net_weight" t-esc="'%.2f' % line.net_weight"/>
+                                        </td>
+                                        <td class="text-center">
+                                            <span t-if="line.total_bag" t-esc="line.total_bag"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-if="line.field_weight" t-esc="'%.2f' % line.shrinkage_weight"/>
+                                        </td>
+                                        <td class="text-right">
+                                            <span t-if="line.field_weight" t-esc="'%.2f' % line.shrinkage_percentage"/>
+                                        </td>
+                                        <td><span t-esc="line.note"/></td>
+                                    </tr>
+                                </t>
+                                <tr class="total-row">
+                                    <td colspan="3" class="text-center">Total</td>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % doc.total_field_weight"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % doc.total_warehouse_weight"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % doc.total_reject_weight"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % doc.total_slab_weight"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % doc.total_net_weight"/>
+                                    </td>
+                                    <td class="text-center">
+                                        <span t-esc="doc.total_bag"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % doc.total_shrinkage"/>
+                                    </td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </t>
+                            <tr t-if="not doc.line_ids">
+                                <td colspan="12" class="text-center">Tidak ada data penimbangan.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

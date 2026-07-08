@@ -20,6 +20,8 @@
         "views/stock_picking_views.xml",
         "views/receipt_rule_views.xml",
         "views/weighing_views.xml",
+        "views/weighing_production_report.xml",
+        "views/weighing_production_report_views.xml",
         "views/production_slip_report.xml",
         "views/production_receipt_cancel_wizard_views.xml",
         "views/production_receipt_views.xml",
