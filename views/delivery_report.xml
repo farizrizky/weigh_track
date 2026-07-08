@@ -592,9 +592,7 @@
                         <span t-if="doc.handover_date_text" t-esc="doc.handover_date_text"/>
                         <span t-else="">........................</span>
                         telah diserah terimakan barang dari gudang
-                        <span t-esc="doc.location_id.display_name or '........................'"/>
-                        kepada
-                        <span t-esc="doc.sent_to_pt or '........................'"/>.
+                        <span t-esc="doc.company_id.name or '........................'"/>.
                     </p>
 
                     <table class="goods-table">
@@ -656,7 +654,7 @@
 
                     <p class="paragraph">
                         Dengan surat jalan no :
-                        <span t-esc="doc.picking_id.name or doc.delivery_id.name or '........................'"/>
+                        <span style="display: inline-block; min-width: 180px;"> </span>
                         kepada pihak angkutan sebagai transporter menggunakan kendaraan truck nomor polisi
                         <span t-esc="doc.vehicle_plate or '........................'"/>
                         dikirim ke
@@ -789,7 +787,7 @@
                             width: 80px;
                         }
                         .wt-surat-jalan .recipient {
-                            margin: 0 0 8px 150px;
+                            margin: 0 0 8px 0;
                             min-height: 38px;
                         }
                         .wt-surat-jalan .goods-table {
@@ -818,25 +816,23 @@
                         .wt-surat-jalan .center {
                             text-align: center;
                         }
-                        .wt-surat-jalan .footer-grid {
-                            border-collapse: collapse;
-                            width: 98%;
-                        }
-                        .wt-surat-jalan .footer-grid td {
+                        .wt-surat-jalan .footer-row td {
                             border: 1px solid #222;
                             height: 74px;
+                            padding: 0;
                             text-align: center;
                             vertical-align: top;
                         }
                         .wt-surat-jalan .copy-cell {
                             font-size: 12px;
                             line-height: 1.45;
+                            padding: 4px 7px;
                             text-align: left !important;
-                            width: 16%;
+                            vertical-align: middle;
                         }
                         .wt-surat-jalan .signature-title {
                             border-bottom: 1px solid #222;
-                            padding: 3px 4px;
+                            padding: 3px 7px;
                         }
                         .wt-surat-jalan .signature-name {
                             margin-top: 42px;
@@ -874,7 +870,7 @@
                                     <tr>
                                         <td>Nomor</td>
                                         <td>:</td>
-                                        <td><span t-esc="doc.name"/></td>
+                                        <td></td>
                                     </tr>
                                     <tr>
                                         <td>Tanggal</td>
@@ -939,33 +935,32 @@
                                 </tr>
                             </t>
                         </tbody>
-                    </table>
-
-                    <table class="footer-grid">
-                        <tr>
-                            <td class="copy-cell">
-                                <div>Lbr 1 : Mark HO</div>
-                                <div>Lbr 2 : Customer</div>
-                                <div>Lbr 3 : File</div>
-                            </td>
-                            <td>
-                                <div class="signature-title">Diterima dengan baik oleh,</div>
-                                <div class="signature-name">Customer</div>
-                            </td>
-                            <td>
-                                <div class="signature-title">Ekspedisi</div>
-                                <div class="signature-name"></div>
-                            </td>
-                            <td>
-                                <div class="signature-title">Diketahui,</div>
-                                <div class="signature-name"></div>
-                            </td>
-                            <td>
-                                <div class="signature-title">Diserahkan,</div>
-                                <div class="signature-name"></div>
-                            </td>
-                        </tr>
-                    </table>
+                            <tbody>
+                                <tr class="footer-row">
+                                    <td class="copy-cell">
+                                        <div>Lbr 1 : Mark HO</div>
+                                        <div>Lbr 2 : Customer</div>
+                                        <div>Lbr 3 : File</div>
+                                    </td>
+                                    <td>
+                                        <div class="signature-title">Diterima dengan baik oleh,</div>
+                                        <div class="signature-name">Customer</div>
+                                    </td>
+                                    <td>
+                                        <div class="signature-title">Ekspedisi</div>
+                                        <div class="signature-name"></div>
+                                    </td>
+                                    <td>
+                                        <div class="signature-title">Diketahui,</div>
+                                        <div class="signature-name"></div>
+                                    </td>
+                                    <td>
+                                        <div class="signature-title">Diserahkan,</div>
+                                        <div class="signature-name"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                 </div>
             </t>
         </t>
