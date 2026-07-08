@@ -2,6 +2,7 @@
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from ..constants.roles import Role
 
 
 class DeliveryDoLine(models.Model):
@@ -40,6 +41,71 @@ class DeliveryDoLine(models.Model):
         required=True,
         help="Operator yang bertanggung jawab atas Delivery Order ini.",
     )
+    allowed_operator_ids = fields.Many2many(
+        "hr.employee",
+        compute="_compute_allowed_operator_ids",
+        string="Allowed Operators",
+    )
+
+    @api.depends("location_id", "company_id", "picking_type_id", "picking_type_id.warehouse_id.estate_id")
+    def _compute_allowed_operator_ids(self):
+        for line in self:
+            estate = line.picking_type_id.warehouse_id.estate_id
+            
+            if not line.location_id:
+                # Fallback: Tampilkan operator di estate ini, jika tidak ada baru tampilkan seluruh operator di company
+                operators = self.env["hr.employee"]
+                if estate:
+                    weighing_locs = self.env["wt.weighing.location"].search([
+                        ("estate_id", "=", estate.id),
+                        ("company_id", "=", line.company_id.id),
+                    ])
+                    operators = weighing_locs.mapped("operator_id")
+                
+                if not operators:
+                    operators = self.env["wt.employee.role"].get_allowed_employees(
+                        line.company_id,
+                        Role.OPERATOR
+                    )
+                line.allowed_operator_ids = operators
+                continue
+
+            # Cari Aturan Penerimaan (Receipt Rule) yang memetakan lokasi sumber ini atau anaknya
+            domain = [
+                ("location_id", "child_of", line.location_id.id),
+                ("company_id", "=", line.company_id.id),
+            ]
+            if estate:
+                domain.append(("estate_id", "=", estate.id))
+                
+            rules = self.env["wt.receipt.rule"].search(domain)
+            # Dapatkan Weighing Location-nya
+            weighing_locations = rules.mapped("weighing_location_id")
+            # Ambil operator aktif yang ditugaskan di Weighing Location tersebut
+            operators = weighing_locations.mapped("operator_id")
+
+            # Jika tidak ditemukan mapping atau operator tidak terdefinisi di Weighing Location,
+            # fallback ke operator yang ditugaskan di estate ini
+            if not operators and estate:
+                weighing_locs = self.env["wt.weighing.location"].search([
+                    ("estate_id", "=", estate.id),
+                    ("company_id", "=", line.company_id.id),
+                ])
+                operators = weighing_locs.mapped("operator_id")
+
+            # Jika masih kosong, fallback ke seluruh operator di company tersebut
+            if not operators:
+                operators = self.env["wt.employee.role"].get_allowed_employees(
+                    line.company_id,
+                    Role.OPERATOR
+                )
+            line.allowed_operator_ids = operators
+
+    @api.onchange("location_id")
+    def _onchange_location_id_clear_operator(self):
+        for line in self:
+            if line.operator_id and line.operator_id not in line.allowed_operator_ids:
+                line.operator_id = False
     product_id = fields.Many2one(
         "product.product",
         string="Produk",
