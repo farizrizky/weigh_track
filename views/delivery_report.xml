@@ -208,4 +208,251 @@
             </t>
         </t>
     </template>
+
+    <record id="paperformat_despatch_slip" model="report.paperformat">
+        <field name="name">Despatch Slip A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_despatch_slip" model="ir.actions.report">
+        <field name="name">Despatch Slip</field>
+        <field name="model">wt.delivery.do.line</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_despatch_slip_document</field>
+        <field name="report_file">weightrack.report_despatch_slip_document</field>
+        <field name="paperformat_id" ref="paperformat_despatch_slip"/>
+        <field name="binding_model_id" ref="model_wt_delivery_do_line"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Despatch Slip - %s' % (object.picking_id.name or object.delivery_id.name)</field>
+    </record>
+
+    <template id="report_despatch_slip_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page wt-despatch-slip">
+                    <style>
+                        .wt-despatch-slip {
+                            color: #111;
+                            font-family: Arial, Helvetica, sans-serif;
+                            font-size: 11px;
+                        }
+                        .wt-despatch-slip .header-table {
+                            border-collapse: collapse;
+                            margin-bottom: 20px;
+                            width: 100%;
+                        }
+                        .wt-despatch-slip .header-table td {
+                            vertical-align: top;
+                        }
+                        .wt-despatch-slip .brand-cell {
+                            width: 34%;
+                        }
+                        .wt-despatch-slip .title-cell {
+                            padding-top: 42px;
+                            text-align: center;
+                            width: 32%;
+                        }
+                        .wt-despatch-slip .meta-cell {
+                            font-size: 10px;
+                            font-weight: 700;
+                            line-height: 1.6;
+                            padding-top: 8px;
+                            text-align: left;
+                            width: 34%;
+                        }
+                        .wt-despatch-slip .company-logo {
+                            max-height: 86px;
+                            max-width: 220px;
+                        }
+                        .wt-despatch-slip .company-name {
+                            font-size: 28px;
+                            font-weight: 700;
+                            line-height: 1;
+                            margin-top: 14px;
+                        }
+                        .wt-despatch-slip .company-subtitle {
+                            font-size: 12px;
+                            font-weight: 700;
+                            margin-left: 50px;
+                        }
+                        .wt-despatch-slip .slip-title {
+                            display: inline-block;
+                            font-size: 20px;
+                            font-weight: 700;
+                            letter-spacing: .2px;
+                            line-height: 1.15;
+                            padding-bottom: 3px;
+                            text-decoration: underline;
+                        }
+                        .wt-despatch-slip .slip-number {
+                            font-size: 11px;
+                            font-weight: 700;
+                            margin-top: 6px;
+                        }
+                        .wt-despatch-slip .dotted-value {
+                            border-bottom: 1px dotted #222;
+                            display: inline-block;
+                            min-width: 118px;
+                            padding: 0 4px 1px;
+                            text-align: left;
+                        }
+                        .wt-despatch-slip .main-table {
+                            border: 1px solid #222;
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-despatch-slip .main-table th,
+                        .wt-despatch-slip .main-table td {
+                            border: 1px solid #222;
+                            padding: 3px 5px;
+                            vertical-align: middle;
+                        }
+                        .wt-despatch-slip .main-table th {
+                            font-weight: 400;
+                            text-align: center;
+                        }
+                        .wt-despatch-slip .info-cell {
+                            height: 34px;
+                            line-height: 1.45;
+                        }
+                        .wt-despatch-slip .label {
+                            display: inline-block;
+                            white-space: nowrap;
+                            width: 64px;
+                        }
+                        .wt-despatch-slip .separator {
+                            display: inline-block;
+                            width: 12px;
+                        }
+                        .wt-despatch-slip .item-row td {
+                            height: 17px;
+                        }
+                        .wt-despatch-slip .number {
+                            text-align: right;
+                        }
+                        .wt-despatch-slip .center {
+                            text-align: center;
+                        }
+                        .wt-despatch-slip .issue-row td {
+                            height: 22px;
+                            vertical-align: top;
+                        }
+                        .wt-despatch-slip .signature-row td {
+                            height: 80px;
+                            vertical-align: top;
+                        }
+                        .wt-despatch-slip .footer-copy {
+                            border-collapse: collapse;
+                            font-size: 11px;
+                            font-style: italic;
+                            margin-top: 6px;
+                            width: 100%;
+                        }
+                        .wt-despatch-slip .footer-copy td {
+                            text-align: center;
+                            width: 33.333%;
+                        }
+                    </style>
+
+                    <table class="header-table">
+                        <tr>
+                            <td class="brand-cell">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="company-logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
+                                </t>
+                                <t t-else="">
+                                    <div class="company-name" t-esc="doc.company_id.name"/>
+                                    <div class="company-subtitle">Plantations</div>
+                                </t>
+                            </td>
+                            <td class="title-cell">
+                                <div class="slip-title">DESPACT SLIP</div>
+                                <div class="slip-number">
+                                    No. :
+                                    <span class="dotted-value">
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="meta-cell">
+                                <div>From. No : BMH-FR-34</div>
+                                <div>Rev : 00</div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="main-table">
+                        <tr>
+                            <td class="info-cell" colspan="3">
+                                <div>
+                                    <span class="label">FORM</span>
+                                    <span class="separator">:</span>
+                                </div>
+                                <div>
+                                    <span class="label">BPP No</span>
+                                    <span class="separator">:</span>
+                                </div>
+                            </td>
+                            <td class="info-cell" colspan="2">
+                                <div>
+                                    <span class="label">TO</span>
+                                    <span class="separator">:</span>
+                                </div>
+                                <div>ISSUED AGAINST REQUISITION</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th style="width: 13%;">Quantity</th>
+                            <th style="width: 23%;">Unit</th>
+                            <th style="width: 23%;">Code No.</th>
+                            <th style="width: 41%;" colspan="2">Description</th>
+                        </tr>
+                        <tr class="item-row">
+                            <td class="number">
+                                <span t-esc="('{:,.2f}'.format(doc.demand_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                            </td>
+                            <td>Cup lump</td>
+                            <td></td>
+                            <td colspan="2"></td>
+                        </tr>
+                        <t t-foreach="[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]" t-as="blank_row">
+                            <tr class="item-row">
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </t>
+                        <tr class="issue-row">
+                            <td colspan="3">Date Of issue</td>
+                            <td colspan="2">
+                                Date Of Receipt
+                            </td>
+                        </tr>
+                        <tr class="signature-row">
+                            <td colspan="3">Pengirim :</td>
+                            <td colspan="2">Penerima :</td>
+                        </tr>
+                    </table>
+
+                    <table class="footer-copy">
+                        <tr>
+                            <td>Lembar 1 - Putih : File</td>
+                            <td>Lembar 2 - Kuning : Gudang</td>
+                            <td>Lembar 3 - Hijau : Penerima</td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
 </odoo>

@@ -210,6 +210,11 @@
                                              icon="fa-check"
                                              class="btn-primary"
                                              invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
+                                    <button name="action_print_despatch_slip"
+                                            string="Print Despatch Slip"
+                                            type="object"
+                                            icon="fa-print"
+                                            invisible="picking_state != 'done'"/>
                                     <field name="company_id" column_invisible="1"/>
                                 </list>
                                 <form string="Rincian Rencana DO">
@@ -219,6 +224,11 @@
                                                  type="object"
                                                  class="btn-primary"
                                                  invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
+                                         <button name="action_print_despatch_slip"
+                                                 string="Print Despatch Slip"
+                                                 type="object"
+                                                 class="btn-secondary"
+                                                 invisible="picking_state != 'done'"/>
                                          <field name="picking_state" widget="statusbar" statusbar_visible="assigned,done" invisible="not picking_id"/>
                                      </header>
                                     <sheet>

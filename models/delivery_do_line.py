@@ -677,6 +677,13 @@ class DeliveryDoLine(models.Model):
             line._action_create_done_picking()
         return True
 
+    def action_print_despatch_slip(self):
+        """Print DESPACT SLIP untuk baris Rencana DO yang sudah valid."""
+        self.ensure_one()
+        if self.picking_state != "done":
+            raise ValidationError(_("Despatch Slip hanya bisa dicetak setelah Rencana DO divalidasi."))
+        return self.env.ref("weightrack.action_report_despatch_slip").report_action(self)
+
     def action_auto_allocate_lots(self):
         """Mencari stok lot yang tersedia di lokasi sumber, lalu membuat rincian lot secara otomatis."""
         self.ensure_one()
@@ -745,4 +752,3 @@ class DeliveryDoLine(models.Model):
                     "Baris DO Rute '%s' tidak dapat dihapus karena sudah divalidasi/selesai."
                 ) % (rec.route_id.display_name or rec.picking_type_id.display_name))
         return super().unlink()
-
