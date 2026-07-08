@@ -141,6 +141,34 @@ class DeliveryDoLine(models.Model):
         digits="Product Unit of Measure",
         help="Total kuantitas yang akan dikirim dalam DO ini. Otomatis terjumlah dari rincian lot jika diisi.",
     )
+    handover_date = fields.Date(
+        string="Tanggal Berita Acara",
+        default=fields.Date.context_today,
+    )
+    handover_date_text = fields.Char(
+        string="Tanggal Berita Acara (Teks)",
+        compute="_compute_handover_date_text",
+    )
+    vehicle_plate = fields.Char(
+        string="Nomor Polisi",
+    )
+    sent_to_pt = fields.Char(
+        string="Dikirim ke PT",
+    )
+    tare_qty = fields.Float(
+        string="Tare (kg)",
+        digits="Product Unit of Measure",
+    )
+    net_qty = fields.Float(
+        string="Netto (kg)",
+        compute="_compute_weight_summary",
+        digits="Product Unit of Measure",
+    )
+    gross_qty = fields.Float(
+        string="Bruto (kg)",
+        compute="_compute_weight_summary",
+        digits="Product Unit of Measure",
+    )
 
     # ── Rincian Lot (Sub-form/Perincian Lot) ──────────────────────────────────
     lot_line_ids = fields.One2many(
@@ -178,6 +206,41 @@ class DeliveryDoLine(models.Model):
         for rec in self:
             if rec.lot_line_ids:
                 rec.demand_qty = sum(rec.lot_line_ids.mapped("qty"))
+
+    @api.depends("demand_qty", "tare_qty", "lot_line_ids.wt_physical_qty", "lot_line_ids.wt_skip_line")
+    def _compute_weight_summary(self):
+        for rec in self:
+            active_lots = rec.lot_line_ids.filtered(lambda lot: not lot.wt_skip_line)
+            physical_qty = sum(active_lots.mapped("wt_physical_qty"))
+            rec.net_qty = physical_qty if physical_qty > 0.0 else rec.demand_qty
+            rec.gross_qty = rec.tare_qty + rec.net_qty
+
+    @api.depends("handover_date")
+    def _compute_handover_date_text(self):
+        month_names = {
+            1: "Januari",
+            2: "Februari",
+            3: "Maret",
+            4: "April",
+            5: "Mei",
+            6: "Juni",
+            7: "Juli",
+            8: "Agustus",
+            9: "September",
+            10: "Oktober",
+            11: "November",
+            12: "Desember",
+        }
+        for rec in self:
+            if rec.handover_date:
+                date_value = fields.Date.to_date(rec.handover_date)
+                rec.handover_date_text = "%s %s %s" % (
+                    date_value.day,
+                    month_names[date_value.month],
+                    date_value.year,
+                )
+            else:
+                rec.handover_date_text = False
 
     # ── Onchange ──────────────────────────────────────────────────────────────
 
@@ -683,6 +746,26 @@ class DeliveryDoLine(models.Model):
         if self.picking_state != "done":
             raise ValidationError(_("Despatch Slip hanya bisa dicetak setelah Rencana DO divalidasi."))
         return self.env.ref("weightrack.action_report_despatch_slip").report_action(self)
+
+    def action_print_handover_report(self):
+        """Print Berita Acara Serah Terima Barang untuk baris Rencana DO."""
+        self.ensure_one()
+        if self.picking_state != "done":
+            raise ValidationError(_("Berita Acara hanya bisa dicetak setelah Rencana DO divalidasi."))
+        return self.env.ref("weightrack.action_report_delivery_handover").report_action(self)
+
+    def action_open_handover_details(self):
+        """Buka popup edit khusus detail Berita Acara meskipun Rencana DO sudah readonly."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Detail Berita Acara"),
+            "res_model": "wt.delivery.do.line",
+            "res_id": self.id,
+            "view_mode": "form",
+            "view_id": self.env.ref("weightrack.view_wt_delivery_do_line_handover_form").id,
+            "target": "new",
+        }
 
     def action_auto_allocate_lots(self):
         """Mencari stok lot yang tersedia di lokasi sumber, lalu membuat rincian lot secara otomatis."""

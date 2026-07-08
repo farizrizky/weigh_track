@@ -242,8 +242,10 @@
                     <style>
                         .wt-despatch-slip {
                             color: #111;
-                            font-family: Arial, Helvetica, sans-serif;
-                            font-size: 11px;
+                            font-family: "Times New Roman", Times, serif;
+                            font-size: 12px;
+                            letter-spacing: .2px;
+                            line-height: 1.35;
                         }
                         .wt-despatch-slip .header-table {
                             border-collapse: collapse;
@@ -262,9 +264,9 @@
                             width: 32%;
                         }
                         .wt-despatch-slip .meta-cell {
-                            font-size: 10px;
+                            font-size: 11px;
                             font-weight: 700;
-                            line-height: 1.6;
+                            line-height: 1.75;
                             padding-top: 8px;
                             text-align: left;
                             width: 34%;
@@ -288,8 +290,8 @@
                             display: inline-block;
                             font-size: 20px;
                             font-weight: 700;
-                            letter-spacing: .2px;
-                            line-height: 1.15;
+                            letter-spacing: .45px;
+                            line-height: 1.25;
                             padding-bottom: 3px;
                             text-decoration: underline;
                         }
@@ -314,7 +316,7 @@
                         .wt-despatch-slip .main-table th,
                         .wt-despatch-slip .main-table td {
                             border: 1px solid #222;
-                            padding: 3px 5px;
+                            padding: 4px 7px;
                             vertical-align: middle;
                         }
                         .wt-despatch-slip .main-table th {
@@ -323,7 +325,7 @@
                         }
                         .wt-despatch-slip .info-cell {
                             height: 34px;
-                            line-height: 1.45;
+                            line-height: 1.6;
                         }
                         .wt-despatch-slip .label {
                             display: inline-block;
@@ -335,7 +337,7 @@
                             width: 12px;
                         }
                         .wt-despatch-slip .item-row td {
-                            height: 17px;
+                            height: 19px;
                         }
                         .wt-despatch-slip .number {
                             text-align: right;
@@ -449,6 +451,519 @@
                             <td>Lembar 1 - Putih : File</td>
                             <td>Lembar 2 - Kuning : Gudang</td>
                             <td>Lembar 3 - Hijau : Penerima</td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="paperformat_delivery_handover" model="report.paperformat">
+        <field name="name">Berita Acara Serah Terima A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">14</field>
+        <field name="margin_bottom">14</field>
+        <field name="margin_left">14</field>
+        <field name="margin_right">14</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_delivery_handover" model="ir.actions.report">
+        <field name="name">Berita Acara Serah Terima Barang</field>
+        <field name="model">wt.delivery.do.line</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_delivery_handover_document</field>
+        <field name="report_file">weightrack.report_delivery_handover_document</field>
+        <field name="paperformat_id" ref="paperformat_delivery_handover"/>
+        <field name="binding_model_id" ref="model_wt_delivery_do_line"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Berita Acara - %s' % (object.picking_id.name or object.delivery_id.name)</field>
+    </record>
+
+    <template id="report_delivery_handover_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page wt-delivery-handover">
+                    <style>
+                        .wt-delivery-handover {
+                            color: #111;
+                            font-family: "Times New Roman", Times, serif;
+                            font-size: 14px;
+                            letter-spacing: .2px;
+                            line-height: 1.45;
+                        }
+                        .wt-delivery-handover .company-title {
+                            font-size: 18px;
+                            font-weight: 700;
+                            letter-spacing: .3px;
+                            line-height: 1.15;
+                            margin-top: 4px;
+                            text-align: center;
+                            text-transform: uppercase;
+                        }
+                        .wt-delivery-handover .document-title {
+                            font-size: 16px;
+                            font-weight: 700;
+                            letter-spacing: .35px;
+                            margin: 30px 0 18px;
+                            text-align: center;
+                            text-transform: uppercase;
+                        }
+                        .wt-delivery-handover .intro {
+                            margin: 0 0 8px;
+                            text-align: justify;
+                        }
+                        .wt-delivery-handover .goods-table {
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-delivery-handover .goods-table th,
+                        .wt-delivery-handover .goods-table td {
+                            border: 1px solid #222;
+                            padding: 6px 8px;
+                            vertical-align: top;
+                        }
+                        .wt-delivery-handover .goods-table th {
+                            font-weight: 700;
+                            text-align: center;
+                        }
+                        .wt-delivery-handover .goods-table .item-row td {
+                            height: 26px;
+                        }
+                        .wt-delivery-handover .number {
+                            text-align: right;
+                            white-space: nowrap;
+                        }
+                        .wt-delivery-handover .center {
+                            text-align: center;
+                        }
+                        .wt-delivery-handover .summary-lines div {
+                            line-height: 1.5;
+                        }
+                        .wt-delivery-handover .total-row td {
+                            font-weight: 700;
+                        }
+                        .wt-delivery-handover .paragraph {
+                            margin-top: 14px;
+                            text-align: justify;
+                        }
+                        .wt-delivery-handover .place-date {
+                            margin-top: 28px;
+                            text-align: right;
+                        }
+                        .wt-delivery-handover .signature-table {
+                            border-collapse: collapse;
+                            margin-top: 16px;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-delivery-handover .signature-table td {
+                            height: 118px;
+                            text-align: center;
+                            vertical-align: top;
+                            width: 33.333%;
+                        }
+                        .wt-delivery-handover .signature-table tr + tr td {
+                            padding-top: 44px;
+                        }
+                        .wt-delivery-handover .signature-title {
+                            min-height: 30px;
+                        }
+                        .wt-delivery-handover .signature-name {
+                            border-bottom: 1px solid #333;
+                            display: inline-block;
+                            min-width: 150px;
+                            padding: 0 8px 2px;
+                        }
+                    </style>
+
+                    <div class="company-title">
+                        <span t-esc="(doc.company_id.name or 'PT JULANG OCA PERMANA').upper()"/>
+                    </div>
+                    <div class="document-title">BERITA ACARA SERAH TERIMA BARANG</div>
+
+                    <p class="intro">
+                        Pada hari ini tanggal
+                        <span t-if="doc.handover_date_text" t-esc="doc.handover_date_text"/>
+                        <span t-else="">........................</span>
+                        telah diserah terimakan barang dari gudang
+                        <span t-esc="doc.location_id.display_name or '........................'"/>
+                        kepada
+                        <span t-esc="doc.sent_to_pt or '........................'"/>.
+                    </p>
+
+                    <table class="goods-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 12%;">KODE<br/>BARANG</th>
+                                <th style="width: 28%;">NAMA BARANG</th>
+                                <th style="width: 18%;">HASIL TIMBANG</th>
+                                <th style="width: 14%;">SATUAN (Kg)</th>
+                                <th style="width: 28%;">JUMLAH</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="item-row">
+                                <td class="center">
+                                    <span t-esc="doc.product_id.default_code or ''"/>
+                                </td>
+                                <td>
+                                    <span t-esc="doc.product_id.display_name or ''"/>
+                                </td>
+                                <td class="number">
+                                    <span t-esc="('{:,.2f}'.format(doc.net_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                </td>
+                                <td class="center">Kg</td>
+                                <td class="summary-lines">
+                                    <div>
+                                        Bruto :
+                                        <span t-esc="('{:,.2f}'.format(doc.gross_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                    </div>
+                                    <div>
+                                        Tare :
+                                        <span t-esc="('{:,.2f}'.format(doc.tare_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                    </div>
+                                    <div>
+                                        Netto :
+                                        <span t-esc="('{:,.2f}'.format(doc.net_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                    </div>
+                                </td>
+                            </tr>
+                            <t t-foreach="[1,2,3,4,5,6]" t-as="blank_row">
+                                <tr class="item-row">
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </t>
+                            <tr class="total-row">
+                                <td colspan="2">TOTAL</td>
+                                <td class="number">
+                                    <span t-esc="('{:,.2f}'.format(doc.net_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                </td>
+                                <td class="center">Kg</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p class="paragraph">
+                        Dengan surat jalan no :
+                        <span t-esc="doc.picking_id.name or doc.delivery_id.name or '........................'"/>
+                        kepada pihak angkutan sebagai transporter menggunakan kendaraan truck nomor polisi
+                        <span t-esc="doc.vehicle_plate or '........................'"/>
+                        dikirim ke
+                        <span t-esc="doc.sent_to_pt or '........................'"/>.
+                    </p>
+                    <p class="intro">
+                        Pada saat penyerahan jumlah off grade cukup dan baik, barang ditutup dengan terpal dan disegel/gembok.
+                        Demikian berita acara ini dibuat dengan sebenarnya, agar dapat dipergunakan dengan semestinya.
+                    </p>
+
+                    <div class="place-date">
+                        <span t-if="doc.handover_date_text" t-esc="doc.handover_date_text"/>
+                        <span t-else="">........................</span>
+                    </div>
+
+                    <table class="signature-table">
+                        <tr>
+                            <td>
+                                <div class="signature-title">Diterima oleh,</div>
+                                <div style="height: 68px;"></div>
+                                <div class="signature-name"></div>
+                                <div>Supir</div>
+                            </td>
+                            <td>
+                                <div class="signature-title">Disaksikan oleh,</div>
+                                <div style="height: 68px;"></div>
+                                <div class="signature-name"></div>
+                                <div>Satpam</div>
+                            </td>
+                            <td>
+                                <div class="signature-title">Diserahkan oleh,</div>
+                                <div style="height: 68px;"></div>
+                                <div class="signature-name"></div>
+                                <div>Juru Muat</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="signature-title">Disaksikan oleh,</div>
+                                <div style="height: 68px;"></div>
+                                <div class="signature-name"></div>
+                                <div>Logistik</div>
+                            </td>
+                            <td></td>
+                            <td>
+                                <div class="signature-title">Diketahui oleh,</div>
+                                <div style="height: 68px;"></div>
+                                <div class="signature-name"></div>
+                                <div>Manager Operasional</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="paperformat_surat_jalan" model="report.paperformat">
+        <field name="name">Surat Jalan A4 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_surat_jalan" model="ir.actions.report">
+        <field name="name">Surat Jalan</field>
+        <field name="model">wt.delivery</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_surat_jalan_document</field>
+        <field name="report_file">weightrack.report_surat_jalan_document</field>
+        <field name="paperformat_id" ref="paperformat_surat_jalan"/>
+        <field name="binding_model_id" ref="model_wt_delivery"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Surat Jalan - %s' % (object.name)</field>
+    </record>
+
+    <template id="report_surat_jalan_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="sj_lines" t-value="doc._get_surat_jalan_lines()"/>
+                <div class="page wt-surat-jalan">
+                    <style>
+                        .wt-surat-jalan {
+                            color: #111;
+                            font-family: "Times New Roman", Times, serif;
+                            font-size: 13px;
+                            letter-spacing: .25px;
+                            line-height: 1.38;
+                        }
+                        .wt-surat-jalan .header-table {
+                            border-collapse: collapse;
+                            margin-bottom: 12px;
+                            width: 98%;
+                        }
+                        .wt-surat-jalan .header-table td {
+                            vertical-align: top;
+                        }
+                        .wt-surat-jalan .logo {
+                            max-height: 54px;
+                            max-width: 160px;
+                        }
+                        .wt-surat-jalan .company-fallback {
+                            font-size: 22px;
+                            font-weight: 700;
+                        }
+                        .wt-surat-jalan .title {
+                            font-size: 19px;
+                            font-weight: 700;
+                            letter-spacing: .35px;
+                            padding-top: 22px;
+                            text-align: center;
+                        }
+                        .wt-surat-jalan .meta-table {
+                            border-collapse: collapse;
+                            font-size: 13px;
+                            width: 100%;
+                        }
+                        .wt-surat-jalan .meta-table td {
+                            padding: 2px 5px;
+                        }
+                        .wt-surat-jalan .label {
+                            white-space: nowrap;
+                            width: 80px;
+                        }
+                        .wt-surat-jalan .recipient {
+                            margin: 0 0 8px 150px;
+                            min-height: 38px;
+                        }
+                        .wt-surat-jalan .goods-table {
+                            border: 1px solid #222;
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 98%;
+                        }
+                        .wt-surat-jalan .goods-table th,
+                        .wt-surat-jalan .goods-table td {
+                            border: 1px solid #222;
+                            padding: 4px 7px;
+                            vertical-align: top;
+                        }
+                        .wt-surat-jalan .goods-table th {
+                            font-weight: 400;
+                            text-align: center;
+                        }
+                        .wt-surat-jalan .goods-table .item-row td {
+                            height: 21px;
+                        }
+                        .wt-surat-jalan .number {
+                            text-align: right;
+                            white-space: nowrap;
+                        }
+                        .wt-surat-jalan .center {
+                            text-align: center;
+                        }
+                        .wt-surat-jalan .footer-grid {
+                            border-collapse: collapse;
+                            width: 98%;
+                        }
+                        .wt-surat-jalan .footer-grid td {
+                            border: 1px solid #222;
+                            height: 74px;
+                            text-align: center;
+                            vertical-align: top;
+                        }
+                        .wt-surat-jalan .copy-cell {
+                            font-size: 12px;
+                            line-height: 1.45;
+                            text-align: left !important;
+                            width: 16%;
+                        }
+                        .wt-surat-jalan .signature-title {
+                            border-bottom: 1px solid #222;
+                            padding: 3px 4px;
+                        }
+                        .wt-surat-jalan .signature-name {
+                            margin-top: 42px;
+                        }
+                    </style>
+
+                    <table class="header-table">
+                        <tr>
+                            <td style="width: 28%;">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
+                                </t>
+                                <t t-else="">
+                                    <div class="company-fallback" t-esc="doc.company_id.name"/>
+                                </t>
+                            </td>
+                            <td class="title" style="width: 34%;">SURAT JALAN (SJ)</td>
+                            <td style="width: 38%;">
+                                <table class="meta-table">
+                                    <tr>
+                                        <td class="label">Form No.</td>
+                                        <td>:</td>
+                                        <td>BMH - FR - 34</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Rev</td>
+                                        <td>:</td>
+                                        <td>00</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="height: 8px;"></td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Nomor</td>
+                                        <td>:</td>
+                                        <td><span t-esc="doc.name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Tanggal</td>
+                                        <td>:</td>
+                                        <td><span t-esc="doc.date_text or ''"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Nomor S/O</td>
+                                        <td>:</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Nomor D/O</td>
+                                        <td>:</td>
+                                        <td></td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="recipient">
+                        <div>
+                            Kepada Yth :
+                            <span t-esc="doc.partner_id.name or ''"/>
+                        </div>
+                        <div>
+                            Alamat :
+                            <span t-esc="doc.partner_id.contact_address or ''"/>
+                        </div>
+                    </div>
+
+                    <table class="goods-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 18%;">KODE BARANG</th>
+                                <th style="width: 28%;">NAMA BARANG</th>
+                                <th style="width: 16%;">JUMLAH (Kg)</th>
+                                <th style="width: 18%;">KUALITAS</th>
+                                <th style="width: 20%;">KETERANGAN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="sj_lines" t-as="line">
+                                <tr class="item-row">
+                                    <td class="center"><span t-esc="line['code']"/></td>
+                                    <td><span t-esc="line['name']"/></td>
+                                    <td class="number">
+                                        <span t-esc="('{:,.2f}'.format(line['qty'] or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                    </td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </t>
+                            <t t-foreach="[1,2,3,4,5,6,7,8,9,10]" t-as="blank_row">
+                                <tr t-if="blank_row &gt; len(sj_lines)" class="item-row">
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <table class="footer-grid">
+                        <tr>
+                            <td class="copy-cell">
+                                <div>Lbr 1 : Mark HO</div>
+                                <div>Lbr 2 : Customer</div>
+                                <div>Lbr 3 : File</div>
+                            </td>
+                            <td>
+                                <div class="signature-title">Diterima dengan baik oleh,</div>
+                                <div class="signature-name">Customer</div>
+                            </td>
+                            <td>
+                                <div class="signature-title">Ekspedisi</div>
+                                <div class="signature-name"></div>
+                            </td>
+                            <td>
+                                <div class="signature-title">Diketahui,</div>
+                                <div class="signature-name"></div>
+                            </td>
+                            <td>
+                                <div class="signature-title">Diserahkan,</div>
+                                <div class="signature-name"></div>
+                            </td>
                         </tr>
                     </table>
                 </div>

@@ -31,6 +31,29 @@
         </field>
     </record>
 
+    <record id="view_wt_delivery_do_line_handover_form" model="ir.ui.view">
+        <field name="name">wt.delivery.do.line.handover.form</field>
+        <field name="model">wt.delivery.do.line</field>
+        <field name="arch" type="xml">
+            <form string="Detail Berita Acara">
+                <sheet>
+                    <group>
+                        <group string="Informasi Pengiriman">
+                            <field name="handover_date"/>
+                            <field name="vehicle_plate"/>
+                            <field name="sent_to_pt"/>
+                        </group>
+                        <group string="Berat">
+                            <field name="tare_qty"/>
+                            <field name="net_qty" readonly="1"/>
+                            <field name="gross_qty" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <!-- FORM VIEW -->
     <record id="view_wt_delivery_form" model="ir.ui.view">
         <field name="name">wt.delivery.form</field>
@@ -75,6 +98,11 @@
                             class="btn-danger"
                             invisible="state not in ('validated', 'done') or wt_is_returned"
                             confirm="Yakin ingin melakukan retur pada semua barang yang terkirim dari tugas pengiriman ini? Tindakan ini akan mengembalikan stok fisik dari customer ke gudang."/>
+                    <button name="action_print_surat_jalan"
+                            string="Print Surat Jalan"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="state not in ('validated', 'done')"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,in_progress,completed,validated,done,returned"/>
                 </header>
@@ -204,17 +232,12 @@
                                            decoration-danger="picking_state == 'cancel'"
                                            optional="show"
                                            readonly="1"/>
-                                     <button name="action_validate_line"
+                                    <button name="action_validate_line"
                                              string="Validasi"
                                              type="object"
                                              icon="fa-check"
                                              class="btn-primary"
                                              invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
-                                    <button name="action_print_despatch_slip"
-                                            string="Print Despatch Slip"
-                                            type="object"
-                                            icon="fa-print"
-                                            invisible="picking_state != 'done'"/>
                                     <field name="company_id" column_invisible="1"/>
                                 </list>
                                 <form string="Rincian Rencana DO">
@@ -226,6 +249,16 @@
                                                  invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
                                          <button name="action_print_despatch_slip"
                                                  string="Print Despatch Slip"
+                                                 type="object"
+                                                 class="btn-secondary"
+                                                 invisible="picking_state != 'done'"/>
+                                         <button name="action_print_handover_report"
+                                                 string="Print Berita Acara"
+                                                 type="object"
+                                                 class="btn-secondary"
+                                                 invisible="picking_state != 'done'"/>
+                                         <button name="action_open_handover_details"
+                                                 string="Edit Berita Acara"
                                                  type="object"
                                                  class="btn-secondary"
                                                  invisible="picking_state != 'done'"/>
@@ -283,6 +316,20 @@
                                                         <field name="wt_note" string="Catatan" optional="hide"/>
                                                     </list>
                                                 </field>
+                                            </page>
+                                            <page string="Detail Berita Acara">
+                                                <group>
+                                                    <group string="Informasi Pengiriman">
+                                                        <field name="handover_date"/>
+                                                        <field name="vehicle_plate"/>
+                                                        <field name="sent_to_pt"/>
+                                                    </group>
+                                                    <group string="Berat">
+                                                        <field name="tare_qty"/>
+                                                        <field name="net_qty" readonly="1"/>
+                                                        <field name="gross_qty" readonly="1"/>
+                                                    </group>
+                                                </group>
                                             </page>
                                         </notebook>
                                     </sheet>
