@@ -754,6 +754,13 @@ class DeliveryDoLine(models.Model):
             raise ValidationError(_("Berita Acara hanya bisa dicetak setelah Rencana DO divalidasi."))
         return self.env.ref("weightrack.action_report_delivery_handover").report_action(self)
 
+    def action_print_seal_layout(self):
+        """Print denah penyegelan untuk baris Rencana DO."""
+        self.ensure_one()
+        if self.picking_state != "done":
+            raise ValidationError(_("Denah Penyegelan hanya bisa dicetak setelah Rencana DO divalidasi."))
+        return self.env.ref("weightrack.action_report_seal_layout").report_action(self)
+
     def action_open_handover_details(self):
         """Buka popup edit khusus detail Berita Acara meskipun Rencana DO sudah readonly."""
         self.ensure_one()

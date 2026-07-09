@@ -257,6 +257,11 @@
                                                  type="object"
                                                  class="btn-secondary"
                                                  invisible="picking_state != 'done'"/>
+                                         <button name="action_print_seal_layout"
+                                                 string="Print Denah Penyegelan"
+                                                 type="object"
+                                                 class="btn-secondary"
+                                                 invisible="picking_state != 'done'"/>
                                          <button name="action_open_handover_details"
                                                  string="Edit Berita Acara"
                                                  type="object"
