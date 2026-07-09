@@ -249,6 +249,7 @@ class DeliveryDoLine(models.Model):
         """
         Auto-isi Tipe Operasi, Lokasi Sumber, dan Lokasi Tujuan dari Rute Transit.
         Route dipilih pertama; lokasi mengikuti mapping rute.
+        Jika route dikosongkan, bersihkan semua field yang terisi otomatis.
         """
         if self.route_id:
             if self.route_id.picking_type_id:
@@ -257,25 +258,22 @@ class DeliveryDoLine(models.Model):
                 self.location_id = self.route_id.source_location_id
             if self.route_id.transit_location_id:
                 self.location_dest_id = self.route_id.transit_location_id
+        else:
+            # Kosongkan field yang diisi otomatis oleh route
+            self.picking_type_id = False
+            self.location_id = False
+            self.location_dest_id = False
 
     @api.onchange("picking_type_id")
     def _onchange_picking_type_id(self):
         """
-        Auto-isi lokasi sumber & tujuan dari tipe operasi.
-        Jika route_id sudah dipilih, lokasi sudah diisi oleh _onchange_route_id
-        sehingga lokasi TIDAK ditimpa dari default picking type.
+        picking_type_id sekarang selalu diisi via route (readonly di view).
+        Onchange ini hanya mengisi produk default dari header delivery.
+        Pengisian lokasi tidak dilakukan di sini karena hanya route yang boleh mengisi.
         """
-        if self.picking_type_id:
-            # Jangan timpa lokasi kalau route_id sudah dipilih
-            if not self.route_id:
-                self.location_id = self.picking_type_id.default_location_src_id
-                if self.picking_type_id.code == "outgoing":
-                    self.location_dest_id = self.picking_type_id.default_location_dest_id
-                else:
-                    self.location_dest_id = False
-            # Default produk dari header delivery jika belum diisi
-            if not self.product_id and self.delivery_id.product_id:
-                self.product_id = self.delivery_id.product_id
+        # Default produk dari header delivery jika belum diisi
+        if self.picking_type_id and not self.product_id and self.delivery_id.product_id:
+            self.product_id = self.delivery_id.product_id
 
     @api.onchange("location_id")
     def _onchange_location_id(self):
@@ -401,6 +399,27 @@ class DeliveryDoLine(models.Model):
                 "pada lot rencana berikut belum teralokasi penuh:\n\n%s\n\n"
                 "Silakan isi alokasi selisih terlebih dahulu untuk lot-lot tersebut."
             ) % (self.sequence, lot_details))
+
+    # ── ORM ───────────────────────────────────────────────────────────────────
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Saat do_line dibuat, auto-save parent delivery agar header ikut tersimpan."""
+        records = super().create(vals_list)
+        # Trigger write pada delivery agar frontend tahu record berubah
+        # dan agar timestamp write_date diperbarui
+        delivery_ids = records.mapped("delivery_id").filtered(lambda d: d.id)
+        if delivery_ids:
+            delivery_ids.write({"write_date": fields.Datetime.now()})
+        return records
+
+    def write(self, vals):
+        """Saat do_line di-update, pastikan delivery juga di-touch."""
+        res = super().write(vals)
+        delivery_ids = self.mapped("delivery_id").filtered(lambda d: d.id)
+        if delivery_ids and any(k not in ("write_date", "write_uid") for k in vals):
+            delivery_ids.write({"write_date": fields.Datetime.now()})
+        return res
 
     # ── Business Logic ────────────────────────────────────────────────────────
 
@@ -663,14 +682,25 @@ class DeliveryDoLine(models.Model):
                 ])
                 total_on_hand = sum(quants.mapped("quantity"))
 
-                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya
-                other_active_lines = self.env["wt.delivery.do.line.lot"].search([
-                    ("lot_id", "=", lot.id),
+                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
+                # Gunakan 2-step search: (1) cari do_lines aktif dari delivery lain,
+                # (2) cari lot_lines di do_lines tersebut pakai direct IN clause.
+                current_delivery_id_c = line.delivery_id.id or False
+                active_do_line_domain_c = [
                     ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
-                    ("delivery_id", "!=", line.delivery_id.id),
-                    ("wt_skip_line", "=", False),
-                ])
-                other_active_qty = sum(other_active_lines.mapped("qty"))
+                ]
+                if current_delivery_id_c:
+                    active_do_line_domain_c.append(("delivery_id", "!=", current_delivery_id_c))
+                active_do_lines_c = self.env["wt.delivery.do.line"].search(active_do_line_domain_c)
+                if active_do_lines_c:
+                    other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                        ("lot_id", "=", lot.id),
+                        ("do_line_id", "in", active_do_lines_c.ids),
+                        ("wt_skip_line", "=", False),
+                    ])
+                    other_active_qty = sum(other_active_lines.mapped("qty"))
+                else:
+                    other_active_qty = 0.0
                 
                 if total_planned_qty + other_active_qty > total_on_hand:
                     available_qty = max(0.0, total_on_hand - other_active_qty)
@@ -710,14 +740,24 @@ class DeliveryDoLine(models.Model):
             ])
             total_on_hand = sum(quants.mapped("quantity"))
 
-            # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya
-            other_active_lines = self.env["wt.delivery.do.line.lot"].search([
-                ("lot_id", "=", lot.id),
+            # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
+            # Gunakan 2-step search yang sama seperti di _compute_qty_available.
+            current_delivery_id_o = self.delivery_id.id or False
+            active_do_line_domain_o = [
                 ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
-                ("delivery_id", "!=", self.delivery_id.id),
-                ("wt_skip_line", "=", False),
-            ])
-            other_active_qty = sum(other_active_lines.mapped("qty"))
+            ]
+            if current_delivery_id_o:
+                active_do_line_domain_o.append(("delivery_id", "!=", current_delivery_id_o))
+            active_do_lines_o = self.env["wt.delivery.do.line"].search(active_do_line_domain_o)
+            if active_do_lines_o:
+                other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                    ("lot_id", "=", lot.id),
+                    ("do_line_id", "in", active_do_lines_o.ids),
+                    ("wt_skip_line", "=", False),
+                ])
+                other_active_qty = sum(other_active_lines.mapped("qty"))
+            else:
+                other_active_qty = 0.0
             
             if total_planned_qty + other_active_qty > total_on_hand:
                 available_qty = max(0.0, total_on_hand - other_active_qty)

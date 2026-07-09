@@ -53,6 +53,20 @@ class DeliveryRoute(models.Model):
         ),
     )
 
+    # ── Onchange ──────────────────────────────────────────────────────────────
+
+    @api.onchange("is_transit")
+    def _onchange_is_transit(self):
+        """
+        Saat toggle is_transit berubah:
+        - Kosongkan picking_type_id dan transit_location_id agar user pilih ulang
+          sesuai konteks (transit → Transfer Internal, bukan transit → Order Pengiriman).
+        """
+        self.picking_type_id = False
+        self.transit_location_id = False
+
+    # ── Constraints ───────────────────────────────────────────────────────────
+
     @api.constrains("source_location_id", "transit_location_id")
     def _check_locations_different(self):
         for rec in self:
@@ -61,5 +75,16 @@ class DeliveryRoute(models.Model):
                     "Lokasi asal dan lokasi transit tidak boleh sama pada rute '%s'."
                 ) % rec.name)
 
-
-
+    @api.constrains("is_transit", "picking_type_id")
+    def _check_picking_type_consistency(self):
+        for rec in self:
+            if not rec.picking_type_id:
+                continue
+            if rec.is_transit and rec.picking_type_id.code != "internal":
+                raise ValidationError(_(
+                    "Rute '%s' bertujuan transit — Tipe Operasi harus 'Transfer Internal' (code=internal)."
+                ) % rec.name)
+            if not rec.is_transit and rec.picking_type_id.code != "outgoing":
+                raise ValidationError(_(
+                    "Rute '%s' bertujuan customer — Tipe Operasi harus 'Order Pengiriman' (code=outgoing)."
+                ) % rec.name)

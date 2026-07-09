@@ -278,7 +278,7 @@
                                                        readonly="picking_state == 'done'"/>
                                                 <field name="picking_type_id"
                                                        options="{'no_create': True, 'no_open': True}"
-                                                       readonly="route_id or picking_state == 'done'"
+                                                       readonly="1"
                                                        force_save="1"/>
                                                 <field name="product_id" options="{'no_create': True}"
                                                        readonly="picking_state == 'done'"/>
@@ -290,11 +290,11 @@
                                             <group string="Lokasi &amp; Tanggal">
                                                 <field name="location_id"
                                                        options="{'no_create': True}"
-                                                       readonly="route_id or picking_state == 'done'"
+                                                       readonly="1"
                                                        force_save="1"/>
                                                 <field name="location_dest_id"
                                                        options="{'no_create': True}"
-                                                       readonly="route_id or picking_state == 'done'"
+                                                       readonly="1"
                                                        force_save="1"/>
                                                 <field name="scheduled_date"
                                                        readonly="picking_state == 'done'"/>

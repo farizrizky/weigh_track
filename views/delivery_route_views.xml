@@ -7,11 +7,11 @@
         <field name="model">wt.delivery.route</field>
         <field name="arch" type="xml">
             <list string="Rute Pengiriman">
+                <field name="is_transit" widget="boolean_toggle" string="Tujuan Transit?"/>
                 <field name="name"/>
                 <field name="picking_type_id"/>
                 <field name="source_location_id"/>
-                <field name="transit_location_id"/>
-                <field name="is_transit" widget="boolean_toggle" string="Tujuan Transit?"/>
+                <field name="transit_location_id" string="Lokasi Tujuan"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
@@ -31,21 +31,33 @@
                         </h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="picking_type_id" options="{'no_create': True}"/>
-                            <field name="source_location_id"/>
-                            <field name="transit_location_id"/>
-                        </group>
-                        <group>
+                        <group string="Tujuan Pengiriman">
+                            <!-- STEP 1: Toggle tujuan transit — pilih ini dulu -->
                             <field name="is_transit"
                                    string="Lokasi Tujuan adalah Transit"
-                                   widget="boolean_toggle"/>
-                            <field name="active"/>
+                                   widget="boolean_toggle"
+                                   help="Aktifkan jika tujuan pengiriman adalah lokasi transit internal (bukan customer langsung). Pilih ini PERTAMA sebelum mengisi field lainnya."/>
+                            <field name="active" string="Aktif"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Konfigurasi Operasi">
+                            <!-- STEP 2: Tipe Operasi (domain berubah sesuai toggle) -->
+                            <field name="picking_type_id"
+                                   options="{'no_create': True}"
+                                   domain="[('code', '=', is_transit and 'internal' or 'outgoing')]"
+                                   string="Tipe Operasi"/>
+                            <field name="source_location_id"
+                                   domain="[('usage', '=', 'internal')]"
+                                   string="Lokasi Asal"/>
+                            <!-- Lokasi Tujuan: transit internal jika is_transit, customer jika tidak -->
+                            <field name="transit_location_id"
+                                   domain="[('usage', 'in', is_transit and ['internal', 'transit'] or ['customer'])]"
+                                   string="Lokasi Tujuan"/>
                         </group>
                     </group>
                 </sheet>
             </form>
+
         </field>
     </record>
 
