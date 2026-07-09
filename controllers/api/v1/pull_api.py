@@ -46,3 +46,16 @@ class PullApiController(http.Controller):
             "pull_delivery",
         )
 
+    @http.route(
+        "/weightrack/api/v1/pull/tapper-weighing",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        csrf=False,
+    )
+    def pull_tapper_weighing(self, **kwargs):
+        return ApiHandler().handle(
+            "pull.tapper_weighing",
+            "wt.api.tapper.weighing.service",
+            "pull_tapper_weighing",
+        )
