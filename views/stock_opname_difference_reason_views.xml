@@ -10,12 +10,12 @@
         <field name="model">wt.stock.opname.difference.reason</field>
         <field name="arch" type="xml">
             <list string="Alasan Selisih">
-                <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code"/>
+                <field name="difference_type"/>
                 <field name="location_dest_id"/>
+                <field name="is_system_default"/>
                 <field name="company_id" groups="base.group_multi_company"/>
-                <field name="active" column_invisible="True"/>
             </list>
         </field>
     </record>
@@ -27,26 +27,22 @@
         <field name="arch" type="xml">
             <form string="Alasan Selisih">
                 <sheet>
+                    <field name="active" invisible="1"/>
                     <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
                     <div class="oe_title">
                         <h1>
-                            <field name="name" placeholder="Nama Alasan…"/>
+                            <field name="name" placeholder="Nama Alasan" readonly="is_system_default"/>
                         </h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="code"/>
-                            <field name="sequence"/>
-                            <field name="active"/>
-                        </group>
-                        <group>
-                            <field name="location_dest_id"
-                                   domain="[('usage', 'not in', ['view'])]"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                        </group>
-                    </group>
-                    <group string="Keterangan">
-                        <field name="description" nolabel="1"/>
+                        <field name="code" readonly="is_system_default"/>
+                        <field name="difference_type" readonly="is_system_default"/>
+                        <field name="location_dest_id"
+                               readonly="is_system_default"
+                               domain="[('usage', 'not in', ['view'])]"/>
+                        <field name="description" readonly="is_system_default"/>
+                        <field name="is_system_default" readonly="1"/>
+                        <field name="company_id" groups="base.group_multi_company" readonly="is_system_default"/>
                     </group>
                 </sheet>
             </form>
@@ -65,7 +61,7 @@
             </p>
             <p>
                 Tentukan alasan selisih stok (misal: Susut, Hilang, Rusak)
-                dan set lokasi tujuan default untuk setiap alasan.
+                dan set lokasi stock untuk setiap alasan.
             </p>
         </field>
     </record>

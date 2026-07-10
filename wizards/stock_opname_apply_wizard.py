@@ -260,6 +260,30 @@ class StockOpnameApplyWizardAllocation(models.TransientModel):
         if self.reason_id and self.reason_id.location_dest_id:
             self.location_dest_id = self.reason_id.location_dest_id
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            reason = self.env["wt.stock.opname.difference.reason"].browse(
+                vals.get("reason_id")
+            )
+            if reason and reason.location_dest_id:
+                vals["location_dest_id"] = reason.location_dest_id.id
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if "reason_id" in vals:
+            reason = self.env["wt.stock.opname.difference.reason"].browse(vals["reason_id"])
+            vals = dict(vals)
+            if reason and reason.location_dest_id:
+                vals["location_dest_id"] = reason.location_dest_id.id
+            return super().write(vals)
+        if "location_dest_id" in vals:
+            vals = dict(vals)
+            vals.pop("location_dest_id", None)
+            if not vals:
+                return True
+        return super().write(vals)
+
     @api.constrains("qty")
     def _check_qty_positive(self):
         for rec in self:

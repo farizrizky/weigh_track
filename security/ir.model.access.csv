@@ -52,3 +52,9 @@ access_wt_delivery_return_wizard_admin,access.wt.delivery.return.wizard.admin,mo
 access_wt_weighing_production_report_admin,access.wt.weighing.production.report.admin,model_wt_weighing_production_report,group_admin,1,1,1,1
 access_wt_weighing_production_report_line_admin,access.wt.weighing.production.report.line.admin,model_wt_weighing_production_report_line,group_admin,1,1,1,1
 access_wt_weighing_production_report_wizard_admin,access.wt.weighing.production.report.wizard.admin,model_wt_weighing_production_report_wizard,group_admin,1,1,1,1
+access_wt_weighing_production_detail_report_admin,access.wt.weighing.production.detail.report.admin,model_wt_weighing_production_detail_report,group_admin,1,1,1,1
+access_wt_weighing_production_detail_report_line_admin,access.wt.weighing.production.detail.report.line.admin,model_wt_weighing_production_detail_report_line,group_admin,1,1,1,1
+access_wt_weighing_production_detail_report_wizard_admin,access.wt.weighing.production.detail.report.wizard.admin,model_wt_weighing_production_detail_report_wizard,group_admin,1,1,1,1
+access_wt_weighing_reject_slab_report_admin,access.wt.weighing.reject.slab.report.admin,model_wt_weighing_reject_slab_report,group_admin,1,1,1,1
+access_wt_weighing_reject_slab_report_line_admin,access.wt.weighing.reject.slab.report.line.admin,model_wt_weighing_reject_slab_report_line,group_admin,1,1,1,1
+access_wt_weighing_reject_slab_report_wizard_admin,access.wt.weighing.reject.slab.report.wizard.admin,model_wt_weighing_reject_slab_report_wizard,group_admin,1,1,1,1

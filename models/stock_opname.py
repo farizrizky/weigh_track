@@ -3,6 +3,8 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
+from ..constants.roles import Role
+
 
 class StockOpname(models.Model):
     _name = "wt.stock.opname"
@@ -12,11 +14,11 @@ class StockOpname(models.Model):
 
     STATE_SELECTION = [
         ("draft", "Draft"),
-        ("assigned", "Assigned"),
-        ("in_progress", "In Progress"),
-        ("completed", "Completed"),
-        ("applied", "Applied"),
-        ("cancelled", "Cancelled"),
+        ("assigned", "Ditugaskan"),
+        ("in_progress", "Dalam Proses"),
+        ("completed", "Selesai"),
+        ("applied", "Diterapkan"),
+        ("cancelled", "Dibatalkan"),
     ]
 
     name = fields.Char(
@@ -40,29 +42,44 @@ class StockOpname(models.Model):
         domain="[('company_id', '=', company_id)]",
         tracking=True,
     )
+    allowed_division_ids = fields.Many2many(
+        "wt.division",
+        compute="_compute_allowed_division_ids",
+        string="Allowed Divisions",
+    )
     location_id = fields.Many2one(
         "stock.location",
         string="Lokasi",
         required=True,
-        domain="[('company_id', '=', company_id), ('usage', '=', 'internal')]",
+        domain="[('id', 'in', allowed_location_ids)]",
         tracking=True,
+    )
+    allowed_location_ids = fields.Many2many(
+        "stock.location",
+        compute="_compute_allowed_location_ids",
+        string="Allowed Locations",
     )
     division_id = fields.Many2one(
         "wt.division",
         string="Divisi",
         required=True,
-        domain="[('company_id', '=', company_id)]",
+        domain="[('id', 'in', allowed_division_ids)]",
         tracking=True,
     )
     operator_employee_id = fields.Many2one(
         "hr.employee",
-        string="Nama Operator",
+        string="Operator",
         required=True,
-        domain="[('company_id', '=', company_id)]",
+        domain="[('id', 'in', allowed_operator_employee_ids)]",
         tracking=True,
     )
+    allowed_operator_employee_ids = fields.Many2many(
+        "hr.employee",
+        compute="_compute_allowed_operator_employee_ids",
+        string="Allowed Operators",
+    )
     date = fields.Date(
-        string="Tanggal Opname",
+        string="Tanggal",
         required=True,
         default=fields.Date.context_today,
         tracking=True,
@@ -78,8 +95,31 @@ class StockOpname(models.Model):
     line_ids = fields.One2many(
         "wt.stock.opname.line",
         "opname_id",
-        string="Baris Opname",
+        string="Data Stok",
         copy=True,
+    )
+    total_lot_count = fields.Integer(
+        string="Total Lot",
+        compute="_compute_totals",
+        store=True,
+    )
+    total_theoretical_qty = fields.Float(
+        string="Total Qty Teori",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    total_physical_qty = fields.Float(
+        string="Total Qty Fisik",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    total_difference_qty = fields.Float(
+        string="Total Selisih",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
     )
 
     @api.model_create_multi
@@ -89,17 +129,140 @@ class StockOpname(models.Model):
                 vals["name"] = self.env["ir.sequence"].next_by_code("wt.stock.opname") or _("New")
         return super().create(vals_list)
 
+    @api.depends("warehouse_id", "company_id")
+    def _compute_allowed_division_ids(self):
+        Division = self.env["wt.division"]
+        for opname in self:
+            domain = [("active", "=", True)]
+            if opname.company_id:
+                domain.append(("company_id", "=", opname.company_id.id))
+            if opname.warehouse_id and opname.warehouse_id.estate_id:
+                domain.append(("estate_id", "=", opname.warehouse_id.estate_id.id))
+            opname.allowed_division_ids = Division.search(domain)
+
+    @api.depends("warehouse_id", "division_id")
+    def _compute_allowed_location_ids(self):
+        Location = self.env["stock.location"]
+        Rule = self.env["wt.receipt.rule"]
+        for opname in self:
+            if not opname.warehouse_id or not opname.division_id:
+                opname.allowed_location_ids = Location.browse()
+                continue
+            rules = Rule.search([
+                ("active", "=", True),
+                ("warehouse_id", "=", opname.warehouse_id.id),
+                ("division_id", "=", opname.division_id.id),
+            ])
+            opname.allowed_location_ids = rules.mapped("location_id")
+
+    def _get_matching_receipt_rules(self):
+        self.ensure_one()
+        if not (self.warehouse_id and self.division_id and self.location_id):
+            return self.env["wt.receipt.rule"]
+        return self.env["wt.receipt.rule"].search([
+            ("active", "=", True),
+            ("warehouse_id", "=", self.warehouse_id.id),
+            ("division_id", "=", self.division_id.id),
+            ("location_id", "=", self.location_id.id),
+        ])
+
+    @api.depends("warehouse_id", "division_id", "location_id")
+    def _compute_allowed_operator_employee_ids(self):
+        for opname in self:
+            rules = opname._get_matching_receipt_rules()
+            opname.allowed_operator_employee_ids = rules.mapped(
+                "weighing_location_id.operator_id"
+            ).filtered(
+                lambda employee: employee
+            )
+
+    @api.depends(
+        "line_ids",
+        "line_ids.lot_id",
+        "line_ids.count_status",
+        "line_ids.theoretical_qty",
+        "line_ids.physical_qty",
+        "line_ids.difference_qty",
+    )
+    def _compute_totals(self):
+        for opname in self:
+            weighed_lines = opname.line_ids.filtered(lambda line: line.count_status == "weighed")
+            opname.total_lot_count = len(set(opname.line_ids.mapped("lot_id").ids))
+            opname.total_theoretical_qty = sum(opname.line_ids.mapped("theoretical_qty"))
+            opname.total_physical_qty = sum(weighed_lines.mapped("physical_qty"))
+            opname.total_difference_qty = sum(opname.line_ids.mapped("difference_qty"))
+
+    @api.onchange("company_id")
+    def _onchange_company_id(self):
+        for opname in self:
+            opname.warehouse_id = False
+            opname.division_id = False
+            opname.location_id = False
+            opname.operator_employee_id = False
+
     @api.onchange("warehouse_id")
     def _onchange_warehouse_id(self):
         if self.warehouse_id:
-            self.location_id = self.warehouse_id.lot_stock_id
+            if self.division_id and self.division_id not in self.allowed_division_ids:
+                self.division_id = False
+            self.location_id = False
         else:
+            self.division_id = False
             self.location_id = False
 
-    @api.onchange("location_id", "division_id")
-    def _onchange_location_division(self):
+    @api.onchange("division_id")
+    def _onchange_division_id(self):
+        if self.location_id and self.location_id not in self.allowed_location_ids:
+            self.location_id = False
+
+    @api.onchange("warehouse_id", "location_id", "division_id")
+    def _onchange_scope_fields(self):
         """Clear lines when location or division changes."""
         self.line_ids = [(5, 0, 0)]
+        if (
+            self.operator_employee_id
+            and self.operator_employee_id not in self.allowed_operator_employee_ids
+        ):
+            self.operator_employee_id = False
+
+    @api.constrains("warehouse_id", "division_id", "location_id", "operator_employee_id")
+    def _check_scope_consistency(self):
+        role_model = self.env["wt.employee.role"]
+        for opname in self:
+            if (
+                opname.warehouse_id
+                and opname.warehouse_id.estate_id
+                and opname.division_id
+                and opname.division_id.estate_id != opname.warehouse_id.estate_id
+            ):
+                raise ValidationError(_(
+                    "Division must belong to the same estate as the selected warehouse."
+                ))
+
+            if opname.warehouse_id and opname.division_id and opname.location_id:
+                rules = opname._get_matching_receipt_rules()
+                if not rules:
+                    raise ValidationError(_(
+                        "Location must be configured in an active Receipt Rule for "
+                        "the selected warehouse and division."
+                    ))
+                allowed_operators = rules.mapped("weighing_location_id.operator_id")
+                if (
+                    opname.operator_employee_id
+                    and opname.operator_employee_id not in allowed_operators
+                ):
+                    raise ValidationError(_(
+                        "Operator must match the weighing location operator from "
+                        "the active Receipt Rule for the selected warehouse, "
+                        "division, and location."
+                    ))
+
+            role_model.check_employee_allowed(
+                opname.operator_employee_id,
+                opname.company_id,
+                Role.OPERATOR,
+                _("Operator"),
+            )
 
     def action_populate_lines(self):
         """Load stock lines from quants at the selected location (server-side)."""
@@ -149,6 +312,20 @@ class StockOpname(models.Model):
                     "Please ensure the selected location has stock with lot numbers registered."
                 ))
             opname.write({"state": "assigned"})
+
+    def _all_lines_weighed(self):
+        self.ensure_one()
+        return bool(self.line_ids) and all(
+            line.count_status == "weighed" for line in self.line_ids
+        )
+
+    def action_complete_if_ready(self):
+        for opname in self:
+            if not opname._all_lines_weighed():
+                raise ValidationError(_(
+                    "Stock opname can only be completed after all lines are weighed."
+                ))
+            opname.write({"state": "completed"})
 
     def action_start(self):
         for opname in self:
@@ -200,6 +377,10 @@ class StockOpname(models.Model):
                 raise ValidationError(_(
                     "Only completed stock opname can be applied to inventory."
                 ))
+            if not opname.line_ids.filtered(lambda line: line.lot_id):
+                raise ValidationError(_(
+                    "Stock Opname wajib memiliki minimal satu baris lot sebelum diterapkan."
+                ))
 
             # Periksa apakah ada line selisih yang belum fully allocated
             unallocated_lines = opname.line_ids.filtered(
@@ -210,7 +391,7 @@ class StockOpname(models.Model):
                 lots = ", ".join(unallocated_lines.mapped("lot_id.name"))
                 raise ValidationError(_(
                     "Beberapa lot belum selesai dialokasikan selisihnya:\n%s\n\n"
-                    "Klik ikon ⊕ pada baris yang bersangkutan untuk mengisi alokasi."
+                    "Silahkan tentukan alasan selisih stok yang terjadi."
                 ) % lots)
 
             for line in opname.line_ids:
@@ -319,6 +500,11 @@ class StockOpnameLine(models.Model):
     _name = "wt.stock.opname.line"
     _description = "Stock Opname Line"
 
+    COUNT_STATUS_SELECTION = [
+        ("unweighed", "Belum Ditimbang"),
+        ("weighed", "Sudah Ditimbang"),
+    ]
+
     opname_id = fields.Many2one(
         "wt.stock.opname",
         string="Stock Opname",
@@ -349,6 +535,13 @@ class StockOpnameLine(models.Model):
     physical_qty = fields.Float(
         string="Qty Fisik",
         digits="Product Unit of Measure",
+    )
+    count_status = fields.Selection(
+        COUNT_STATUS_SELECTION,
+        string="Status",
+        default="unweighed",
+        required=True,
+        index=True,
     )
     difference_qty = fields.Float(
         string="Selisih",
@@ -383,6 +576,38 @@ class StockOpnameLine(models.Model):
         string="Riwayat Perpindahan",
         compute="_compute_stock_move_line_count",
     )
+
+    def write(self, vals):
+        if "physical_qty" in vals and "count_status" not in vals:
+            vals = dict(vals, count_status="weighed")
+        return super().write(vals)
+
+    def unlink(self):
+        applied_lines = self.filtered(lambda line: line.opname_id.state == "applied")
+        if applied_lines:
+            raise ValidationError(_(
+                "Baris lot tidak dapat dihapus setelah Stock Opname diterapkan."
+            ))
+        return super().unlink()
+
+    def init(self):
+        self.env.cr.execute(
+            """
+            UPDATE wt_stock_opname_line AS line
+            SET count_status = 'weighed'
+            FROM wt_stock_opname AS opname
+            WHERE line.opname_id = opname.id
+                AND line.count_status IS NULL
+                AND opname.state IN ('completed', 'applied')
+            """
+        )
+        self.env.cr.execute(
+            """
+            UPDATE wt_stock_opname_line
+            SET count_status = 'unweighed'
+            WHERE count_status IS NULL
+            """
+        )
 
     @api.depends("lot_id", "opname_id.location_id")
     def _compute_stock_move_line_count(self):
@@ -466,10 +691,13 @@ class StockOpnameLine(models.Model):
             },
         }
 
-    @api.depends("physical_qty", "theoretical_qty")
+    @api.depends("count_status", "physical_qty", "theoretical_qty")
     def _compute_difference_qty(self):
         for line in self:
-            line.difference_qty = line.physical_qty - line.theoretical_qty
+            if line.count_status == "weighed":
+                line.difference_qty = line.physical_qty - line.theoretical_qty
+            else:
+                line.difference_qty = 0.0
 
     @api.depends("allocation_ids.qty", "difference_qty")
     def _compute_allocation_status(self):

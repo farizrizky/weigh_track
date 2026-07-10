@@ -26,8 +26,8 @@
                     <group>
                         <group string="Informasi Lot">
                             <field name="product_id" readonly="1"/>
-                            <field name="lot_id"     readonly="1"/>
                             <field name="uom_id"     readonly="1"/>
+                            <field name="lot_id"     readonly="1"/>
                         </group>
                         <group string="Qty">
                             <field name="theoretical_qty" readonly="1"/>
@@ -56,7 +56,7 @@
                     <div class="alert alert-info" role="alert"
                          invisible="is_fully_allocated or difference_qty == 0">
                         <i class="fa fa-info-circle me-1"/>
-                        Tambahkan baris alokasi hingga Unallocated = 0.
+                        Alokasikan semua selisih yang ada.
                     </div>
 
                     <!-- Tabel alokasi -->
@@ -70,6 +70,7 @@
                             <field name="qty" string="Qty Alokasi"/>
                             <field name="uom_id" readonly="1" string="Satuan"/>
                             <field name="location_dest_id" string="Lokasi Tujuan"
+                                   readonly="1"
                                    domain="[('usage', 'not in', ['view'])]"/>
                             <field name="note" optional="hide"/>
                         </list>
@@ -85,4 +86,3 @@
         </field>
     </record>
 </odoo>
-

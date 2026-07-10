@@ -9,6 +9,13 @@ class StockOpnameDifferenceReason(models.Model):
     _description = "Alasan Selisih Stock Opname"
     _order = "sequence, name"
 
+    DIFFERENCE_TYPE_SELECTION = [
+        ("susut", "SUSUT"),
+        ("hilang", "HILANG"),
+        ("salah", "SALAH"),
+        ("lainnya", "LAINNYA"),
+    ]
+
     name = fields.Char(
         string="Nama Alasan",
         required=True,
@@ -23,15 +30,18 @@ class StockOpnameDifferenceReason(models.Model):
         string="Urutan",
         default=10,
     )
+    difference_type = fields.Selection(
+        DIFFERENCE_TYPE_SELECTION,
+        string="Tipe Selisih",
+        required=True,
+        default="lainnya",
+        index=True,
+    )
     location_dest_id = fields.Many2one(
         "stock.location",
-        string="Lokasi Tujuan Default",
+        string="Lokasi Stock",
         required=True,
         domain="[('usage', 'not in', ['view'])]",
-        help="Lokasi tujuan untuk selisih/susut. "
-             "Pilih lokasi virtual loss Anda (tipe: Virtual Locations). "
-             "Jika belum ada, buat dulu di Inventori > Konfigurasi > Lokasi "
-             "dengan tipe 'Virtual Locations'.",
     )
     company_id = fields.Many2one(
         "res.company",
@@ -46,6 +56,12 @@ class StockOpnameDifferenceReason(models.Model):
     description = fields.Text(
         string="Keterangan",
     )
+    is_system_default = fields.Boolean(
+        string="Default Sistem",
+        default=False,
+        readonly=True,
+        copy=False,
+    )
 
     _sql_constraints = [
         (
@@ -54,3 +70,24 @@ class StockOpnameDifferenceReason(models.Model):
             "Kode alasan harus unik per perusahaan.",
         )
     ]
+
+    def _allow_system_default_write(self):
+        return self.env.context.get("install_mode") or self.env.context.get("module")
+
+    def write(self, vals):
+        if vals and not self._allow_system_default_write():
+            protected = self.filtered("is_system_default")
+            if protected:
+                raise ValidationError(_(
+                    "Alasan selisih default sistem tidak dapat diubah. "
+                    "Silahkan tambahkan alasan selisih baru jika membutuhkan variasi lain."
+                ))
+        return super().write(vals)
+
+    def unlink(self):
+        protected = self.filtered("is_system_default")
+        if protected:
+            raise ValidationError(_(
+                "Alasan selisih default sistem tidak dapat dihapus."
+            ))
+        return super().unlink()

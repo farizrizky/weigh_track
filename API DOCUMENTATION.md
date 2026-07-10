@@ -10,9 +10,13 @@ API yang aktif saat ini:
 POST /weightrack/api/v1/device/activate
 POST /weightrack/api/v1/pull/master
 POST /weightrack/api/v1/push/weighing
+POST /weightrack/api/v1/pull/stock-opname
+POST /weightrack/api/v1/push/stock-opname
 ```
 
 Endpoint push weighing sudah aktif. Push langsung membuat `wt.weighing` draft dan belum membuat inbound/receipt stock resmi.
+
+Endpoint stock opname digunakan operator untuk menarik tugas opname aktif dari Odoo dan mengirim hasil hitung fisik kembali ke Odoo.
 
 Data cuaca (`wt.weather` dan `wt.weather.data`) saat ini belum diekspos melalui custom API dan belum masuk payload pull master. Data tersebut masih dikelola sebagai data Odoo/UI.
 
@@ -37,12 +41,13 @@ Data cuaca (`wt.weather` dan `wt.weather.data`) saat ini belum diekspos melalui 
 
 ```text
 controllers/api/v1/device_api.py      -> route endpoint activation v1
-controllers/api/v1/pull_api.py        -> route endpoint pull master v1
-controllers/api/v1/push_api.py        -> route endpoint push weighing v1
+controllers/api/v1/pull_api.py        -> route endpoint pull master dan pull stock opname v1
+controllers/api/v1/push_api.py        -> route endpoint push weighing dan push stock opname v1
 controllers/api/api_handler.py        -> HTTP boundary, JSON parsing, audit log, HTTP response
 services/api_device_service.py        -> proses aktivasi dan payload bootstrap device
 services/api_pull_master_service.py   -> proses pull master dan payload data offline
 services/api_push_weighing_service.py -> autentikasi, validasi root, dan summary push
+services/api_stock_opname_service.py  -> pull tugas stock opname dan push hasil hitung fisik
 services/weighing_service.py          -> proses item, idempotency, mapping, dan data problem Weighing
 services/api_security_service.py      -> validasi security API, autentikasi device, lookup bot user, dan cek pull/push enabled
 services/api_response_service.py      -> wrapper response success/error/body
@@ -53,11 +58,13 @@ models/api.py                  -> konfigurasi bot user dan enable/disable pull/p
 Pembagian tanggung jawab:
 
 - `device_api.py` hanya mendefinisikan route.
-- `pull_api.py` hanya mendefinisikan route pull master.
+- `pull_api.py` mendefinisikan route pull master dan pull stock opname.
+- `push_api.py` mendefinisikan route push weighing dan push stock opname.
 - `api_handler.py` membaca request, memanggil service, membuat log, lalu mengembalikan HTTP JSON response.
 - `api_device_service.py` memproses business flow aktivasi dan menyiapkan payload response.
 - `api_pull_master_service.py` memproses scope data master berdasarkan role device.
 - `api_push_weighing_service.py` mengelola satu request/batch push.
+- `api_stock_opname_service.py` mengelola autentikasi operator, pull tugas opname aktif, dan push hasil opname.
 - `weighing_service.py` mengelola business logic setiap item Weighing dan recheck data problem.
 - `api_security_service.py` memusatkan validasi security bersama.
 - `api_response_service.py` hanya membungkus response standar, tidak menyiapkan data bisnis.
@@ -615,6 +622,186 @@ Catatan:
         "weighing_id": 1
       }
     ]
+  }
+}
+```
+
+## Stock Opname API Flow
+
+API stock opname dipakai aplikasi operator untuk menerima tugas opname dari Odoo, mengisi hasil hitung fisik di perangkat, lalu mengirim hasilnya kembali ke Odoo.
+
+Alur saat ini:
+
+1. Admin membuat `wt.stock.opname` di Odoo.
+2. Admin memilih company, warehouse, location, dan operator.
+3. Admin memuat line opname dari stok/lot pada location tersebut.
+4. Admin memproses opname sampai status `assigned`.
+5. Operator melakukan pull stock opname dari aplikasi.
+6. Odoo mengirim tugas opname berstatus `assigned` atau `in_progress` milik operator tersebut.
+7. Jika tugas masih `assigned`, Odoo otomatis mengubahnya menjadi `in_progress` saat berhasil dipull.
+8. Operator mengisi `physical_qty` pada aplikasi.
+9. Operator melakukan push stock opname.
+10. Odoo menyimpan `physical_qty` ke line opname dan menandai line tersebut sebagai `weighed`.
+11. Odoo hanya mengubah stock opname menjadi `completed` jika semua line sudah `weighed`.
+12. Penyesuaian inventory resmi tidak dilakukan oleh API. Setelah completed, admin tetap melakukan review/alokasi selisih dan apply inventory dari UI Odoo.
+
+### Pull Stock Opname
+
+Endpoint ini digunakan operator untuk menarik daftar tugas stock opname aktif yang ditugaskan kepadanya.
+
+```http
+POST /weightrack/api/v1/pull/stock-opname
+Content-Type: application/json
+```
+
+### Pull Request
+
+```json
+{
+  "device_id": "OPR-DEVICE-001",
+  "token": "device-token"
+}
+```
+
+### Pull Validation Rules
+
+- `device_id` dan `token` wajib cocok dengan device aktif.
+- Role device wajib `operator`.
+- `wt.api.pull_enabled` wajib aktif untuk company device.
+- Odoo hanya mengirim stock opname pada company device.
+- Odoo hanya mengirim stock opname yang `operator_employee_id`-nya sama dengan employee device.
+- Status stock opname yang dikirim hanya `assigned` dan `in_progress`.
+
+### Pull Success Behavior
+
+Jika pull berhasil, Odoo akan:
+
+- mencari tugas `wt.stock.opname` aktif milik operator;
+- mengubah status opname dari `assigned` menjadi `in_progress`;
+- mengirim header opname dan line item yang harus dihitung;
+- mencatat request ke `wt.api.request.log`.
+
+### Pull Success Response
+
+```json
+{
+  "ok": true,
+  "request_id": "uuid",
+  "data": {
+    "opnames": [
+      {
+        "opname_id": 10,
+        "name": "SO/20260708/001",
+        "warehouse_id": 1,
+        "warehouse_name": "Sebayur",
+        "location_id": 15,
+        "location_name": "SBY/Stock/Divisi 1",
+        "date": "2026-07-08",
+        "lines": [
+          {
+            "line_id": 100,
+            "product_id": 25,
+            "product_name": "Cup Lump",
+            "lot_id": 80,
+            "lot_name": "LOT/DIV01/20260708/001",
+            "lot_production_date": "2026-07-08",
+            "uom_id": 1,
+            "uom_name": "kg",
+            "theoretical_qty": 1200.0,
+            "physical_qty": 0.0,
+            "count_status": "unweighed"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Pull Response Data
+
+| Path | Description |
+| --- | --- |
+| `data.opnames` | Daftar tugas stock opname aktif milik operator. |
+| `data.opnames[].opname_id` | ID `wt.stock.opname` yang harus dikirim kembali saat push. |
+| `data.opnames[].name` | Nomor dokumen stock opname. |
+| `data.opnames[].warehouse_id` | Warehouse opname. |
+| `data.opnames[].location_id` | Location yang dihitung. |
+| `data.opnames[].date` | Tanggal dokumen opname. |
+| `data.opnames[].lines` | Daftar lot/product yang harus dihitung. |
+| `data.opnames[].lines[].line_id` | ID `wt.stock.opname.line` yang harus dikirim kembali saat push. |
+| `data.opnames[].lines[].product_id` | Product pada line opname. |
+| `data.opnames[].lines[].lot_id` | Lot yang dihitung. |
+| `data.opnames[].lines[].lot_production_date` | Tanggal produksi lot jika tersedia. |
+| `data.opnames[].lines[].uom_id` | UoM line opname. |
+| `data.opnames[].lines[].theoretical_qty` | Kuantitas sistem saat tugas opname dipull. |
+| `data.opnames[].lines[].physical_qty` | Kuantitas fisik yang sudah tersimpan di Odoo. |
+| `data.opnames[].lines[].count_status` | Status hitung line: `unweighed` atau `weighed`. |
+
+### Push Stock Opname
+
+Endpoint ini digunakan operator untuk mengirim hasil hitung fisik stock opname.
+
+```http
+POST /weightrack/api/v1/push/stock-opname
+Content-Type: application/json
+```
+
+### Push Request
+
+```json
+{
+  "device_id": "OPR-DEVICE-001",
+  "token": "device-token",
+  "opname_id": 10,
+  "lines": [
+    {
+      "line_id": 100,
+      "physical_qty": 1195.0
+    },
+    {
+      "line_id": 101,
+      "physical_qty": 0.0
+    }
+  ]
+}
+```
+
+### Push Validation Rules
+
+- `device_id` dan `token` wajib cocok dengan device aktif.
+- Role device wajib `operator`.
+- `wt.api.push_enabled` wajib aktif untuk company device.
+- `opname_id` wajib dikirim.
+- `lines` wajib berupa list jika dikirim.
+- Stock opname harus berada pada company device.
+- Stock opname harus ditugaskan ke employee operator device.
+- Status stock opname yang dapat dipush adalah `assigned`, `in_progress`, atau `completed`.
+- Setiap line yang diproses harus ditemukan pada `wt.stock.opname.line` milik `opname_id` tersebut.
+- Line yang tidak membawa `line_id` atau `physical_qty` akan dilewati.
+
+### Push Success Behavior
+
+Jika push berhasil, Odoo akan:
+
+- menyimpan `physical_qty` ke setiap line opname yang cocok;
+- menandai setiap line yang dipush sebagai `weighed`;
+- mengubah status `wt.stock.opname` menjadi `completed` hanya jika semua line sudah `weighed`;
+- mempertahankan/mengembalikan status `in_progress` jika masih ada line `unweighed`;
+- mengembalikan `opname_id` dan state terbaru;
+- mencatat request ke `wt.api.request.log`.
+
+Push stock opname belum melakukan apply inventory. Perubahan stok resmi tetap dilakukan dari UI Odoo melalui flow review selisih, alokasi difference reason, dan apply inventory.
+
+### Push Success Response
+
+```json
+{
+  "ok": true,
+  "request_id": "uuid",
+  "data": {
+    "opname_id": 10,
+    "state": "completed"
   }
 }
 ```

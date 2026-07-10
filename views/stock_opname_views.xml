@@ -43,7 +43,6 @@
                 <header>
                     <button name="action_assign"          string="Proses / Tetapkan"         type="object" class="oe_highlight" invisible="state != 'draft'"/>
                     <button name="action_populate_lines"  string="Muat Baris"                 type="object" invisible="state != 'draft'" icon="fa-refresh"/>
-                    <button name="action_start"           string="Mulai"                       type="object" class="oe_highlight" invisible="state != 'assigned'"/>
                     <button name="action_apply_inventory" string="Terapkan Penyesuaian Stok"   type="object" class="oe_highlight" invisible="state != 'completed'"/>
                     <button name="action_cancel"          string="Batalkan"                    type="object" invisible="state not in ['draft', 'assigned', 'in_progress', 'completed']"/>
                     <button name="action_draft"           string="Atur ke Draft"               type="object" invisible="state != 'cancelled'"/>
@@ -55,29 +54,39 @@
                             <field name="name"/>
                         </h1>
                     </div>
+                    <field name="allowed_division_ids" invisible="1"/>
+                    <field name="allowed_location_ids" invisible="1"/>
+                    <field name="allowed_operator_employee_ids" invisible="1"/>
                     <group>
-                        <group>
-                            <field name="warehouse_id"         readonly="state != 'draft'"/>
-                            <field name="location_id"          readonly="state != 'draft'" domain="[('company_id', '=', company_id), ('usage', '=', 'internal')]"/>
-                            <field name="division_id"          readonly="state != 'draft'"/>
-                        </group>
-                        <group>
-                            <field name="operator_employee_id" readonly="state != 'draft'"/>
+                        <group string="Stock Opname">
                             <field name="date"                 readonly="state != 'draft'"/>
+                            <field name="warehouse_id"         readonly="state != 'draft'"/>
+                            <field name="division_id"          readonly="state != 'draft'" domain="[('id', 'in', allowed_division_ids)]"/>
+                            <field name="location_id"          readonly="state != 'draft'" domain="[('id', 'in', allowed_location_ids)]"/>
+                            <field name="operator_employee_id" readonly="state != 'draft'" domain="[('id', 'in', allowed_operator_employee_ids)]"/>
+                        </group>
+                        <group string="Ringkasan">
+                            <field name="total_lot_count"/>
+                            <field name="total_theoretical_qty"/>
+                            <field name="total_physical_qty"/>
+                            <field name="total_difference_qty"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Baris Opname" name="lines">
+                        <page string="Data Stok" name="lines">
                             <!-- Hint saat completed -->
                             <div class="alert alert-info mb-2" role="alert"
                                  invisible="state != 'completed'">
                                 <i class="fa fa-hand-pointer-o me-1"/>
-                                Klik ikon <strong>&#9881;</strong> pada baris yang memiliki selisih untuk mengisi alokasi (reason &amp; lokasi tujuan).
+                                Silahkan tentukan alasan selisih stok yang terjadi.
                             </div>
 
                             <field name="line_ids" readonly="state in ['applied', 'cancelled']">
-                                <list editable="bottom" create="false" delete="false">
+                                <list editable="bottom" create="false" delete="true">
+                                    <field name="count_status" widget="badge" readonly="1"
+                                           decoration-success="count_status == 'weighed'"
+                                           decoration-muted="count_status == 'unweighed'"/>
                                     <field name="product_id"      readonly="1"/>
                                     <field name="lot_id"          readonly="1"/>
                                     <field name="uom_id"          readonly="1"/>
@@ -138,10 +147,10 @@
                 <field name="division_id"/>
                 <field name="operator_employee_id"/>
                 <filter string="Draft"       name="draft"       domain="[('state', '=', 'draft')]"/>
-                <filter string="Assigned"    name="assigned"    domain="[('state', '=', 'assigned')]"/>
-                <filter string="In Progress" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
-                <filter string="Completed"   name="completed"   domain="[('state', '=', 'completed')]"/>
-                <filter string="Applied"     name="applied"     domain="[('state', '=', 'applied')]"/>
+                <filter string="Ditugaskan"    name="assigned"    domain="[('state', '=', 'assigned')]"/>
+                <filter string="Dalam Proses" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
+                <filter string="Selesai"       name="completed"   domain="[('state', '=', 'completed')]"/>
+                <filter string="Diterapkan"    name="applied"     domain="[('state', '=', 'applied')]"/>
                 <filter string="Warehouse"   name="group_warehouse" context="{'group_by': 'warehouse_id'}"/>
                 <filter string="Location"    name="group_location"  context="{'group_by': 'location_id'}"/>
                 <filter string="Division"    name="group_division"  context="{'group_by': 'division_id'}"/>

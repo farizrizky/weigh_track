@@ -53,6 +53,8 @@ class ApiStockOpnameService(models.AbstractModel):
                     "uom_id": line.uom_id.id,
                     "uom_name": line.uom_id.name,
                     "theoretical_qty": line.theoretical_qty,
+                    "physical_qty": line.physical_qty,
+                    "count_status": line.count_status,
                 })
 
             opnames_data.append({
@@ -140,9 +142,13 @@ class ApiStockOpnameService(models.AbstractModel):
             if op_line:
                 op_line.write({
                     "physical_qty": float(physical_qty),
+                    "count_status": "weighed",
                 })
 
-        opname.write({"state": "completed"})
+        if opname._all_lines_weighed():
+            opname.write({"state": "completed"})
+        elif opname.state != "completed":
+            opname.write({"state": "in_progress"})
 
         return response.success(
             {

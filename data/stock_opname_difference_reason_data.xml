@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="stock_location_wt_inventory_loss" model="stock.location">
+        <field name="name">Inventory Loss</field>
+        <field name="usage">inventory</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="stock_location_wt_inventory_loss_susut" model="stock.location">
+        <field name="name">Susut</field>
+        <field name="usage">inventory</field>
+        <field name="location_id" ref="stock_location_wt_inventory_loss"/>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="stock_location_wt_inventory_loss_hilang" model="stock.location">
+        <field name="name">Hilang</field>
+        <field name="usage">inventory</field>
+        <field name="location_id" ref="stock_location_wt_inventory_loss"/>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="stock_location_wt_inventory_loss_salah" model="stock.location">
+        <field name="name">Salah</field>
+        <field name="usage">inventory</field>
+        <field name="location_id" ref="stock_location_wt_inventory_loss"/>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="stock_location_wt_inventory_loss_lainnya" model="stock.location">
+        <field name="name">Lainnya</field>
+        <field name="usage">inventory</field>
+        <field name="location_id" ref="stock_location_wt_inventory_loss"/>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <record id="stock_opname_difference_reason_susut" model="wt.stock.opname.difference.reason">
+        <field name="name">Susut</field>
+        <field name="code">SUSUT</field>
+        <field name="sequence">10</field>
+        <field name="difference_type">susut</field>
+        <field name="location_dest_id" ref="stock_location_wt_inventory_loss_susut"/>
+        <field name="company_id" eval="False"/>
+        <field name="is_system_default" eval="True"/>
+        <field name="description">Alasan default untuk selisih stok karena susut.</field>
+    </record>
+
+    <record id="stock_opname_difference_reason_hilang" model="wt.stock.opname.difference.reason">
+        <field name="name">Hilang</field>
+        <field name="code">HILANG</field>
+        <field name="sequence">20</field>
+        <field name="difference_type">hilang</field>
+        <field name="location_dest_id" ref="stock_location_wt_inventory_loss_hilang"/>
+        <field name="company_id" eval="False"/>
+        <field name="is_system_default" eval="True"/>
+        <field name="description">Alasan default untuk selisih stok karena kehilangan.</field>
+    </record>
+
+    <record id="stock_opname_difference_reason_salah" model="wt.stock.opname.difference.reason">
+        <field name="name">Salah</field>
+        <field name="code">SALAH</field>
+        <field name="sequence">30</field>
+        <field name="difference_type">salah</field>
+        <field name="location_dest_id" ref="stock_location_wt_inventory_loss_salah"/>
+        <field name="company_id" eval="False"/>
+        <field name="is_system_default" eval="True"/>
+        <field name="description">Alasan default untuk selisih stok karena kesalahan data atau proses.</field>
+    </record>
+
+    <record id="stock_opname_difference_reason_lainnya" model="wt.stock.opname.difference.reason">
+        <field name="name">Lainnya</field>
+        <field name="code">LAINNYA</field>
+        <field name="sequence">40</field>
+        <field name="difference_type">lainnya</field>
+        <field name="location_dest_id" ref="stock_location_wt_inventory_loss_lainnya"/>
+        <field name="company_id" eval="False"/>
+        <field name="is_system_default" eval="True"/>
+        <field name="description">Alasan default untuk selisih stok lain yang belum diklasifikasikan khusus.</field>
+    </record>
+</odoo>

@@ -89,8 +89,8 @@
                     <group>
                         <group string="Informasi Lot">
                             <field name="product_id"      readonly="1"/>
-                            <field name="lot_id"          readonly="1"/>
                             <field name="uom_id"          readonly="1"/>
+                            <field name="lot_id"          readonly="1"/>
                         </group>
                         <group string="Kuantitas">
                             <field name="theoretical_qty" readonly="1"/>
@@ -115,7 +115,7 @@
                                     <field name="reason_id"/>
                                     <field name="qty"/>
                                     <field name="uom_id" readonly="1"/>
-                                    <field name="location_dest_id"/>
+                                    <field name="location_dest_id" readonly="1"/>
                                     <field name="note" optional="hide"/>
                                 </list>
                             </field>
