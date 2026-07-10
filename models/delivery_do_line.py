@@ -141,6 +141,34 @@ class DeliveryDoLine(models.Model):
         digits="Product Unit of Measure",
         help="Total kuantitas yang akan dikirim dalam DO ini. Otomatis terjumlah dari rincian lot jika diisi.",
     )
+    handover_date = fields.Date(
+        string="Tanggal Berita Acara",
+        default=fields.Date.context_today,
+    )
+    handover_date_text = fields.Char(
+        string="Tanggal Berita Acara (Teks)",
+        compute="_compute_handover_date_text",
+    )
+    vehicle_plate = fields.Char(
+        string="Nomor Polisi",
+    )
+    sent_to_pt = fields.Char(
+        string="Dikirim ke PT",
+    )
+    tare_qty = fields.Float(
+        string="Tare (kg)",
+        digits="Product Unit of Measure",
+    )
+    net_qty = fields.Float(
+        string="Netto (kg)",
+        compute="_compute_weight_summary",
+        digits="Product Unit of Measure",
+    )
+    gross_qty = fields.Float(
+        string="Bruto (kg)",
+        compute="_compute_weight_summary",
+        digits="Product Unit of Measure",
+    )
 
     # ── Rincian Lot (Sub-form/Perincian Lot) ──────────────────────────────────
     lot_line_ids = fields.One2many(
@@ -179,6 +207,41 @@ class DeliveryDoLine(models.Model):
             if rec.lot_line_ids:
                 rec.demand_qty = sum(rec.lot_line_ids.mapped("qty"))
 
+    @api.depends("demand_qty", "tare_qty", "lot_line_ids.wt_physical_qty", "lot_line_ids.wt_skip_line")
+    def _compute_weight_summary(self):
+        for rec in self:
+            active_lots = rec.lot_line_ids.filtered(lambda lot: not lot.wt_skip_line)
+            physical_qty = sum(active_lots.mapped("wt_physical_qty"))
+            rec.net_qty = physical_qty if physical_qty > 0.0 else rec.demand_qty
+            rec.gross_qty = rec.tare_qty + rec.net_qty
+
+    @api.depends("handover_date")
+    def _compute_handover_date_text(self):
+        month_names = {
+            1: "Januari",
+            2: "Februari",
+            3: "Maret",
+            4: "April",
+            5: "Mei",
+            6: "Juni",
+            7: "Juli",
+            8: "Agustus",
+            9: "September",
+            10: "Oktober",
+            11: "November",
+            12: "Desember",
+        }
+        for rec in self:
+            if rec.handover_date:
+                date_value = fields.Date.to_date(rec.handover_date)
+                rec.handover_date_text = "%s %s %s" % (
+                    date_value.day,
+                    month_names[date_value.month],
+                    date_value.year,
+                )
+            else:
+                rec.handover_date_text = False
+
     # ── Onchange ──────────────────────────────────────────────────────────────
 
     @api.onchange("route_id")
@@ -186,6 +249,7 @@ class DeliveryDoLine(models.Model):
         """
         Auto-isi Tipe Operasi, Lokasi Sumber, dan Lokasi Tujuan dari Rute Transit.
         Route dipilih pertama; lokasi mengikuti mapping rute.
+        Jika route dikosongkan, bersihkan semua field yang terisi otomatis.
         """
         if self.route_id:
             if self.route_id.picking_type_id:
@@ -194,25 +258,22 @@ class DeliveryDoLine(models.Model):
                 self.location_id = self.route_id.source_location_id
             if self.route_id.transit_location_id:
                 self.location_dest_id = self.route_id.transit_location_id
+        else:
+            # Kosongkan field yang diisi otomatis oleh route
+            self.picking_type_id = False
+            self.location_id = False
+            self.location_dest_id = False
 
     @api.onchange("picking_type_id")
     def _onchange_picking_type_id(self):
         """
-        Auto-isi lokasi sumber & tujuan dari tipe operasi.
-        Jika route_id sudah dipilih, lokasi sudah diisi oleh _onchange_route_id
-        sehingga lokasi TIDAK ditimpa dari default picking type.
+        picking_type_id sekarang selalu diisi via route (readonly di view).
+        Onchange ini hanya mengisi produk default dari header delivery.
+        Pengisian lokasi tidak dilakukan di sini karena hanya route yang boleh mengisi.
         """
-        if self.picking_type_id:
-            # Jangan timpa lokasi kalau route_id sudah dipilih
-            if not self.route_id:
-                self.location_id = self.picking_type_id.default_location_src_id
-                if self.picking_type_id.code == "outgoing":
-                    self.location_dest_id = self.picking_type_id.default_location_dest_id
-                else:
-                    self.location_dest_id = False
-            # Default produk dari header delivery jika belum diisi
-            if not self.product_id and self.delivery_id.product_id:
-                self.product_id = self.delivery_id.product_id
+        # Default produk dari header delivery jika belum diisi
+        if self.picking_type_id and not self.product_id and self.delivery_id.product_id:
+            self.product_id = self.delivery_id.product_id
 
     @api.onchange("location_id")
     def _onchange_location_id(self):
@@ -338,6 +399,27 @@ class DeliveryDoLine(models.Model):
                 "pada lot rencana berikut belum teralokasi penuh:\n\n%s\n\n"
                 "Silakan isi alokasi selisih terlebih dahulu untuk lot-lot tersebut."
             ) % (self.sequence, lot_details))
+
+    # ── ORM ───────────────────────────────────────────────────────────────────
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Saat do_line dibuat, auto-save parent delivery agar header ikut tersimpan."""
+        records = super().create(vals_list)
+        # Trigger write pada delivery agar frontend tahu record berubah
+        # dan agar timestamp write_date diperbarui
+        delivery_ids = records.mapped("delivery_id").filtered(lambda d: d.id)
+        if delivery_ids:
+            delivery_ids.write({"write_date": fields.Datetime.now()})
+        return records
+
+    def write(self, vals):
+        """Saat do_line di-update, pastikan delivery juga di-touch."""
+        res = super().write(vals)
+        delivery_ids = self.mapped("delivery_id").filtered(lambda d: d.id)
+        if delivery_ids and any(k not in ("write_date", "write_uid") for k in vals):
+            delivery_ids.write({"write_date": fields.Datetime.now()})
+        return res
 
     # ── Business Logic ────────────────────────────────────────────────────────
 
@@ -600,14 +682,25 @@ class DeliveryDoLine(models.Model):
                 ])
                 total_on_hand = sum(quants.mapped("quantity"))
 
-                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya
-                other_active_lines = self.env["wt.delivery.do.line.lot"].search([
-                    ("lot_id", "=", lot.id),
+                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
+                # Gunakan 2-step search: (1) cari do_lines aktif dari delivery lain,
+                # (2) cari lot_lines di do_lines tersebut pakai direct IN clause.
+                current_delivery_id_c = line.delivery_id.id or False
+                active_do_line_domain_c = [
                     ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
-                    ("delivery_id", "!=", line.delivery_id.id),
-                    ("wt_skip_line", "=", False),
-                ])
-                other_active_qty = sum(other_active_lines.mapped("qty"))
+                ]
+                if current_delivery_id_c:
+                    active_do_line_domain_c.append(("delivery_id", "!=", current_delivery_id_c))
+                active_do_lines_c = self.env["wt.delivery.do.line"].search(active_do_line_domain_c)
+                if active_do_lines_c:
+                    other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                        ("lot_id", "=", lot.id),
+                        ("do_line_id", "in", active_do_lines_c.ids),
+                        ("wt_skip_line", "=", False),
+                    ])
+                    other_active_qty = sum(other_active_lines.mapped("qty"))
+                else:
+                    other_active_qty = 0.0
                 
                 if total_planned_qty + other_active_qty > total_on_hand:
                     available_qty = max(0.0, total_on_hand - other_active_qty)
@@ -647,14 +740,24 @@ class DeliveryDoLine(models.Model):
             ])
             total_on_hand = sum(quants.mapped("quantity"))
 
-            # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya
-            other_active_lines = self.env["wt.delivery.do.line.lot"].search([
-                ("lot_id", "=", lot.id),
+            # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
+            # Gunakan 2-step search yang sama seperti di _compute_qty_available.
+            current_delivery_id_o = self.delivery_id.id or False
+            active_do_line_domain_o = [
                 ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
-                ("delivery_id", "!=", self.delivery_id.id),
-                ("wt_skip_line", "=", False),
-            ])
-            other_active_qty = sum(other_active_lines.mapped("qty"))
+            ]
+            if current_delivery_id_o:
+                active_do_line_domain_o.append(("delivery_id", "!=", current_delivery_id_o))
+            active_do_lines_o = self.env["wt.delivery.do.line"].search(active_do_line_domain_o)
+            if active_do_lines_o:
+                other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                    ("lot_id", "=", lot.id),
+                    ("do_line_id", "in", active_do_lines_o.ids),
+                    ("wt_skip_line", "=", False),
+                ])
+                other_active_qty = sum(other_active_lines.mapped("qty"))
+            else:
+                other_active_qty = 0.0
             
             if total_planned_qty + other_active_qty > total_on_hand:
                 available_qty = max(0.0, total_on_hand - other_active_qty)
@@ -676,6 +779,40 @@ class DeliveryDoLine(models.Model):
                 raise ValidationError(_("Baris DO ini sudah divalidasi."))
             line._action_create_done_picking()
         return True
+
+    def action_print_despatch_slip(self):
+        """Print DESPACT SLIP untuk baris Rencana DO yang sudah valid."""
+        self.ensure_one()
+        if self.picking_state != "done":
+            raise ValidationError(_("Despatch Slip hanya bisa dicetak setelah Rencana DO divalidasi."))
+        return self.env.ref("weightrack.action_report_despatch_slip").report_action(self)
+
+    def action_print_handover_report(self):
+        """Print Berita Acara Serah Terima Barang untuk baris Rencana DO."""
+        self.ensure_one()
+        if self.picking_state != "done":
+            raise ValidationError(_("Berita Acara hanya bisa dicetak setelah Rencana DO divalidasi."))
+        return self.env.ref("weightrack.action_report_delivery_handover").report_action(self)
+
+    def action_print_seal_layout(self):
+        """Print denah penyegelan untuk baris Rencana DO."""
+        self.ensure_one()
+        if self.picking_state != "done":
+            raise ValidationError(_("Denah Penyegelan hanya bisa dicetak setelah Rencana DO divalidasi."))
+        return self.env.ref("weightrack.action_report_seal_layout").report_action(self)
+
+    def action_open_handover_details(self):
+        """Buka popup edit khusus detail Berita Acara meskipun Rencana DO sudah readonly."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Detail Berita Acara"),
+            "res_model": "wt.delivery.do.line",
+            "res_id": self.id,
+            "view_mode": "form",
+            "view_id": self.env.ref("weightrack.view_wt_delivery_do_line_handover_form").id,
+            "target": "new",
+        }
 
     def action_auto_allocate_lots(self):
         """Mencari stok lot yang tersedia di lokasi sumber, lalu membuat rincian lot secara otomatis."""
@@ -745,4 +882,3 @@ class DeliveryDoLine(models.Model):
                     "Baris DO Rute '%s' tidak dapat dihapus karena sudah divalidasi/selesai."
                 ) % (rec.route_id.display_name or rec.picking_type_id.display_name))
         return super().unlink()
-

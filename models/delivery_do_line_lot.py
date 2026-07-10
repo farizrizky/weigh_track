@@ -172,25 +172,60 @@ class DeliveryDoLineLot(models.Model):
                     ("lot_id", "=", rec.lot_id.id),
                 ])
                 total_qty = sum(quants.mapped("quantity"))
-                total_reserved = sum(quants.mapped("reserved_quantity"))
-                
-                # Hitung demand dari baris-baris LAIN dalam satu Rencana DO yang menggunakan lot yang sama
+
+                # Jangan hitung reserved_quantity dari stock.quant Odoo karena sistem ini
+                # tidak menggunakan mekanisme reservasi Odoo standar (tidak ada picking
+                # yang dibuat saat rencana DO). Reservasi dihitung secara manual dari
+                # baris lot rencana DO yang aktif.
+                # total_reserved sengaja dikosongkan untuk menghindari double-count
+                # jika ada picking lama yang belum ter-cancel.
+
+                # Hitung demand dari baris-baris LAIN dalam satu Rencana DO yang menggunakan
+                # lot yang sama. Gunakan in-memory lot_line_ids (bukan query DB) agar
+                # baris yang sedang dihapus (belum di-commit) tidak ikut dihitung.
+                # Gunakan _origin untuk mendapatkan ID yang sudah tersimpan, agar baris
+                # baru (ID negatif/virtual) tidak salah dikecualikan.
+                origin_id = rec._origin.id if rec._origin else rec.id
                 other_lines = rec.do_line_id.lot_line_ids.filtered(
-                    lambda l: l.lot_id == rec.lot_id and l != rec
+                    lambda l: l.lot_id == rec.lot_id
+                    and (l._origin.id if l._origin else l.id) != origin_id
                 )
                 other_planned_qty = sum(other_lines.mapped("qty"))
-                
-                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya (Draft, Confirmed, In Progress, Completed)
-                other_active_lines = self.env["wt.delivery.do.line.lot"].search([
-                    ("lot_id", "=", rec.lot_id.id),
+
+                # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
+                # Gunakan 2-step search untuk menghindari masalah nested M2O domain path
+                # yang tidak reliable, terutama saat delivery baru belum tersimpan ke DB
+                # (current_delivery_id = 0/False).
+                #
+                # Step 1: Cari do_lines dari delivery aktif (kecuali delivery saat ini).
+                #         Pakai domain sederhana 1-level, lebih reliable di semua versi Odoo.
+                current_delivery_id = (
+                    rec.delivery_id.id
+                    or rec.do_line_id.delivery_id.id
+                    or False
+                )
+                active_do_line_domain = [
                     ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
-                    ("delivery_id", "!=", rec.delivery_id.id),
-                    ("wt_skip_line", "=", False),
-                ])
-                other_active_qty = sum(other_active_lines.mapped("qty"))
-                
+                ]
+                if current_delivery_id:
+                    active_do_line_domain.append(("delivery_id", "!=", current_delivery_id))
+
+                active_do_lines = self.env["wt.delivery.do.line"].search(active_do_line_domain)
+
+                # Step 2: Cari lot_lines untuk lot ini di do_lines yang ditemukan.
+                #         Pakai ("do_line_id", "in", ids) — direct IN clause, pasti reliable.
+                if active_do_lines:
+                    other_active_lines = self.env["wt.delivery.do.line.lot"].search([
+                        ("lot_id", "=", rec.lot_id.id),
+                        ("do_line_id", "in", active_do_lines.ids),
+                        ("wt_skip_line", "=", False),
+                    ])
+                    other_active_qty = sum(other_active_lines.mapped("qty"))
+                else:
+                    other_active_qty = 0.0
+
                 rec.wt_qty_on_hand = total_qty
-                rec.wt_qty_reserved = total_reserved + other_planned_qty + other_active_qty
+                rec.wt_qty_reserved = other_planned_qty + other_active_qty
                 rec.qty_available = max(0.0, total_qty - rec.wt_qty_reserved)
             else:
                 rec.wt_qty_on_hand = 0.0
@@ -223,6 +258,19 @@ class DeliveryDoLineLot(models.Model):
             line.wt_is_fully_allocated = line.wt_unallocated_qty <= 0.001
 
     # ── ORM ───────────────────────────────────────────────────────────────────
+
+    def unlink(self):
+        """Saat lot line dihapus, pastikan picking parent (jika ada) di-unreserve
+        agar reserved_quantity di stock.quant dibebaskan."""
+        for rec in self:
+            if rec.do_line_id and rec.do_line_id.picking_id:
+                picking = rec.do_line_id.picking_id
+                if picking.state not in ("done", "cancel"):
+                    try:
+                        picking.do_unreserve()
+                    except Exception:
+                        pass
+        return super().unlink()
 
     @api.model_create_multi
     def create(self, vals_list):

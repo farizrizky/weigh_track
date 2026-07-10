@@ -43,6 +43,10 @@ class Delivery(models.Model):
         default=fields.Date.context_today,
         tracking=True,
     )
+    date_text = fields.Char(
+        string="Tanggal (Teks)",
+        compute="_compute_date_text",
+    )
     note = fields.Text(
         string="Catatan",
     )
@@ -308,6 +312,33 @@ class Delivery(models.Model):
         for rec in self:
             rec.step_count = len(rec.warehouse_step_ids)
 
+    @api.depends("date")
+    def _compute_date_text(self):
+        month_names = {
+            1: "Januari",
+            2: "Februari",
+            3: "Maret",
+            4: "April",
+            5: "Mei",
+            6: "Juni",
+            7: "Juli",
+            8: "Agustus",
+            9: "September",
+            10: "Oktober",
+            11: "November",
+            12: "Desember",
+        }
+        for rec in self:
+            if rec.date:
+                date_value = fields.Date.to_date(rec.date)
+                rec.date_text = "%s %s %s" % (
+                    date_value.day,
+                    month_names[date_value.month],
+                    date_value.year,
+                )
+            else:
+                rec.date_text = False
+
     @api.depends(
         "move_line_ids.wt_is_pulled",
         "move_line_ids.quantity",
@@ -373,6 +404,55 @@ class Delivery(models.Model):
         }
 
     # ── Apply Adjustment (alur lama — backward compat) ────────────────────────
+
+    def action_print_surat_jalan(self):
+        """Print Surat Jalan dari header Tugas Pengiriman."""
+        self.ensure_one()
+        return self.env.ref("weightrack.action_report_surat_jalan").report_action(self)
+
+    def _get_surat_jalan_lines(self):
+        """Return aggregated delivery note lines; prefer outgoing/final delivery rows."""
+        self.ensure_one()
+        result = {}
+
+        if self.do_line_ids:
+            report_lines = self.do_line_ids.filtered(
+                lambda line: line.picking_type_id.code == "outgoing"
+            ) or self.do_line_ids
+            for line in report_lines:
+                product = line.product_id
+                if not product:
+                    continue
+                active_lots = line.lot_line_ids.filtered(lambda lot: not lot.wt_skip_line)
+                physical_qty = sum(active_lots.mapped("wt_physical_qty"))
+                qty = physical_qty if physical_qty > 0.0 else line.demand_qty
+                key = product.id
+                if key not in result:
+                    result[key] = {
+                        "code": product.default_code or "",
+                        "name": product.display_name,
+                        "qty": 0.0,
+                    }
+                result[key]["qty"] += qty
+        else:
+            report_pickings = self.picking_ids.filtered(
+                lambda picking: picking.picking_type_id.code == "outgoing"
+            ) or self.picking_ids
+            for move in report_pickings.mapped("move_ids"):
+                product = move.product_id
+                if not product:
+                    continue
+                qty = sum(move.move_line_ids.mapped("quantity")) or move.product_uom_qty
+                key = product.id
+                if key not in result:
+                    result[key] = {
+                        "code": product.default_code or "",
+                        "name": product.display_name,
+                        "qty": 0.0,
+                    }
+                result[key]["qty"] += qty
+
+        return list(result.values())
 
     def action_apply_adjustment(self):
         """Terapkan koreksi stok (susut) untuk semua baris Detail Timbang yang:
