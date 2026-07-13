@@ -38,7 +38,6 @@ class DeliveryDoLine(models.Model):
     operator_id = fields.Many2one(
         "hr.employee",
         string="Operator",
-        required=True,
         help="Operator yang bertanggung jawab atas Delivery Order ini.",
     )
     allowed_operator_ids = fields.Many2many(
@@ -268,12 +267,21 @@ class DeliveryDoLine(models.Model):
     def _onchange_picking_type_id(self):
         """
         picking_type_id sekarang selalu diisi via route (readonly di view).
-        Onchange ini hanya mengisi produk default dari header delivery.
+        Onchange ini hanya mengisi produk default dari konfigurasi wt.product.
         Pengisian lokasi tidak dilakukan di sini karena hanya route yang boleh mengisi.
         """
-        # Default produk dari header delivery jika belum diisi
-        if self.picking_type_id and not self.product_id and self.delivery_id.product_id:
-            self.product_id = self.delivery_id.product_id
+        if self.picking_type_id and not self.product_id:
+            self.product_id = self._get_configured_product()
+
+    @api.onchange("delivery_id", "company_id")
+    def _onchange_delivery_company_set_product(self):
+        for line in self:
+            line.product_id = line._get_configured_product()
+
+    def _get_configured_product(self):
+        self.ensure_one()
+        company = self.company_id or self.delivery_id.company_id or self.env.company
+        return self.env["wt.product"].get_active_product(company)
 
     @api.onchange("location_id")
     def _onchange_location_id(self):
@@ -286,54 +294,97 @@ class DeliveryDoLine(models.Model):
         if self.route_id and self.picking_type_id and self.picking_type_id.code == "internal":
             self.location_dest_id = self.route_id.transit_location_id
 
-    @api.onchange("demand_qty", "product_id", "location_id")
-    def _onchange_auto_allocate_lots(self):
-        """Auto-alokasi lot secara in-memory saat demand_qty, product_id, atau location_id berubah."""
-        if not self.product_id or not self.location_id or self.demand_qty <= 0:
-            return
+    def _prepare_auto_lot_allocation(self, requested_qty):
+        """Build lot-line commands from stock available in the complete source subtree.
 
-        # Hanya lakukan auto-alokasi jika lot_line_ids kosong (belum diisi manual)
-        # atau jika demand_qty berubah dan total qty di lot_line_ids berbeda dengan demand_qty baru.
-        total_lot_qty = sum(self.lot_line_ids.mapped("qty"))
-        if self.lot_line_ids and abs(total_lot_qty - self.demand_qty) <= 0.001:
-            return
-
-        # Bersihkan lot_line_ids lama
-        self.lot_line_ids = [(5, 0, 0)]
-
-        # Cari quants di lokasi sumber (dan lokasi di bawahnya)
-        locations = self.env["stock.location"].search([("id", "child_of", self.location_id.id)])
-        quants = self.env["stock.quant"].search([
+        Each command keeps the exact physical location of the quant.  This is
+        essential when one source location, such as ``SBY/Stock``, contains
+        sibling storage branches that hold different lots.
+        """
+        self.ensure_one()
+        quant_model = self.env["stock.quant"].sudo().with_company(self.company_id)
+        quants = quant_model.search([
             ("product_id", "=", self.product_id.id),
-            ("location_id", "in", locations.ids),
+            ("location_id", "child_of", self.location_id.id),
             ("quantity", ">", 0),
             ("lot_id", "!=", False),
         ])
+        quants = quants.sorted(
+            key=lambda quant: (
+                quant.lot_id.create_date or fields.Datetime.now(),
+                quant.lot_id.name,
+                quant.location_id.complete_name,
+            )
+        )
 
-        # Urutkan quants berdasarkan tanggal pembuatan lot (tertua dahulu / FIFO)
-        quants = quants.sorted(key=lambda q: (q.lot_id.create_date or fields.Datetime.now(), q.lot_id.name))
+        # Rencana DO tidak membuat stock.picking saat masih draft. Karena itu,
+        # reservasi dari Rencana DO lain belum selalu tercermin di
+        # stock.quant.reserved_quantity. Samakan perhitungan ini dengan
+        # _check_lot_stock_limits agar lot pertama tidak dialokasikan melebihi
+        # stok bebasnya.
+        current_delivery_id = self._get_persisted_delivery_id()
+        active_do_line_domain = [
+            ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+        ]
+        if current_delivery_id:
+            active_do_line_domain.append(("delivery_id", "!=", current_delivery_id))
+        active_do_lines = self.env["wt.delivery.do.line"].search(
+            active_do_line_domain
+        )
+        planned_reserved_by_lot = {}
+        if active_do_lines:
+            planned_lot_lines = self.env["wt.delivery.do.line.lot"].sudo().search([
+                ("do_line_id", "in", active_do_lines.ids),
+                ("wt_skip_line", "=", False),
+            ])
+            for planned_line in planned_lot_lines:
+                planned_reserved_by_lot[planned_line.lot_id.id] = (
+                    planned_reserved_by_lot.get(planned_line.lot_id.id, 0.0)
+                    + planned_line.qty
+                )
 
-        remaining_need = self.demand_qty
+        remaining_need = requested_qty
         lot_vals = []
-
         for quant in quants:
             if remaining_need <= 0:
                 break
 
-            # Stok tersedia = kuantitas fisik - kuantitas tereservasi
-            avail_qty = quant.quantity - quant.reserved_quantity
-            if avail_qty <= 0:
+            planned_reserved_qty = planned_reserved_by_lot.get(quant.lot_id.id, 0.0)
+            physical_available_qty = max(
+                0.0,
+                quant.quantity - quant.reserved_quantity,
+            )
+            available_qty = max(
+                0.0,
+                physical_available_qty - planned_reserved_qty,
+            )
+            # Satu lot dapat tersebar di beberapa sublokasi. Kurangi reservasi
+            # rencana hanya sekali, dari quant pertama lot tersebut.
+            planned_reserved_by_lot[quant.lot_id.id] = max(
+                0.0,
+                planned_reserved_qty - physical_available_qty,
+            )
+            if available_qty <= 0:
                 continue
 
-            take_qty = min(avail_qty, remaining_need)
+            take_qty = min(available_qty, remaining_need)
             lot_vals.append((0, 0, {
                 "lot_id": quant.lot_id.id,
+                "source_location_id": quant.location_id.id,
                 "qty": take_qty,
             }))
             remaining_need -= take_qty
 
-        if lot_vals:
-            self.lot_line_ids = lot_vals
+        return lot_vals, remaining_need
+
+    def _get_persisted_delivery_id(self):
+        """Return the database ID when this record is an onchange virtual copy."""
+        self.ensure_one()
+        return (
+            self._origin.delivery_id.id
+            or self.delivery_id._origin.id
+            or (self.delivery_id.id if isinstance(self.delivery_id.id, int) else False)
+        )
 
     # ── Default get ───────────────────────────────────────────────────────────
 
@@ -356,6 +407,10 @@ class DeliveryDoLine(models.Model):
                 res["location_dest_id"] = picking_type.default_location_dest_id.id or False
             if delivery.product_id:
                 res["product_id"] = delivery.product_id.id
+            else:
+                product = self.env["wt.product"].get_active_product(delivery.company_id)
+                if product:
+                    res["product_id"] = product.id
         return res
 
     # ── Validasi ──────────────────────────────────────────────────────────────
@@ -366,7 +421,8 @@ class DeliveryDoLine(models.Model):
         missing = []
         if not self.picking_type_id:
             missing.append(_("Tipe Operasi"))
-        if not self.operator_id:
+        lot_operators = self.lot_line_ids.mapped("operator_id")
+        if not lot_operators:
             missing.append(_("Operator"))
         if not self.product_id:
             missing.append(_("Produk"))
@@ -400,11 +456,40 @@ class DeliveryDoLine(models.Model):
                 "Silakan isi alokasi selisih terlebih dahulu untuk lot-lot tersebut."
             ) % (self.sequence, lot_details))
 
+    def _get_lot_line_source_location(self, lot_line, source_location):
+        """Return the physical source location selected for a planned lot."""
+        self.ensure_one()
+        physical_location = lot_line.source_location_id
+        if physical_location and (
+            physical_location == source_location
+            or physical_location.parent_path.startswith(source_location.parent_path)
+        ):
+            return physical_location
+
+        quant = self.env["stock.quant"].sudo().with_company(self.company_id).search([
+            ("product_id", "=", self.product_id.id),
+            ("location_id", "child_of", source_location.id),
+            ("lot_id", "=", lot_line.lot_id.id),
+            ("quantity", ">", 0),
+        ], order="location_id, id", limit=1)
+        return quant.location_id or source_location
+
     # ── ORM ───────────────────────────────────────────────────────────────────
 
     @api.model_create_multi
     def create(self, vals_list):
         """Saat do_line dibuat, auto-save parent delivery agar header ikut tersimpan."""
+        for vals in vals_list:
+            if not vals.get("product_id"):
+                delivery = self.env["wt.delivery"].browse(vals.get("delivery_id")) if vals.get("delivery_id") else False
+                company = (
+                    delivery.company_id
+                    if delivery
+                    else (self.env["res.company"].browse(vals.get("company_id")) if vals.get("company_id") else self.env.company)
+                )
+                product = self.env["wt.product"].get_active_product(company)
+                if product:
+                    vals["product_id"] = product.id
         records = super().create(vals_list)
         # Trigger write pada delivery agar frontend tahu record berubah
         # dan agar timestamp write_date diperbarui
@@ -415,6 +500,11 @@ class DeliveryDoLine(models.Model):
 
     def write(self, vals):
         """Saat do_line di-update, pastikan delivery juga di-touch."""
+        if "delivery_id" in vals and "product_id" not in vals:
+            delivery = self.env["wt.delivery"].browse(vals["delivery_id"])
+            product = self.env["wt.product"].get_active_product(delivery.company_id)
+            if product:
+                vals = dict(vals, product_id=product.id)
         res = super().write(vals)
         delivery_ids = self.mapped("delivery_id").filtered(lambda d: d.id)
         if delivery_ids and any(k not in ("write_date", "write_uid") for k in vals):
@@ -473,6 +563,7 @@ class DeliveryDoLine(models.Model):
             # Move 1: Consume old lots (Src -> Inventory Loss)
             move_vals.append({
                 "description_picking": f"Consume old lots for transit merge - {product.display_name}",
+                "inventory_name": _("Pengiriman"),
                 "product_id": product.id,
                 "product_uom": product.uom_id.id,
                 "product_uom_qty": total_physical,
@@ -484,6 +575,7 @@ class DeliveryDoLine(models.Model):
             # Move 2: Produce new merged lot (Inventory Loss -> Dest)
             move_vals.append({
                 "description_picking": f"Produce new merged lot for transit - {product.display_name}",
+                "inventory_name": _("Pengiriman"),
                 "product_id": product.id,
                 "product_uom": product.uom_id.id,
                 "product_uom_qty": total_physical,
@@ -496,6 +588,7 @@ class DeliveryDoLine(models.Model):
             # Normal direct internal transfer/delivery move
             move_vals.append({
                 "description_picking": product.display_name,
+                "inventory_name": _("Pengiriman"),
                 "product_id": product.id,
                 "product_uom": product.uom_id.id,
                 "product_uom_qty": total_physical,
@@ -512,7 +605,7 @@ class DeliveryDoLine(models.Model):
             "partner_id": partner.id if partner else False,
             "scheduled_date": self.scheduled_date or fields.Datetime.now(),
             "wt_delivery_id": delivery.id,
-            "wt_operator_id": self.operator_id.id,
+            "wt_operator_id": self.operator_id.id or (self.lot_line_ids.mapped("operator_id")[:1].id if self.lot_line_ids.mapped("operator_id") else False),
             "origin": delivery.name,
             "company_id": delivery.company_id.id,
             "move_ids": [(0, 0, val) for val in move_vals],
@@ -557,16 +650,7 @@ class DeliveryDoLine(models.Model):
                 if lot_line.wt_skip_line:
                     continue
                 qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
-                exact_loc = src_location
-                locations = self.env["stock.location"].search([("id", "child_of", src_location.id)])
-                quant = self.env["stock.quant"].search([
-                    ("product_id", "=", product.id),
-                    ("location_id", "in", locations.ids),
-                    ("lot_id", "=", lot_line.lot_id.id),
-                    ("quantity", ">", 0),
-                ], limit=1)
-                if quant:
-                    exact_loc = quant.location_id
+                exact_loc = self._get_lot_line_source_location(lot_line, src_location)
 
                 self.env["stock.move.line"].sudo().create({
                     "move_id": move_1.id,
@@ -599,16 +683,7 @@ class DeliveryDoLine(models.Model):
                     if lot_line.wt_skip_line:
                         continue
                     qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
-                    exact_loc = src_location
-                    locations = self.env["stock.location"].search([("id", "child_of", src_location.id)])
-                    quant = self.env["stock.quant"].search([
-                        ("product_id", "=", product.id),
-                        ("location_id", "in", locations.ids),
-                        ("lot_id", "=", lot_line.lot_id.id),
-                        ("quantity", ">", 0),
-                    ], limit=1)
-                    if quant:
-                        exact_loc = quant.location_id
+                    exact_loc = self._get_lot_line_source_location(lot_line, src_location)
 
                     self.env["stock.move.line"].sudo().create({
                         "move_id": move.id,
@@ -685,7 +760,7 @@ class DeliveryDoLine(models.Model):
                 # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
                 # Gunakan 2-step search: (1) cari do_lines aktif dari delivery lain,
                 # (2) cari lot_lines di do_lines tersebut pakai direct IN clause.
-                current_delivery_id_c = line.delivery_id.id or False
+                current_delivery_id_c = line._get_persisted_delivery_id()
                 active_do_line_domain_c = [
                     ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
                 ]
@@ -742,7 +817,7 @@ class DeliveryDoLine(models.Model):
 
             # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
             # Gunakan 2-step search yang sama seperti di _compute_qty_available.
-            current_delivery_id_o = self.delivery_id.id or False
+            current_delivery_id_o = self._get_persisted_delivery_id()
             active_do_line_domain_o = [
                 ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
             ]
@@ -822,39 +897,12 @@ class DeliveryDoLine(models.Model):
         if self.demand_qty <= 0:
             raise ValidationError(_("Masukkan Demand (kg) terlebih dahulu sebelum melakukan auto-alokasi."))
 
+        requested_qty = self.demand_qty
+
         # Hapus rincian lot lama
         self.lot_line_ids.unlink()
 
-        # Cari quants di lokasi sumber (dan lokasi di bawahnya)
-        locations = self.env["stock.location"].search([("id", "child_of", self.location_id.id)])
-        quants = self.env["stock.quant"].search([
-            ("product_id", "=", self.product_id.id),
-            ("location_id", "in", locations.ids),
-            ("quantity", ">", 0),
-            ("lot_id", "!=", False),
-        ])
-
-        # Urutkan quants berdasarkan tanggal pembuatan lot (tertua dahulu / FIFO)
-        quants = quants.sorted(key=lambda q: (q.lot_id.create_date or fields.Datetime.now(), q.lot_id.name))
-
-        remaining_need = self.demand_qty
-        lot_vals = []
-
-        for quant in quants:
-            if remaining_need <= 0:
-                break
-
-            # Stok tersedia = kuantitas fisik - kuantitas tereservasi
-            avail_qty = quant.quantity - quant.reserved_quantity
-            if avail_qty <= 0:
-                continue
-
-            take_qty = min(avail_qty, remaining_need)
-            lot_vals.append((0, 0, {
-                "lot_id": quant.lot_id.id,
-                "qty": take_qty,
-            }))
-            remaining_need -= take_qty
+        lot_vals, remaining_need = self._prepare_auto_lot_allocation(requested_qty)
 
         if lot_vals:
             self.write({"lot_line_ids": lot_vals})
@@ -869,7 +917,12 @@ class DeliveryDoLine(models.Model):
                     "message": _(
                         "Hanya berhasil mengalokasikan %.2f kg dari demand %.2f kg. "
                         "Sisa %.2f kg tidak memiliki alokasi lot karena kekurangan stok di lokasi %s."
-                    ) % (self.demand_qty - remaining_need, self.demand_qty, remaining_need, self.location_id.display_name),
+                    ) % (
+                        requested_qty - remaining_need,
+                        requested_qty,
+                        remaining_need,
+                        self.location_id.display_name,
+                    ),
                     "type": "warning",
                     "sticky": True,
                 }

@@ -286,6 +286,7 @@ class DeliveryStep(models.Model):
         for loc in self.source_location_ids:
             move_vals.append((0, 0, {
                 "description_picking": product.display_name,
+                "inventory_name": _("Pengiriman"),
                 "product_id": product.id,
                 "product_uom": product.uom_id.id,
                 "product_uom_qty": qty_per_loc,
@@ -408,6 +409,7 @@ class DeliveryStep(models.Model):
                         product.display_name,
                         prev.warehouse_id.name,
                     ),
+                    "inventory_name": _("Pengiriman"),
                     "product_id": product.id,
                     "product_uom": product.uom_id.id,
                     "product_uom_qty": prev.net_qty,
@@ -425,6 +427,7 @@ class DeliveryStep(models.Model):
             for loc in self.source_location_ids:
                 move_vals.append((0, 0, {
                     "description_picking": _("%s (Stok %s)") % (product.display_name, loc.complete_name),
+                    "inventory_name": _("Pengiriman"),
                     "product_id": product.id,
                     "product_uom": product.uom_id.id,
                     "product_uom_qty": qty_per_loc,

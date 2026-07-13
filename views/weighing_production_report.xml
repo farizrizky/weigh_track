@@ -30,66 +30,63 @@
                 <div class="page wt-weighing-production-report">
                     <style>
                         .wt-weighing-production-report {
-                            color: #111;
-                            font-family: "Times New Roman", Times, serif;
-                            font-size: 11px;
+                            color: #111827;
+                            font-family: Arial, sans-serif;
+                            font-size: 10px;
+                            line-height: 1.35;
                         }
                         .wt-weighing-production-report .header-table {
                             border-collapse: collapse;
-                            margin-bottom: 16px;
+                            margin-bottom: 14px;
                             width: 100%;
                         }
-                        .wt-weighing-production-report .logo-cell {
+                        .wt-weighing-production-report .header-table td {
                             vertical-align: top;
-                            width: 24%;
                         }
                         .wt-weighing-production-report .logo {
-                            max-height: 58px;
-                            max-width: 155px;
+                            max-height: 72px;
+                            max-width: 250px;
                         }
-                        .wt-weighing-production-report .title-cell {
-                            text-align: center;
-                            vertical-align: top;
-                            width: 52%;
-                        }
-                        .wt-weighing-production-report .company-title {
-                            font-size: 19px;
+                        .wt-weighing-production-report .title {
+                            color: #111827;
+                            font-size: 18px;
                             font-weight: 700;
-                            line-height: 1.12;
+                            margin: 0 0 5px;
+                            text-align: right;
                             text-transform: uppercase;
                         }
-                        .wt-weighing-production-report .report-title {
-                            font-size: 19px;
+                        .wt-weighing-production-report .meta {
+                            color: #374151;
+                            text-align: right;
+                        }
+                        .wt-weighing-production-report .section-title {
+                            background: #111827;
+                            color: #fff;
+                            font-size: 10px;
                             font-weight: 700;
-                            line-height: 1.12;
+                            margin-top: 10px;
+                            padding: 7px 10px;
                             text-transform: uppercase;
                         }
-                        .wt-weighing-production-report .title-line {
-                            font-family: "Courier New", monospace;
-                            font-size: 17px;
-                            font-weight: 700;
-                            letter-spacing: 1px;
-                            line-height: 1;
-                        }
-                        .wt-weighing-production-report .meta-table {
+                        .wt-weighing-production-report .info-table {
+                            border: 1px solid #cbd5e1;
                             border-collapse: collapse;
-                            margin-bottom: 16px;
-                            width: 62%;
+                            margin-bottom: 12px;
+                            width: 100%;
                         }
-                        .wt-weighing-production-report .meta-table td {
-                            font-size: 14px;
-                            line-height: 1.35;
-                            padding: 1px 4px;
+                        .wt-weighing-production-report .info-table td {
+                            border: 1px solid #cbd5e1;
+                            font-size: 10px;
+                            padding: 8px 10px !important;
+                            vertical-align: top;
                         }
-                        .wt-weighing-production-report .meta-label {
-                            width: 150px;
+                        .wt-weighing-production-report .info-label {
+                            background: #f3f4f6;
+                            font-weight: 700;
+                            width: 18%;
                         }
-                        .wt-weighing-production-report .meta-separator {
-                            text-align: center;
-                            width: 10px;
-                        }
-                        .wt-weighing-production-report .meta-value {
-                            min-width: 230px;
+                        .wt-weighing-production-report .info-value {
+                            width: 32%;
                         }
                         .wt-weighing-production-report .data-table {
                             border-collapse: collapse;
@@ -98,14 +95,16 @@
                         }
                         .wt-weighing-production-report .data-table th,
                         .wt-weighing-production-report .data-table td {
-                            border: 1px solid #111;
-                            font-size: 9px;
-                            line-height: 1.2;
-                            padding: 3px 4px;
+                            border: 1px solid #cbd5e1;
+                            font-size: 10px;
+                            line-height: 1.35;
+                            padding: 8px 10px !important;
                             vertical-align: middle;
                         }
                         .wt-weighing-production-report .data-table th {
-                            font-size: 9px;
+                            background: #f3f4f6;
+                            border: 1px solid #9ca3af;
+                            font-size: 10px;
                             font-weight: 700;
                             text-align: center;
                         }
@@ -114,10 +113,11 @@
                         }
                         .wt-weighing-production-report .text-right {
                             text-align: right;
-                            padding-right: 7px !important;
+                            padding-right: 10px !important;
                             white-space: nowrap;
                         }
                         .wt-weighing-production-report .total-row td {
+                            background: #f9fafb;
                             font-weight: 700;
                         }
                         .wt-weighing-production-report .empty-row {
@@ -127,7 +127,7 @@
 
                     <table class="header-table">
                         <tr>
-                            <td class="logo-cell">
+                            <td style="width: 40%;">
                                 <t t-if="doc.company_id.logo">
                                     <img class="logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
                                 </t>
@@ -135,33 +135,30 @@
                                     <strong t-esc="doc.company_id.name"/>
                                 </t>
                             </td>
-                            <td class="title-cell">
-                                <div class="company-title" t-esc="doc.company_id.name"/>
-                                <div class="report-title">Laporan Penimbangan Produksi</div>
-                                <div class="title-line">===============================</div>
+                            <td style="width: 60%;">
+                                <h2 class="title">Laporan Penimbangan Produksi</h2>
+                                <div class="meta">
+                                    <div><strong>Tanggal Cetak:</strong> <span t-esc="time.strftime('%d/%m/%Y')"/></div>
+                                </div>
                             </td>
-                            <td style="width: 24%;"></td>
                         </tr>
                     </table>
 
-                    <table class="meta-table">
+                    <table class="info-table">
                         <tr>
-                            <td class="meta-label">Divisi</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value">
+                            <td class="info-label">Perusahaan</td>
+                            <td class="info-value" t-esc="doc.company_id.name"/>
+                            <td class="info-label">Divisi</td>
+                            <td class="info-value">
                                 <span t-if="doc.division_id" t-esc="doc.division_id.name"/>
                                 <span t-else="">Semua Divisi</span>
                             </td>
                         </tr>
                         <tr>
-                            <td class="meta-label">Tanggal Produksi</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value"><span t-field="doc.production_date"/></td>
-                        </tr>
-                        <tr>
-                            <td class="meta-label">Cuaca</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value">
+                            <td class="info-label">Tanggal Produksi</td>
+                            <td class="info-value"><span t-field="doc.production_date"/></td>
+                            <td class="info-label">Cuaca</td>
+                            <td class="info-value">
                                 <span t-esc="doc.weather_display or '-'"/>
                             </td>
                         </tr>

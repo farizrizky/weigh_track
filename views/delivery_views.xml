@@ -20,7 +20,7 @@
                 <field name="picking_count" string="Jumlah DO"/>
                 <field name="total_demand_qty" string="Total Rencana Awal (kg)"/>
                 <field name="total_physical_qty" string="Total Fisik Terkirim (kg)"/>
-                <field name="total_difference_qty" string="Total Selisih/Susut (kg)"/>
+                <field name="total_difference_qty" string="Total Selisih (kg)"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-primary="state in ('confirmed','in_progress')"
@@ -66,11 +66,6 @@
                             type="object"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
-                    <button name="action_start"
-                            string="Mulai"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state != 'confirmed'"/>
                     <button name="action_complete"
                             string="Selesai Timbang"
                             type="object"
@@ -133,7 +128,7 @@
                                    readonly="state != 'draft'"/>
                             <field name="date" readonly="state != 'draft'"/>
                             <field name="partner_id" readonly="state not in ('draft', 'confirmed')"/>
-                            <field name="product_id" readonly="state not in ('draft', 'confirmed')" optional="show"/>
+                            <field name="product_id" invisible="1"/>
                         </group>
                         <group>
                             <field name="total_demand_qty" readonly="1"/>
@@ -148,7 +143,7 @@
                         <i class="fa fa-exclamation-triangle me-2" style="font-size: 1.5em;"/>
                         <div>
                             <strong>Perhatian:</strong> Terdapat lot baru/tambahan yang belum di-pull oleh operator timbangan di lapangan. 
-                            Hal ini biasanya terjadi karena perubahan stock reservasi (misal setelah Apply Adjustment). 
+                            Hal ini biasanya terjadi karena perubahan stock reservasi setelah penyesuaian stok otomatis. 
                             Harap informasikan ke operator untuk melakukan <strong>Pull Tugas</strong> ulang pada perangkat mereka.
                         </div>
                     </div>
@@ -194,12 +189,7 @@
                                     <field name="picking_type_id"
                                            options="{'no_create': True, 'no_open': True}"
                                            string="Tipe Operasi"/>
-                                    <field name="product_id"
-                                           options="{'no_create': True}"
-                                           string="Produk"/>
-                                    <field name="operator_id"
-                                           options="{'no_create': True}"
-                                           string="Operator"/>
+                                    <field name="product_id" column_invisible="True"/>
                                     <field name="location_id"
                                            options="{'no_create': True}"
                                            string="Lokasi Sumber"/>
@@ -242,6 +232,12 @@
                                 </list>
                                 <form string="Rincian Rencana DO">
                                      <header>
+                                         <button name="action_auto_allocate_lots"
+                                                 string="Muat Lot dari Lokasi Sumber"
+                                                 type="object"
+                                                 class="btn-secondary"
+                                                 invisible="picking_state == 'done'"
+                                                 confirm="Rincian lot yang ada akan diganti berdasarkan stok bebas pada lokasi sumber dan seluruh sublokasinya. Lanjutkan?"/>
                                          <button name="action_validate_line"
                                                  string="Validasi Rencana DO"
                                                  type="object"
@@ -280,12 +276,7 @@
                                                        options="{'no_create': True, 'no_open': True}"
                                                        readonly="1"
                                                        force_save="1"/>
-                                                <field name="product_id" options="{'no_create': True}"
-                                                       readonly="picking_state == 'done'"/>
-                                                <field name="allowed_operator_ids" invisible="1"/>
-                                                <field name="operator_id" options="{'no_create': True}"
-                                                       readonly="picking_state == 'done'"
-                                                       domain="[('id', 'in', allowed_operator_ids)]"/>
+                                                <field name="product_id" invisible="1" force_save="1"/>
                                             </group>
                                             <group string="Lokasi &amp; Tanggal">
                                                 <field name="location_id"
@@ -311,6 +302,9 @@
                                                     <list string="Perincian Lot" editable="bottom">
                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}"/>
                                                         <field name="location_id" readonly="1" string="Lokasi"/>
+                                                        <field name="allowed_weighing_location_ids" column_invisible="True"/>
+                                                        <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location"/>
+                                                        <field name="operator_id" readonly="1" string="Operator"/>
                                                         <field name="wt_qty_on_hand" readonly="1" string="Stok Fisik (kg)"/>
                                                         <field name="wt_qty_reserved" readonly="1" string="Terpesan (kg)"/>
                                                         <field name="qty_available" readonly="1" string="Stok Bebas (kg)"/>
@@ -357,16 +351,6 @@
 
                         <!-- Tab 2: Detail Timbang -->
                         <page string="Detail Timbang">
-                            <div class="mb-2 d-flex gap-2"
-                                 invisible="not has_adjustable_lines or state not in ('in_progress', 'completed')">
-                                <button name="action_apply_adjustment"
-                                        string="Apply Adjustment"
-                                        type="object"
-                                        class="btn btn-warning"
-                                        icon="fa-check-circle"
-                                        confirm="Aksi ini akan mengkoreksi stok sesuai alokasi selisih yang sudah diatur. Stok lot terdampak akan disesuaikan sekarang. Lanjutkan?"/>
-                            </div>
-
                             <!-- Tabel Detail Timbang Rencana DO (alur baru) -->
                             <field name="pulled_do_lot_line_ids"
                                    invisible="not do_line_ids"
@@ -376,7 +360,6 @@
                                       decoration-warning="wt_difference_qty &lt; -0.001 and not wt_is_fully_allocated"
                                       decoration-success="wt_physical_qty &gt; 0.0 and (wt_difference_qty == 0.0 or wt_is_fully_allocated)">
                                     <field name="route_id" string="Rute" readonly="1"/>
-                                    <field name="product_id" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
                                     <field name="wt_original_qty" string="Demand Rencana (kg)" readonly="1"/>
                                     <field name="qty" string="Demand DO (kg)" readonly="1" optional="hide"/>
@@ -414,7 +397,6 @@
                                       decoration-warning="wt_difference_qty &lt; -0.001 and not wt_is_fully_allocated"
                                       decoration-success="wt_physical_qty &gt; 0.0 and (wt_difference_qty == 0.0 or wt_is_fully_allocated)">
                                     <field name="picking_id" string="DO" readonly="1" optional="show"/>
-                                    <field name="product_id" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
                                     <field name="product_uom_id" readonly="1" optional="hide"/>
                                     <field name="wt_original_demand_qty" string="Demand Awal (kg)" readonly="1"
@@ -450,8 +432,9 @@
                                 <field name="unpulled_do_lot_line_ids" readonly="1">
                                     <list string="Lot Rencana Belum Di-Push" create="false" delete="false" edit="false">
                                         <field name="route_id" string="Rute"/>
-                                        <field name="product_id" string="Produk"/>
                                         <field name="lot_id" string="Nomor Seri/Lot"/>
+                                        <field name="weighing_location_id" string="Weighing Location"/>
+                                        <field name="operator_id" string="Operator"/>
                                         <field name="qty" string="Qty Demand (kg)"/>
                                     </list>
                                 </field>
@@ -466,7 +449,6 @@
                                 <field name="unpulled_move_line_ids" readonly="1">
                                     <list string="Lot Belum Di-Push" create="false" delete="false" edit="false">
                                         <field name="picking_id" string="DO"/>
-                                        <field name="product_id" string="Produk"/>
                                         <field name="lot_id" string="Nomor Seri/Lot"/>
                                         <field name="quantity" string="Qty Demand (kg)"/>
                                         <field name="location_id" string="Lokasi Asal"/>

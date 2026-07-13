@@ -30,67 +30,63 @@
                 <div class="page wt-weighing-reject-slab-report">
                     <style>
                         .wt-weighing-reject-slab-report {
-                            color: #111;
-                            font-family: "Times New Roman", Times, serif;
+                            color: #111827;
+                            font-family: Arial, sans-serif;
                             font-size: 10px;
+                            line-height: 1.35;
                         }
                         .wt-weighing-reject-slab-report .header-table {
                             border-collapse: collapse;
-                            margin-bottom: 15px;
+                            margin-bottom: 14px;
                             width: 100%;
                         }
-                        .wt-weighing-reject-slab-report .logo-cell {
+                        .wt-weighing-reject-slab-report .header-table td {
                             vertical-align: top;
-                            width: 20%;
                         }
                         .wt-weighing-reject-slab-report .logo {
-                            max-height: 55px;
-                            max-width: 150px;
+                            max-height: 72px;
+                            max-width: 250px;
                         }
-                        .wt-weighing-reject-slab-report .title-cell {
-                            text-align: center;
-                            vertical-align: top;
-                            width: 60%;
-                        }
-                        .wt-weighing-reject-slab-report .company-title {
-                            font-size: 16px;
+                        .wt-weighing-reject-slab-report .title {
+                            color: #111827;
+                            font-size: 18px;
                             font-weight: 700;
-                            line-height: 1.15;
+                            margin: 0 0 5px;
+                            text-align: right;
                             text-transform: uppercase;
                         }
-                        .wt-weighing-reject-slab-report .report-title {
-                            font-size: 16px;
+                        .wt-weighing-reject-slab-report .meta {
+                            color: #374151;
+                            text-align: right;
+                        }
+                        .wt-weighing-reject-slab-report .section-title {
+                            background: #111827;
+                            color: #fff;
+                            font-size: 10px;
                             font-weight: 700;
-                            line-height: 1.15;
+                            margin-top: 10px;
+                            padding: 7px 10px;
                             text-transform: uppercase;
                         }
-                        .wt-weighing-reject-slab-report .title-line {
-                            font-family: "Courier New", monospace;
-                            font-size: 14px;
-                            font-weight: 700;
-                            letter-spacing: 1px;
-                            line-height: 1;
-                        }
-                        .wt-weighing-reject-slab-report .meta-table {
+                        .wt-weighing-reject-slab-report .info-table {
+                            border: 1px solid #cbd5e1;
                             border-collapse: collapse;
-                            margin-bottom: 15px;
-                            width: 70%;
+                            margin-bottom: 12px;
+                            width: 100%;
                         }
-                        .wt-weighing-reject-slab-report .meta-table td {
-                            font-size: 11px;
-                            line-height: 1.3;
-                            padding: 1px 4px;
+                        .wt-weighing-reject-slab-report .info-table td {
+                            border: 1px solid #cbd5e1;
+                            font-size: 10px;
+                            padding: 8px 10px !important;
+                            vertical-align: top;
                         }
-                        .wt-weighing-reject-slab-report .meta-label {
-                            width: 130px;
+                        .wt-weighing-reject-slab-report .info-label {
+                            background: #f3f4f6;
                             font-weight: bold;
+                            width: 18%;
                         }
-                        .wt-weighing-reject-slab-report .meta-separator {
-                            text-align: center;
-                            width: 10px;
-                        }
-                        .wt-weighing-reject-slab-report .meta-value {
-                            min-width: 200px;
+                        .wt-weighing-reject-slab-report .info-value {
+                            width: 32%;
                         }
                         .wt-weighing-reject-slab-report .data-table {
                             border-collapse: collapse;
@@ -98,35 +94,36 @@
                         }
                         .wt-weighing-reject-slab-report .data-table th,
                         .wt-weighing-reject-slab-report .data-table td {
-                            border: 1px solid #111;
-                            font-size: 9px;
-                            line-height: 1.3;
-                            padding: 4px 5px;
+                            border: 1px solid #cbd5e1;
+                            font-size: 10px;
+                            line-height: 1.35;
+                            padding: 8px 10px !important;
                             vertical-align: middle;
                         }
                         .wt-weighing-reject-slab-report .data-table th {
-                            font-size: 9.5px;
+                            border: 1px solid #9ca3af;
+                            font-size: 10px;
                             font-weight: 700;
                             text-align: center;
-                            background-color: #f2f2f2;
+                            background: #f3f4f6;
                         }
                         .wt-weighing-reject-slab-report .text-center {
                             text-align: center;
                         }
                         .wt-weighing-reject-slab-report .text-right {
                             text-align: right;
-                            padding-right: 6px !important;
+                            padding-right: 10px !important;
                             white-space: nowrap;
                         }
                         .wt-weighing-reject-slab-report .total-row td {
                             font-weight: 700;
-                            background-color: #f9f9f9;
+                            background: #f9fafb;
                         }
                     </style>
 
                     <table class="header-table">
                         <tr>
-                            <td class="logo-cell">
+                            <td style="width: 40%;">
                                 <t t-if="doc.company_id.logo">
                                     <img class="logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
                                 </t>
@@ -134,51 +131,44 @@
                                     <strong t-esc="doc.company_id.name"/>
                                 </t>
                             </td>
-                            <td class="title-cell">
-                                <div class="company-title" t-esc="doc.company_id.name"/>
-                                <div class="report-title">Laporan Reject dan Slab</div>
-                                <div class="title-line">========================================</div>
+                            <td style="width: 60%;">
+                                <h2 class="title">Laporan Reject dan Slab</h2>
+                                <div class="meta">
+                                    <div><strong>Tanggal Cetak:</strong> <span t-esc="time.strftime('%d/%m/%Y')"/></div>
+                                </div>
                             </td>
-                            <td style="width: 20%;"></td>
                         </tr>
                     </table>
 
-                    <table class="meta-table">
+                    <table class="info-table">
                         <tr>
-                            <td class="meta-label">Rentang Tanggal</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value">
+                            <td class="info-label">Perusahaan</td>
+                            <td class="info-value" t-esc="doc.company_id.name"/>
+                            <td class="info-label">Rentang Tanggal</td>
+                            <td class="info-value">
                                 <span t-esc="doc.start_date"/> s/d <span t-esc="doc.end_date"/>
                             </td>
                         </tr>
                         <tr>
-                            <td class="meta-label">Estate</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value">
+                            <td class="info-label">Estate</td>
+                            <td class="info-value">
                                 <span t-if="doc.estate_id" t-esc="doc.estate_id.name"/>
                                 <span t-else="">-</span>
                             </td>
-                        </tr>
-                        <tr>
-                            <td class="meta-label">Divisi</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value">
+                            <td class="info-label">Divisi</td>
+                            <td class="info-value">
                                 <span t-if="doc.division_id" t-esc="doc.division_id.name"/>
                                 <span t-else="">Semua Divisi</span>
                             </td>
                         </tr>
                         <tr>
-                            <td class="meta-label">Mandor</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value">
+                            <td class="info-label">Mandor</td>
+                            <td class="info-value">
                                 <span t-if="doc.foreman_id" t-esc="doc.foreman_id.name"/>
                                 <span t-else="">Semua Mandor</span>
                             </td>
-                        </tr>
-                        <tr>
-                            <td class="meta-label">Tapper</td>
-                            <td class="meta-separator">:</td>
-                            <td class="meta-value">
+                            <td class="info-label">Tapper</td>
+                            <td class="info-value">
                                 <span t-if="doc.tapper_id" t-esc="doc.tapper_id.name"/>
                                 <span t-else="">Semua Tapper</span>
                             </td>

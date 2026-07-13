@@ -54,8 +54,8 @@ class StockMoveLineWeighing(models.Model):
         default=False,
         readonly=True,
         copy=False,
-        help="True jika stock adjustment (susut) sudah diterapkan sebelum validasi delivery "
-             "via tombol Apply Adjustment. Baris ini akan di-skip saat validasi agar tidak double-scrap.",
+        help="True jika penyesuaian stok (susut) telah diterapkan otomatis saat validasi delivery. "
+             "Baris ini akan dilewati agar tidak double-scrap.",
     )
     wt_is_pulled = fields.Boolean(
         string="Sudah Di-Pull",

@@ -96,3 +96,16 @@ class Product(models.Model):
                 raise ValidationError(
                     _("Only one weighing product is allowed per company.")
                 )
+
+    @api.model
+    def get_active_product(self, company):
+        if not company:
+            return self.env["product.product"].browse()
+        mapping = self.sudo().search(
+            [
+                ("company_id", "=", company.id),
+                ("active", "=", True),
+            ],
+            limit=1,
+        )
+        return mapping.product_id

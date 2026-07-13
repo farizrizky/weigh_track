@@ -42,7 +42,7 @@
             <form string="Stock Opname">
                 <header>
                     <button name="action_assign"          string="Proses / Tetapkan"         type="object" class="oe_highlight" invisible="state != 'draft'"/>
-                    <button name="action_populate_lines"  string="Muat Baris"                 type="object" invisible="state != 'draft'" icon="fa-refresh"/>
+                    <button name="action_populate_lines"  string="Muat Stok"                  type="object" invisible="state != 'draft'"/>
                     <button name="action_apply_inventory" string="Terapkan Penyesuaian Stok"   type="object" class="oe_highlight" invisible="state != 'completed'"/>
                     <button name="action_cancel"          string="Batalkan"                    type="object" invisible="state not in ['draft', 'assigned', 'in_progress', 'completed']"/>
                     <button name="action_draft"           string="Atur ke Draft"               type="object" invisible="state != 'cancelled'"/>
@@ -72,6 +72,9 @@
                             <field name="total_difference_qty"/>
                             <field name="company_id" groups="base.group_multi_company" readonly="state != 'draft'"/>
                         </group>
+                    </group>
+                    <group string="Catatan" colspan="2">
+                        <field name="note" nolabel="1" colspan="2" placeholder="Catatan stock opname..." readonly="state in ['applied', 'cancelled']"/>
                     </group>
                     <notebook>
                         <page string="Data Stok" name="lines">

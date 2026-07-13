@@ -22,6 +22,8 @@
             <menuitem id="menu_wt_weighing_production_report" name="Laporan Penimbangan Produksi" parent="menu_wt_reports" action="action_wt_weighing_production_report" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_weighing_production_detail_report" name="Laporan Penimbangan Produksi Detail" parent="menu_wt_reports" action="action_wt_weighing_production_detail_report" sequence="20" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_weighing_reject_slab_report" name="Laporan Reject dan Slab" parent="menu_wt_reports" action="action_wt_weighing_reject_slab_report" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_storage_shrinkage_report" name="Laporan Susut Penyimpanan" parent="menu_wt_reports" action="action_wt_storage_shrinkage_report" sequence="40" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_stock_out_report" name="Laporan Stock Keluar" parent="menu_wt_reports" action="action_wt_stock_out_report" sequence="50" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="14" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_api" name="API" parent="menu_wt_configuration" action="action_wt_api" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_api_request_log" name="API Request Logs" parent="menu_wt_configuration" action="action_wt_api_request_log" sequence="15" groups="weightrack.group_admin"/>

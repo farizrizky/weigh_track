@@ -133,7 +133,7 @@ class Delivery(models.Model):
         help=(
             "True jika ada move line aktif (qty > 0) yang belum pernah di-pull "
             "oleh operator — biasanya karena Odoo re-reserve dari lot lain setelah "
-            "Apply Adjustment mengurangi stok lot asal."
+            "penyesuaian stok otomatis mengurangi stok lot asal."
         ),
     )
 
@@ -176,7 +176,7 @@ class Delivery(models.Model):
         digits="Product Unit of Measure",
     )
     total_difference_qty = fields.Float(
-        string="Total Selisih/Susut (kg)",
+        string="Total Selisih (kg)",
         compute="_compute_totals",
         store=True,
         digits="Product Unit of Measure",
@@ -215,6 +215,15 @@ class Delivery(models.Model):
     )
 
     # ── Computed ──────────────────────────────────────────────────────────────
+
+    def _get_configured_product(self):
+        self.ensure_one()
+        return self.env["wt.product"].get_active_product(self.company_id)
+
+    @api.onchange("company_id")
+    def _onchange_company_id_set_product(self):
+        for delivery in self:
+            delivery.product_id = delivery._get_configured_product()
 
     @api.depends("do_line_ids.lot_line_ids.wt_is_pulled", "do_line_ids.lot_line_ids.qty")
     def _compute_do_lot_line_ids(self):
@@ -365,7 +374,25 @@ class Delivery(models.Model):
         for vals in vals_list:
             if not vals.get("name") or vals.get("name") == _("New"):
                 vals["name"] = self.env["ir.sequence"].next_by_code("wt.delivery") or _("New")
+            if not vals.get("product_id"):
+                company = (
+                    self.env["res.company"].browse(vals["company_id"])
+                    if vals.get("company_id")
+                    else self.env.company
+                )
+                product = self.env["wt.product"].get_active_product(company)
+                if product:
+                    vals["product_id"] = product.id
         return super().create(vals_list)
+
+    def write(self, vals):
+        if "company_id" in vals and "product_id" not in vals:
+            product = self.env["wt.product"].get_active_product(
+                self.env["res.company"].browse(vals["company_id"])
+            )
+            if product:
+                vals = dict(vals, product_id=product.id)
+        return super().write(vals)
 
     # ── Smart Buttons ─────────────────────────────────────────────────────────
 
@@ -403,7 +430,7 @@ class Delivery(models.Model):
             },
         }
 
-    # ── Apply Adjustment (alur lama — backward compat) ────────────────────────
+    # Automatic stock adjustment, including the backward-compatible flow.
 
     def action_print_surat_jalan(self):
         """Print Surat Jalan dari header Tugas Pengiriman."""
@@ -454,26 +481,12 @@ class Delivery(models.Model):
 
         return list(result.values())
 
-    def action_apply_adjustment(self):
-        """Terapkan koreksi stok (susut) untuk semua baris Detail Timbang yang:
-        - Memiliki selisih (wt_difference_qty != 0)
-        - Sudah teralokasi penuh (wt_is_fully_allocated = True)
-        - Belum pernah di-apply (wt_adjustment_applied = False)
-
-        Stock move dibuat TANPA picking_id agar tidak muncul sebagai baris
-        tambahan di dalam DO. Pola move mengikuti stock_opname._apply_line_with_allocations.
-
-        Setelah apply, baris ditandai wt_adjustment_applied = True sehingga saat
-        action_validate tidak double-scrap.
-        """
-        for delivery in self:
-            delivery._apply_adjustment_one()
-
     def _apply_adjustment_one(self):
+        """Terapkan penyesuaian stok internal saat Delivery divalidasi."""
         self.ensure_one()
         if self.state not in ("in_progress", "completed"):
             raise UserError(_(
-                "Apply Adjustment hanya bisa dilakukan saat status In Progress atau Completed."
+                "Penyesuaian stok otomatis hanya dapat diproses saat status In Progress atau Completed."
             ))
 
         if self.do_line_ids:
@@ -495,15 +508,14 @@ class Delivery(models.Model):
                 for alloc in line.wt_allocation_ids:
                     # Cari lokasi fisik lot yang tepat (di bawah do_line_id.location_id)
                     parent_loc = line.do_line_id.location_id
-                    exact_loc = parent_loc
-                    if parent_loc and line.lot_id:
-                        locations = self.env["stock.location"].search([("id", "child_of", parent_loc.id)])
+                    exact_loc = line.source_location_id or parent_loc
+                    if not line.source_location_id and parent_loc and line.lot_id:
                         quant = self.env["stock.quant"].search([
                             ("product_id", "=", line.product_id.id),
-                            ("location_id", "in", locations.ids),
+                            ("location_id", "child_of", parent_loc.id),
                             ("lot_id", "=", line.lot_id.id),
                             ("quantity", ">", 0),
-                        ], limit=1)
+                        ], order="location_id, id", limit=1)
                         if quant:
                             exact_loc = quant.location_id
 
@@ -515,8 +527,8 @@ class Delivery(models.Model):
                         location_dest = exact_loc
 
                     move_vals_list.append({
-                        "inventory_name": "%s / %s / %s" % (
-                            self.name,
+                        "inventory_name": _("Pengiriman"),
+                        "description_picking": "%s / %s" % (
                             line.lot_id.name or line.product_id.display_name,
                             alloc.reason_id.name,
                         ),
@@ -529,6 +541,7 @@ class Delivery(models.Model):
                         "location_id": location_src.id,
                         "location_dest_id": location_dest.id,
                         "company_id": company.id,
+                        "origin": self.name,
                         "move_line_ids": [(0, 0, {
                             "product_id": line.product_id.id,
                             "product_uom_id": line.product_id.uom_id.id,
@@ -567,7 +580,7 @@ class Delivery(models.Model):
             )
             self.message_post(
                 body=Markup(_(
-                    "<b>Apply Adjustment</b> diterapkan oleh %s.<br/>"
+                    "<b>Penyesuaian Stok Otomatis</b> diterapkan saat validasi oleh %s.<br/>"
                     "Rincian Lot rencana yang diproses: %s"
                 ) % (self.env.user.name, lots))
             )
@@ -598,8 +611,8 @@ class Delivery(models.Model):
                         location_dest = line.location_id
 
                     move_vals_list.append({
-                        "inventory_name": "%s / %s / %s" % (
-                            self.name,
+                        "inventory_name": _("Pengiriman"),
+                        "description_picking": "%s / %s" % (
                             line.lot_id.name or line.product_id.display_name,
                             alloc.reason_id.name,
                         ),
@@ -612,9 +625,7 @@ class Delivery(models.Model):
                         "location_id": location_src.id,
                         "location_dest_id": location_dest.id,
                         "company_id": company.id,
-                        "origin": "%s / %s / %s" % (
-                            self.name, line.picking_id.name, alloc.reason_id.name
-                        ),
+                        "origin": self.name,
                         "move_line_ids": [(0, 0, {
                             "product_id": line.product_id.id,
                             "product_uom_id": line.product_uom_id.id,
@@ -673,7 +684,7 @@ class Delivery(models.Model):
             )
             self.message_post(
                 body=Markup(_(
-                    "<b>Apply Adjustment</b> diterapkan oleh %s.<br/>"
+                    "<b>Penyesuaian Stok Otomatis</b> diterapkan saat validasi oleh %s.<br/>"
                     "Lot/Produk yang diproses: %s"
                 ) % (self.env.user.name, lots))
             )
@@ -693,9 +704,11 @@ class Delivery(models.Model):
             # Alur inline do_line_ids: validasi kelengkapan, TIDAK buat picking di sini
             # Picking baru dibuat saat Validasi akhir (action_validate)
             if delivery.do_line_ids:
-                # Cek minimal semua baris punya picking_type dan operator
+                # Cek minimal semua baris punya picking_type, produk, dan operator dari weighing location per lot.
                 incomplete = delivery.do_line_ids.filtered(
-                    lambda l: not l.picking_type_id or not l.operator_id or not l.product_id
+                    lambda l: not l.picking_type_id
+                    or not l.product_id
+                    or not l.lot_line_ids.mapped("operator_id")
                 )
                 if incomplete:
                     seqs = ", ".join(str(l.sequence) for l in incomplete)
@@ -771,23 +784,6 @@ class Delivery(models.Model):
                         "yang bersangkutan untuk mengisi alokasi selisih terlebih dahulu."
                     ) % lot_details)
 
-                unapplied = pulled_lots.filtered(
-                    lambda l: abs(l.wt_difference_qty) > 0.001
-                    and l.wt_is_fully_allocated
-                    and not l.wt_adjustment_applied
-                )
-                if unapplied:
-                    lot_names = ", ".join(
-                        l.lot_id.name or l.product_id.name
-                        for l in unapplied
-                    )
-                    raise ValidationError(_(
-                        "Tidak dapat menyelesaikan pengiriman karena Apply Adjustment "
-                        "belum diterapkan pada lot rencana berikut:\n\n%s\n\n"
-                        "Klik tombol 'Apply Adjustment' terlebih dahulu untuk "
-                        "menerapkan koreksi stok sebelum Selesai Timbang."
-                    ) % lot_names)
-
                 if delivery.wt_has_unpulled_lines:
                     unpulled = delivery.unpulled_do_lot_line_ids
                     lot_names = ", ".join(
@@ -835,23 +831,6 @@ class Delivery(models.Model):
                         "yang bersangkutan untuk mengisi alokasi selisih terlebih dahulu."
                     ) % lot_details)
 
-                unapplied = pulled_lines.filtered(
-                    lambda l: abs(l.wt_difference_qty) > 0.001
-                    and l.wt_is_fully_allocated
-                    and not l.wt_adjustment_applied
-                )
-                if unapplied:
-                    lot_names = ", ".join(
-                        l.lot_id.name or l.product_id.display_name
-                        for l in unapplied
-                    )
-                    raise ValidationError(_(
-                        "Tidak dapat menyelesaikan pengiriman karena Apply Adjustment "
-                        "belum diterapkan pada lot berikut:\n\n%s\n\n"
-                        "Klik tombol 'Apply Adjustment' terlebih dahulu untuk "
-                        "menerapkan koreksi stok sebelum Selesai Timbang."
-                    ) % lot_names)
-
                 if delivery.wt_has_unpulled_lines:
                     unpulled = delivery.unpulled_move_line_ids
                     lot_names = ", ".join(
@@ -898,6 +877,9 @@ class Delivery(models.Model):
         self.ensure_one()
         if self.state != "completed":
             raise ValidationError(_("Hanya Completed yang bisa divalidasi."))
+
+        if self.has_adjustable_lines:
+            self._apply_adjustment_one()
 
         lines_to_generate = self.do_line_ids.filtered(
             lambda l: not l.picking_id or l.picking_id.state != "done"
@@ -990,12 +972,12 @@ class Delivery(models.Model):
             ) % lots)
 
         # Kumpulkan data stock move adjustment SEBELUM quantity berubah.
+        adjustment_lines = active_lines.filtered(
+            lambda line: abs(line.wt_difference_qty) > 0.001
+            and not line.wt_adjustment_applied
+        )
         adjustments_to_create = []
-        for line in active_lines:
-            if abs(line.wt_difference_qty) <= 0.001:
-                continue
-            if line.wt_adjustment_applied:
-                continue
+        for line in adjustment_lines:
             for alloc in line.wt_allocation_ids:
                 if line.wt_difference_qty < 0:
                     location_src = line.location_id
@@ -1004,8 +986,8 @@ class Delivery(models.Model):
                     location_src = alloc.location_dest_id
                     location_dest = line.location_id
                 adjustments_to_create.append({
-                    "inventory_name": "%s / %s / %s" % (
-                        self.name,
+                    "inventory_name": _("Pengiriman"),
+                    "description_picking": "%s / %s" % (
                         line.lot_id.name or line.product_id.display_name,
                         alloc.reason_id.name,
                     ),
@@ -1018,9 +1000,7 @@ class Delivery(models.Model):
                     "location_id": location_src.id,
                     "location_dest_id": location_dest.id,
                     "company_id": line.company_id.id,
-                    "origin": "%s / %s / %s" % (
-                        self.name, line.picking_id.name, alloc.reason_id.name
-                    ),
+                    "origin": self.name,
                     "move_line_ids": [(0, 0, {
                         "product_id": line.product_id.id,
                         "product_uom_id": line.product_uom_id.id,
@@ -1065,6 +1045,9 @@ class Delivery(models.Model):
                 inventory_mode=False
             ).create(adjustments_to_create)
             moves.with_context(ignore_dest_packages=True)._action_done()
+
+        if adjustment_lines:
+            adjustment_lines.sudo().write({"wt_adjustment_applied": True})
 
         self.write({
             "state": "validated",

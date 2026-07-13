@@ -31,16 +31,29 @@ class ApiDeliveryService(models.AbstractModel):
         if not pull_result["ok"]:
             return pull_result
 
-        # Cari delivery yang operatornya adalah employee device ini
-        # (baik via picking.wt_operator_id untuk alur lama maupun do_line_ids.operator_id untuk alur baru)
-        domain = [
+        delivery_model = self.env["wt.delivery"].sudo()
+        active_delivery_domain = [
             ("company_id", "=", device.company_id.id),
             ("state", "in", ["confirmed", "in_progress", "completed"]),
-            "|",
-            ("picking_ids.wt_operator_id", "=", device.employee_id.id),
-            ("do_line_ids.operator_id", "=", device.employee_id.id),
         ]
-        deliveries = self.env["wt.delivery"].sudo().search(domain)
+
+        # Alur baru: tugas operator dibagi sampai level lot line.
+        lot_lines = self.env["wt.delivery.do.line.lot"].sudo().search([
+            ("delivery_id.company_id", "=", device.company_id.id),
+            ("delivery_id.state", "in", ["confirmed", "in_progress", "completed"]),
+            ("operator_id", "=", device.employee_id.id),
+        ])
+        deliveries = lot_lines.mapped("delivery_id")
+
+        # Fallback kompatibilitas untuk data lama yang operatornya masih di baris DO/picking.
+        deliveries |= delivery_model.search(
+            active_delivery_domain
+            + [
+                "|",
+                ("picking_ids.wt_operator_id", "=", device.employee_id.id),
+                ("do_line_ids.operator_id", "=", device.employee_id.id),
+            ]
+        )
 
         # Kumpulkan transit_location_id dari semua rute yang ditandai is_transit=True.
         # Field ini diset manual oleh admin di Konfigurasi → Rute Transit Pengiriman,
@@ -67,7 +80,7 @@ class ApiDeliveryService(models.AbstractModel):
                 # Alur baru: tarik dari wt.delivery.do.line.lot
                 for ml in delivery.do_lot_line_ids.filtered(
                     lambda l: l.qty > 0
-                    and l.do_line_id.operator_id == device.employee_id
+                    and (l.operator_id == device.employee_id or (not l.operator_id and l.do_line_id.operator_id == device.employee_id))
                     and not l.wt_skip_line
                     and l.wt_physical_qty == 0.0
                 ):
@@ -103,6 +116,10 @@ class ApiDeliveryService(models.AbstractModel):
                         "location_id": loc.id if loc else False,
                         "location_name": loc.complete_name if loc else "",
                         "is_transit": (loc.id in transit_loc_ids) if loc else False,
+                        "weighing_location_id": ml.weighing_location_id.id or False,
+                        "weighing_location_name": ml.weighing_location_id.display_name or "",
+                        "operator_employee_id": ml.operator_id.id or ml.do_line_id.operator_id.id or False,
+                        "operator_name": ml.operator_id.name or ml.do_line_id.operator_id.name or "",
                     })
                     pulled_line_ids.append(ml.id)
 
@@ -204,17 +221,17 @@ class ApiDeliveryService(models.AbstractModel):
                 device=device,
             )
 
-        domain = [
+        delivery = self.env["wt.delivery"].sudo().search([
             ("id", "=", delivery_id),
             ("company_id", "=", device.company_id.id),
             ("state", "in", ["confirmed", "in_progress", "completed"]),
-            "|",
-            ("picking_ids.wt_operator_id", "=", device.employee_id.id),
-            ("do_line_ids.operator_id", "=", device.employee_id.id),
-        ]
-        delivery = self.env["wt.delivery"].sudo().search(domain, limit=1)
+        ], limit=1)
 
-        if not delivery:
+        if not delivery or not (
+            delivery.picking_ids.filtered(lambda picking: picking.wt_operator_id == device.employee_id)
+            or delivery.do_line_ids.filtered(lambda line: line.operator_id == device.employee_id)
+            or delivery.do_lot_line_ids.filtered(lambda line: line.operator_id == device.employee_id)
+        ):
             return response.error(
                 "delivery_not_found",
                 _("Tugas pengiriman aktif tidak ditemukan untuk operator ini."),
@@ -252,6 +269,16 @@ class ApiDeliveryService(models.AbstractModel):
 
             if not ml:
                 errors.append(_("Line ID %s tidak ditemukan.") % move_line_id)
+                continue
+
+            if delivery.do_line_ids and not (
+                ml.operator_id == device.employee_id
+                or (not ml.operator_id and ml.do_line_id.operator_id == device.employee_id)
+            ):
+                errors.append(_("Line ID %s bukan milik operator ini.") % move_line_id)
+                continue
+            if not delivery.do_line_ids and ml.picking_id.wt_operator_id != device.employee_id:
+                errors.append(_("Line ID %s bukan milik operator ini.") % move_line_id)
                 continue
 
             write_vals = {"wt_skip_line": bool(skip_line)}

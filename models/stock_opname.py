@@ -92,6 +92,10 @@ class StockOpname(models.Model):
         index=True,
         tracking=True,
     )
+    note = fields.Text(
+        string="Catatan",
+        tracking=True,
+    )
     line_ids = fields.One2many(
         "wt.stock.opname.line",
         "opname_id",
@@ -442,7 +446,7 @@ class StockOpname(models.Model):
                 "state": "confirmed",
                 "picked": True,
                 "is_inventory": True,
-                "inventory_name": opname.name,
+                "inventory_name": _("Stock Opname"),
                 "product_id": line.product_id.id,
                 "product_uom": line.uom_id.id,
                 "product_uom_qty": alloc.qty,

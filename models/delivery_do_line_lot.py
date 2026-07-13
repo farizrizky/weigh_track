@@ -61,6 +61,32 @@ class DeliveryDoLineLot(models.Model):
         compute="_compute_location_id",
         help="Lokasi fisik tempat lot berada saat ini.",
     )
+    source_location_id = fields.Many2one(
+        "stock.location",
+        string="Lokasi Sumber Fisik",
+        readonly=True,
+        copy=False,
+        ondelete="restrict",
+        help="Lokasi fisik quant yang dipilih saat lot dialokasikan dari lokasi sumber DO.",
+    )
+    allowed_weighing_location_ids = fields.Many2many(
+        "wt.weighing.location",
+        compute="_compute_allowed_weighing_location_ids",
+        string="Allowed Weighing Locations",
+    )
+    weighing_location_id = fields.Many2one(
+        "wt.weighing.location",
+        string="Weighing Location",
+        domain="[('id', 'in', allowed_weighing_location_ids)]",
+        ondelete="restrict",
+    )
+    operator_id = fields.Many2one(
+        "hr.employee",
+        string="Operator",
+        related="weighing_location_id.operator_id",
+        store=True,
+        readonly=True,
+    )
     qty_available = fields.Float(
         string="Stok Bebas (kg)",
         compute="_compute_qty_available",
@@ -200,9 +226,9 @@ class DeliveryDoLineLot(models.Model):
                 # Step 1: Cari do_lines dari delivery aktif (kecuali delivery saat ini).
                 #         Pakai domain sederhana 1-level, lebih reliable di semua versi Odoo.
                 current_delivery_id = (
-                    rec.delivery_id.id
-                    or rec.do_line_id.delivery_id.id
-                    or False
+                    rec.do_line_id._get_persisted_delivery_id()
+                    if rec.do_line_id
+                    else False
                 )
                 active_do_line_domain = [
                     ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
@@ -232,20 +258,71 @@ class DeliveryDoLineLot(models.Model):
                 rec.wt_qty_reserved = 0.0
                 rec.qty_available = 0.0
 
-    @api.depends("lot_id", "do_line_id.location_id", "product_id")
+    @api.depends("source_location_id", "lot_id", "do_line_id.location_id", "product_id")
     def _compute_location_id(self):
         for rec in self:
+            if rec.source_location_id:
+                rec.location_id = rec.source_location_id
+                continue
             if rec.lot_id and rec.do_line_id.location_id and rec.product_id:
-                locations = self.env["stock.location"].search([("id", "child_of", rec.do_line_id.location_id.id)])
-                quant = self.env["stock.quant"].search([
+                quant = self.env["stock.quant"].sudo().with_company(rec.company_id).search([
                     ("product_id", "=", rec.product_id.id),
-                    ("location_id", "in", locations.ids),
+                    ("location_id", "child_of", rec.do_line_id.location_id.id),
                     ("lot_id", "=", rec.lot_id.id),
                     ("quantity", ">", 0),
-                ], limit=1)
+                ], order="location_id, id", limit=1)
                 rec.location_id = quant.location_id.id if quant else rec.do_line_id.location_id.id
             else:
                 rec.location_id = False
+
+    @api.depends("company_id", "lot_id", "lot_id.division_id", "location_id")
+    def _compute_allowed_weighing_location_ids(self):
+        rule_model = self.env["wt.receipt.rule"]
+        location_model = self.env["wt.weighing.location"]
+        for rec in self:
+            if not rec.company_id:
+                rec.allowed_weighing_location_ids = location_model.browse()
+                continue
+
+            rules = rule_model.search([
+                ("active", "=", True),
+                ("company_id", "=", rec.company_id.id),
+            ])
+            if rec.lot_id.division_id:
+                rules = rules.filtered(lambda rule: rule.division_id == rec.lot_id.division_id)
+            if rec.location_id and rec.location_id.parent_path:
+                rules = rules.filtered(
+                    lambda rule: rule.location_id
+                    and rule.location_id.parent_path
+                    and rec.location_id.parent_path.startswith(rule.location_id.parent_path)
+                )
+
+            weighing_locations = rules.mapped("weighing_location_id")
+            if not weighing_locations:
+                weighing_locations = location_model.search([
+                    ("active", "=", True),
+                    ("company_id", "=", rec.company_id.id),
+                ])
+            rec.allowed_weighing_location_ids = weighing_locations
+
+    @api.onchange("lot_id", "location_id", "company_id")
+    def _onchange_lot_weighing_location(self):
+        for rec in self:
+            allowed_locations = rec.allowed_weighing_location_ids
+            if rec.weighing_location_id and rec.weighing_location_id not in allowed_locations:
+                rec.weighing_location_id = False
+            if not rec.weighing_location_id and len(allowed_locations) == 1:
+                rec.weighing_location_id = allowed_locations[:1]
+
+    @api.constrains("weighing_location_id", "company_id")
+    def _check_weighing_location_company(self):
+        for rec in self:
+            if (
+                rec.weighing_location_id
+                and rec.company_id
+                and rec.weighing_location_id.company_id != rec.company_id
+            ):
+                raise ValidationError(_("Weighing location must belong to the same company."))
 
 
     @api.depends("wt_difference_qty", "wt_allocation_ids.qty")
@@ -285,6 +362,7 @@ class DeliveryDoLineLot(models.Model):
         )
         if deliveries:
             deliveries.write({"state": "in_progress"})
+        records._set_default_weighing_location_if_unique()
         return records
 
     def write(self, vals):
@@ -294,7 +372,32 @@ class DeliveryDoLineLot(models.Model):
             for rec in self:
                 if not rec.wt_adjustment_applied:
                     super(DeliveryDoLineLot, rec).write({"wt_original_qty": vals["qty"]})
-        return super().write(vals)
+        res = super().write(vals)
+        if any(key in vals for key in ("lot_id", "do_line_id", "weighing_location_id")):
+            self._set_default_weighing_location_if_unique()
+        return res
+
+    def _set_default_weighing_location_if_unique(self):
+        for rec in self:
+            if (
+                not rec.source_location_id
+                and rec.lot_id
+                and rec.do_line_id.location_id
+                and rec.product_id
+            ):
+                quant = self.env["stock.quant"].sudo().with_company(rec.company_id).search([
+                    ("product_id", "=", rec.product_id.id),
+                    ("location_id", "child_of", rec.do_line_id.location_id.id),
+                    ("lot_id", "=", rec.lot_id.id),
+                    ("quantity", ">", 0),
+                ], order="location_id, id", limit=1)
+                if quant:
+                    rec.source_location_id = quant.location_id.id
+            if rec.weighing_location_id:
+                continue
+            allowed_locations = rec.allowed_weighing_location_ids
+            if len(allowed_locations) == 1:
+                rec.weighing_location_id = allowed_locations.id
 
     @api.constrains("qty")
     def _check_qty_positive(self):
@@ -316,4 +419,3 @@ class DeliveryDoLineLot(models.Model):
             "view_id": self.env.ref("weightrack.view_wt_delivery_do_lot_allocation_popup").id,
             "target": "new",
         }
-
