@@ -51,6 +51,9 @@ Scope aktif saat ini:
 - API push weighing untuk data timbang weighing dari aplikasi offline.
 - Production Receipt Weighing untuk menggabungkan data timbang per production date, division, product, operation type, dan receiving location sampai validasi dokumen.
 - Pembuatan Inventory Receipt/stock picking resmi dari Production Receipt saat validated.
+- Delivery Order/Pengiriman untuk mengatur stock keluar, transfer internal antar gudang, dan pengiriman final ke customer.
+- Flow transit pengiriman membuat Lot Transit saat rute bertujuan transit divalidasi.
+- Stock Opname untuk pemeriksaan stok per lot dan penyesuaian selisih stok.
 
 Scope yang belum aktif:
 
@@ -126,10 +129,20 @@ Model database:
 - `wt.production.receipt.line`
 - `wt.stock.opname`
 - `wt.stock.opname.line`
+- `wt.stock.opname.difference.reason`
+- `wt.stock.opname.line.allocation`
+- `wt.delivery`
+- `wt.delivery.route`
+- `wt.delivery.do.line`
+- `wt.delivery.do.line.lot`
+- `wt.delivery.line.allocation`
 
 Transient model:
 
 - `wt.device.state.reason.wizard`
+- `wt.production.receipt.cancel.wizard`
+- `wt.stock.opname.apply.wizard`
+- `wt.delivery.return.wizard`
 
 Abstract service model:
 
@@ -155,7 +168,8 @@ WeighTrack
 |-- Operations
 |   |-- Weighing
 |   |-- Production Receipt
-|   `-- Stock Opname
+|   |-- Stock Opname
+|   `-- Pengiriman
 |-- Device
 `-- Configuration
     |-- API
@@ -163,7 +177,9 @@ WeighTrack
     |-- Employee Roles
     |-- Product
     |-- Shrinkage Tolerance
-    `-- Receipt Rule
+    |-- Receipt Rule
+    |-- Alasan Selisih
+    `-- Rute Pengiriman
 ```
 
 ## Rename History
@@ -190,6 +206,18 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 - `Weighing Location` wajib terhubung ke `Estate`.
 - `company_id` pada `Division`, `Weighing Location`, `Foreman`, dan `Tapper` mengikuti parent operasional.
 - Kode `Division` wajib unik per company untuk record aktif. Ini menjaga format lot `LOT/kode_divisi/YYYYMMDD/NNN` tidak bentrok antar estate dalam company yang sama.
+- Lot produksi dari Production Receipt memakai format `LOT/kode_divisi/YYYYMMDD/NNN`.
+- Lot transit dari rute pengiriman transit memakai format `TR/kode_gudang_tujuan/YYYYMMDD/NNN`.
+- `stock.lot` di-extend dengan metadata WeighTrack:
+  - `wt_lot_type`: `production`, `transit`, atau `warehouse_stock`;
+  - `wt_transit_state`: status lot transit;
+  - `division_id`;
+  - `production_date`;
+  - `wt_receiving_location_id`;
+  - `wt_source_delivery_id`;
+  - `wt_source_picking_id`;
+  - `wt_transit_date`.
+- Lot genealogy khusus tidak dipakai. Trace lot transit cukup melalui dokumen Delivery, `generated_transit_lot_id` pada Rencana DO, stock move line, dan metadata `stock.lot`.
 - Form Foreman memakai add line natural Odoo pada `tapper_ids`. Jika `foreman_id` terisi, `division_id` Tapper otomatis mengikuti division Foreman.
 - Pengaturan divisi yang boleh menimbang hanya dilakukan dari `Weighing Location` melalui `allowed_division_ids`.
 - `Division` tidak perlu menampilkan atau mengatur relasi balik ke `Weighing Location`.
@@ -913,6 +941,88 @@ Inventory Receipt aktif:
 - Sistem akan mengisi done quantity berdasarkan total stock weight header.
 - Sistem akan validate stock picking sehingga stock bertambah di Inventory.
 - Cancel setelah stock masuk dilakukan dari Production Receipt dan membuat reversal otomatis selama stock lot masih mencukupi di lokasi receipt original.
+
+## Delivery / Pengiriman
+
+Delivery adalah dokumen operasional untuk mengatur stock keluar dari gudang, transfer internal antar gudang, dan pengiriman final ke customer.
+
+Model aktif:
+
+- `wt.delivery`
+- `wt.delivery.route`
+- `wt.delivery.do.line`
+- `wt.delivery.do.line.lot`
+- `wt.delivery.line.allocation`
+
+Konsep:
+
+- Header `wt.delivery` menjadi tugas pengiriman.
+- Baris `wt.delivery.do.line` adalah Rencana DO per rute operasi.
+- Rincian `wt.delivery.do.line.lot` menyimpan lot yang akan dikirim, lokasi fisik asal lot, lokasi timbang, operator, demand, berat fisik, selisih, dan status pull/timbang.
+- Product pada delivery dan Rencana DO mengikuti product aktif dari `wt.product`.
+- Rencana DO tidak membuat `stock.picking` saat draft/confirmed/in progress.
+- Stock picking resmi baru dibuat saat Validasi & Kirim.
+- Selisih timbang diterapkan otomatis saat validasi, bukan lewat tombol manual dari detail timbang.
+
+Rute Pengiriman:
+
+- `wt.delivery.route` menyimpan mapping source location, picking type, destination/transit location, dan flag `is_transit`.
+- Jika `is_transit = True`, rute dianggap sebagai rute menuju lokasi transit/holding internal.
+- Jika `is_transit = False`, rute dianggap sebagai rute keluar final ke customer.
+- Rute transit wajib memakai Operation Type internal transfer.
+- Rute final/customer wajib memakai Operation Type outgoing.
+
+Flow rute transit:
+
+1. User membuat Rencana DO dengan rute yang `is_transit = True`.
+2. User memuat atau memilih lot asal dari lokasi sumber.
+3. Operator melakukan pull/timbang sehingga lot line menjadi weighed/pulled.
+4. Saat `Selesai Timbang`, Rencana DO transit wajib memiliki lot asal aktif.
+5. Saat `Validasi & Kirim`, sistem membuat stock picking internal.
+6. Sistem mengonsumsi lot asal dari lokasi fisik masing-masing ke lokasi Inventory Loss teknis.
+7. Sistem membuat satu Lot Transit baru dan memasukkannya ke lokasi tujuan transit.
+8. Lot Transit hasil rute tersebut disimpan pada `wt.delivery.do.line.generated_transit_lot_id`.
+
+Format Lot Transit:
+
+```text
+TR/kode_gudang_tujuan/YYYYMMDD/NNN
+```
+
+Catatan Lot Transit:
+
+- `kode_gudang_tujuan` diambil dari warehouse yang menaungi lokasi tujuan transit.
+- Jika kode warehouse tidak tersedia, nama lokasi tujuan dipakai sebagai fallback dan dibersihkan dari karakter `/`, `\`, dan spasi.
+- Tanggal pada lot transit memakai tanggal saat validasi.
+- Nomor urut 3 digit dihitung dari lot terakhir dengan prefix yang sama.
+- Lot transit diberi `wt_lot_type = transit`.
+- Lot transit menyimpan source Delivery, source Picking, receiving location, transit date, division jika seluruh lot asal berasal dari satu division, dan production date paling awal dari lot asal.
+
+Flow rute setelah transit:
+
+- Rencana DO lanjutan yang mengambil stock dari lokasi transit wajib memiliki lot line aktif.
+- Lot line pada rute lanjutan dari lokasi transit wajib memakai Lot Transit, bukan lot produksi asli.
+- Jika pada dokumen delivery yang sama sudah ada Rencana DO transit yang menghasilkan Lot Transit ke lokasi tersebut, Rencana DO lanjutan wajib memakai Lot Transit hasil Rencana DO transit tersebut.
+- Jika Lot Transit tidak ada atau lot yang dipilih bukan Lot Transit yang sesuai, `Selesai Timbang` dan `Validasi & Kirim` harus ditolak.
+
+Traceability:
+
+- Trace dari lot produksi ke lot transit tidak memakai model genealogy khusus.
+- Trace dilakukan melalui:
+  - Rencana DO transit;
+  - field `generated_transit_lot_id`;
+  - stock picking yang dibuat dari delivery;
+  - stock move line yang mengonsumsi lot asal;
+  - stock move line yang membuat lot transit;
+  - metadata `stock.lot` pada lot transit.
+- Sejarah pergerakan stock dari Stock Opname dan Pengiriman ditandai melalui origin/reference yang mengarah ke nomor dokumen WeighTrack terkait.
+
+Prinsip FIFO:
+
+- Saat muat lot pada Rencana DO, lot diurutkan berdasarkan `production_date` paling lama terlebih dahulu.
+- Jika `production_date` kosong, lot diletakkan setelah lot yang memiliki tanggal produksi.
+- Urutan berikutnya memakai `create_date`, nama lot, dan lokasi fisik.
+- Stock Opname juga mengurutkan lot berdasarkan `production_date` agar pemeriksaan mengikuti umur produksi.
 
 ## Localization Notes
 

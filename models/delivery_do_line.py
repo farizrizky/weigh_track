@@ -197,6 +197,14 @@ class DeliveryDoLine(models.Model):
         string="Status DO",
         readonly=True,
     )
+    generated_transit_lot_id = fields.Many2one(
+        "stock.lot",
+        string="Lot Transit",
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Lot baru yang terbentuk saat rute transit divalidasi.",
+    )
 
     # ── Computed ──────────────────────────────────────────────────────────────
 
@@ -309,8 +317,11 @@ class DeliveryDoLine(models.Model):
             ("quantity", ">", 0),
             ("lot_id", "!=", False),
         ])
+        fallback_production_date = fields.Date.to_date("9999-12-31")
         quants = quants.sorted(
             key=lambda quant: (
+                quant.lot_id.production_date is False,
+                quant.lot_id.production_date or fallback_production_date,
                 quant.lot_id.create_date or fields.Datetime.now(),
                 quant.lot_id.name,
                 quant.location_id.complete_name,
@@ -419,9 +430,10 @@ class DeliveryDoLine(models.Model):
         """Validasi kelengkapan data sebelum generate picking."""
         self.ensure_one()
         missing = []
+        active_lot_lines = self.lot_line_ids.filtered(lambda l: not l.wt_skip_line)
         if not self.picking_type_id:
             missing.append(_("Tipe Operasi"))
-        lot_operators = self.lot_line_ids.mapped("operator_id")
+        lot_operators = active_lot_lines.mapped("operator_id")
         if not lot_operators:
             missing.append(_("Operator"))
         if not self.product_id:
@@ -432,10 +444,39 @@ class DeliveryDoLine(models.Model):
             missing.append(_("Lokasi Tujuan"))
         if self.demand_qty <= 0:
             missing.append(_("Demand (kg) harus > 0"))
+        requires_transit_lot = self._requires_transit_lot_source()
+        if self.route_id.is_transit and not active_lot_lines:
+            missing.append(_("Lot asal untuk rute transit"))
+        if requires_transit_lot and not active_lot_lines:
+            missing.append(_("Lot transit"))
         if missing:
             raise ValidationError(_(
                 "Baris DO urutan %d belum lengkap, isi dahulu:\n%s"
             ) % (self.sequence, "\n".join("• " + m for m in missing)))
+
+        if requires_transit_lot and active_lot_lines:
+            non_transit_lots = active_lot_lines.filtered(
+                lambda l: l.lot_id and l.lot_id.wt_lot_type != "transit"
+            )
+            if non_transit_lots:
+                lot_names = ", ".join(non_transit_lots.mapped("lot_id.name"))
+                raise ValidationError(_(
+                    "Baris DO urutan %d mengambil stok dari lokasi transit. "
+                    "Lot yang dipilih wajib Lot Transit.\n"
+                    "Lot bukan transit: %s"
+                ) % (self.sequence, lot_names))
+            expected_transit_lots = self._get_expected_transit_lots()
+            unexpected_lots = active_lot_lines.filtered(
+                lambda l: expected_transit_lots and l.lot_id not in expected_transit_lots
+            )
+            if unexpected_lots:
+                expected_names = ", ".join(expected_transit_lots.mapped("name"))
+                unexpected_names = ", ".join(unexpected_lots.mapped("lot_id.name"))
+                raise ValidationError(_(
+                    "Baris DO urutan %d wajib memakai Lot Transit hasil rute transit sebelumnya.\n"
+                    "Lot yang seharusnya dipakai: %s\n"
+                    "Lot yang tidak sesuai: %s"
+                ) % (self.sequence, expected_names, unexpected_names))
 
         # Cek jika ada lot yang memiliki selisih timbang tapi belum teralokasi penuh
         unallocated_lots = self.lot_line_ids.filtered(
@@ -473,6 +514,62 @@ class DeliveryDoLine(models.Model):
             ("quantity", ">", 0),
         ], order="location_id, id", limit=1)
         return quant.location_id or source_location
+
+    def _get_warehouse_for_location(self, location):
+        self.ensure_one()
+        if not location or not location.parent_path:
+            return self.env["stock.warehouse"]
+        warehouses = self.env["stock.warehouse"].sudo().search([
+            ("company_id", "=", self.company_id.id),
+        ])
+        best_warehouse = self.env["stock.warehouse"]
+        best_length = 0
+        for warehouse in warehouses:
+            parent_path = warehouse.view_location_id.parent_path
+            if parent_path and location.parent_path.startswith(parent_path):
+                path_length = len(parent_path)
+                if path_length > best_length:
+                    best_warehouse = warehouse
+                    best_length = path_length
+        return best_warehouse
+
+    def _clean_lot_component(self, value):
+        value = (value or "").strip()
+        return value.replace("/", "-").replace("\\", "-").replace(" ", "-") or "TRANSIT"
+
+    def _requires_transit_lot_source(self):
+        """Return True when this line must consume a transit lot."""
+        self.ensure_one()
+        if not self.location_id:
+            return False
+        if self.location_id.usage == "transit":
+            return True
+
+        transit_destinations = self.delivery_id.do_line_ids.filtered(
+            lambda l: l.id != self.id and l.route_id.is_transit and l.location_dest_id
+        ).mapped("location_dest_id")
+        return any(
+            dest.parent_path
+            and self.location_id.parent_path
+            and self.location_id.parent_path.startswith(dest.parent_path)
+            for dest in transit_destinations
+        )
+
+    def _get_expected_transit_lots(self):
+        """Transit lots generated by previous transit lines into this source."""
+        self.ensure_one()
+        if not self.delivery_id or not self.location_id:
+            return self.env["stock.lot"]
+        transit_lines = self.delivery_id.do_line_ids.filtered(
+            lambda l: l.id != self.id
+            and l.route_id.is_transit
+            and l.location_dest_id
+            and l.generated_transit_lot_id
+            and self.location_id.parent_path
+            and l.location_dest_id.parent_path
+            and self.location_id.parent_path.startswith(l.location_dest_id.parent_path)
+        )
+        return transit_lines.mapped("generated_transit_lot_id")
 
     # ── ORM ───────────────────────────────────────────────────────────────────
 
@@ -534,19 +631,19 @@ class DeliveryDoLine(models.Model):
             or False
         )
         product = self.product_id
+        active_lot_lines = self.lot_line_ids.filtered(lambda line: not line.wt_skip_line)
 
         # Hitung total physical qty
-        if self.lot_line_ids:
+        if active_lot_lines:
             total_physical = sum(
                 (lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty)
-                for lot_line in self.lot_line_ids
-                if not lot_line.wt_skip_line
+                for lot_line in active_lot_lines
             )
         else:
             total_physical = self.demand_qty
 
         # Cek jika rute ini adalah rute transit (is_transit)
-        is_transit_merge = self.route_id.is_transit and self.lot_line_ids
+        is_transit_merge = bool(self.route_id.is_transit)
 
         move_vals = []
         if is_transit_merge:
@@ -620,10 +717,14 @@ class DeliveryDoLine(models.Model):
         if is_transit_merge:
             move_1 = picking.move_ids[0]
             move_2 = picking.move_ids[1]
+            destination_warehouse = self._get_warehouse_for_location(dest_location)
 
             # Generate new lot
             today_str = fields.Date.today().strftime("%Y%m%d")
-            prefix = f"TR/{today_str}/"
+            destination_code = self._clean_lot_component(
+                destination_warehouse.code or dest_location.name
+            )
+            prefix = f"TR/{destination_code}/{today_str}/"
             last_lot = self.env["stock.lot"].sudo().search([
                 ("name", "=like", prefix + "%"),
                 ("product_id", "=", product.id),
@@ -638,17 +739,29 @@ class DeliveryDoLine(models.Model):
             else:
                 new_seq = 1
             new_lot_name = f"{prefix}{new_seq:03d}"
+            source_lots = active_lot_lines.mapped("lot_id")
+            source_divisions = source_lots.mapped("division_id")
+            source_production_dates = [
+                lot.production_date for lot in source_lots if lot.production_date
+            ]
+            transit_date = fields.Date.context_today(self)
 
             new_lot = self.env["stock.lot"].sudo().create({
                 "name": new_lot_name,
                 "product_id": product.id,
                 "company_id": delivery.company_id.id,
+                "wt_lot_type": "transit",
+                "wt_transit_state": "open",
+                "division_id": source_divisions.id if len(source_divisions) == 1 else False,
+                "production_date": min(source_production_dates) if source_production_dates else False,
+                "wt_receiving_location_id": dest_location.id,
+                "wt_source_delivery_id": delivery.id,
+                "wt_source_picking_id": picking.id,
+                "wt_transit_date": transit_date,
             })
 
             # 1. Consume old lots
-            for lot_line in self.lot_line_ids:
-                if lot_line.wt_skip_line:
-                    continue
+            for lot_line in active_lot_lines:
                 qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
                 exact_loc = self._get_lot_line_source_location(lot_line, src_location)
 
@@ -676,6 +789,7 @@ class DeliveryDoLine(models.Model):
                 "location_dest_id": dest_location.id,
                 "company_id": delivery.company_id.id,
             })
+            self.generated_transit_lot_id = new_lot.id
         else:
             move = picking.move_ids[:1]
             if self.lot_line_ids:

@@ -4,6 +4,25 @@ from odoo import api, fields, models
 class StockLot(models.Model):
     _inherit = "stock.lot"
 
+    wt_lot_type = fields.Selection(
+        [
+            ("production", "Production"),
+            ("transit", "Transit"),
+            ("warehouse_stock", "Warehouse Stock"),
+        ],
+        string="WeighTrack Lot Type",
+        default="production",
+        required=True,
+        index=True,
+    )
+    wt_transit_state = fields.Selection(
+        [
+            ("open", "Open"),
+            ("closed", "Closed"),
+        ],
+        string="Transit Status",
+        index=True,
+    )
     division_id = fields.Many2one(
         "wt.division",
         string="Division",
@@ -12,6 +31,33 @@ class StockLot(models.Model):
     )
     production_date = fields.Date(
         string="Production Date",
+        index=True,
+    )
+    wt_receiving_location_id = fields.Many2one(
+        "stock.location",
+        string="Receiving Location",
+        ondelete="restrict",
+        index=True,
+        help="Destination location that defines the production batch lot in WeighTrack.",
+    )
+    wt_source_delivery_id = fields.Many2one(
+        "wt.delivery",
+        string="Source Delivery",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    wt_source_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Source Picking",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    wt_transit_date = fields.Date(
+        string="Transit Date",
+        readonly=True,
+        copy=False,
         index=True,
     )
 
@@ -24,6 +70,60 @@ class StockLot(models.Model):
         compute="_compute_wt_stock_info",
         digits="Product Unit of Measure",
     )
+
+    def init(self):
+        super().init()
+        self.env.cr.execute(
+            """
+            DO $$
+            BEGIN
+                IF to_regclass('stock_lot') IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'stock_lot'
+                        AND column_name = 'wt_lot_type'
+                ) THEN
+                    UPDATE stock_lot
+                    SET wt_lot_type = 'production'
+                    WHERE wt_lot_type IS NULL;
+                END IF;
+
+                IF to_regclass('stock_lot') IS NOT NULL
+                AND to_regclass('stock_move_line') IS NOT NULL
+                AND to_regclass('stock_picking') IS NOT NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'stock_lot'
+                        AND column_name = 'wt_receiving_location_id'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'stock_picking'
+                        AND column_name = 'production_receipt_id'
+                ) THEN
+                    UPDATE stock_lot AS lot
+                    SET wt_receiving_location_id = receipt_line.location_dest_id
+                    FROM (
+                        SELECT DISTINCT ON (move_line.lot_id)
+                            move_line.lot_id,
+                            move_line.location_dest_id
+                        FROM stock_move_line AS move_line
+                        JOIN stock_picking AS picking
+                            ON picking.id = move_line.picking_id
+                        WHERE picking.production_receipt_id IS NOT NULL
+                            AND move_line.lot_id IS NOT NULL
+                            AND move_line.location_dest_id IS NOT NULL
+                        ORDER BY move_line.lot_id, move_line.id
+                    ) AS receipt_line
+                    WHERE receipt_line.lot_id = lot.id
+                        AND lot.wt_receiving_location_id IS NULL;
+                END IF;
+            END $$;
+            """
+        )
 
     def _compute_wt_stock_info(self):
         # Periksa apakah ada filter lokasi di context

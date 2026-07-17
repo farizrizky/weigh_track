@@ -1007,7 +1007,7 @@ class ProductionReceipt(models.Model):
         destination_location = lines[0].receipt_rule_id.location_id
         source_location = self._get_receipt_source_location(picking_type)
         total_quantity = sum(lines.mapped("stock_weight"))
-        lot = self._create_inventory_lot(product)
+        lot = self._get_or_create_inventory_lot(product, destination_location)
         partner = self._get_employee_partner(clerk)
         received_datetime = self._get_received_datetime()
 
@@ -1103,7 +1103,25 @@ class ProductionReceipt(models.Model):
             )
         return source_location
 
-    def _create_inventory_lot(self, product):
+    def _get_or_create_inventory_lot(self, product, destination_location):
+        self.ensure_one()
+        lot_model = self.env["stock.lot"].sudo().with_company(self.company_id)
+        lot = lot_model.search(
+            [
+                ("product_id", "=", product.id),
+                ("company_id", "in", [False, self.company_id.id]),
+                ("division_id", "=", self.division_id.id),
+                ("production_date", "=", self.production_date),
+                ("wt_receiving_location_id", "=", destination_location.id),
+            ],
+            order="id",
+            limit=1,
+        )
+        if lot:
+            return lot
+        return self._create_inventory_lot(product, destination_location)
+
+    def _create_inventory_lot(self, product, destination_location):
         self.ensure_one()
         lot_name = self._get_inventory_lot_name(product)
         lot_model = self.env["stock.lot"].sudo().with_company(self.company_id)
@@ -1112,8 +1130,10 @@ class ProductionReceipt(models.Model):
                 "name": lot_name,
                 "product_id": product.id,
                 "company_id": self.company_id.id,
+                "wt_lot_type": "production",
                 "division_id": self.division_id.id,
                 "production_date": self.production_date,
+                "wt_receiving_location_id": destination_location.id,
             }
         )
 

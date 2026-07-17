@@ -761,6 +761,43 @@ class Delivery(models.Model):
 
             if delivery.do_line_ids:
                 # Alur baru: menggunakan rincian lot rencana DO
+                transit_lines_without_lot = delivery.do_line_ids.filtered(
+                    lambda l: l.route_id.is_transit
+                    and not l.lot_line_ids.filtered(lambda lot: not lot.wt_skip_line)
+                )
+                if transit_lines_without_lot:
+                    seqs = ", ".join(str(l.sequence) for l in transit_lines_without_lot)
+                    raise ValidationError(_(
+                        "Rencana DO transit wajib memiliki lot asal aktif sebelum Selesai Timbang.\n"
+                        "Baris tanpa lot asal: %s"
+                    ) % seqs)
+
+                transit_followup_lines_without_lot = delivery.do_line_ids.filtered(
+                    lambda l: l._requires_transit_lot_source()
+                    and not l.lot_line_ids.filtered(lambda lot: not lot.wt_skip_line)
+                )
+                if transit_followup_lines_without_lot:
+                    seqs = ", ".join(str(l.sequence) for l in transit_followup_lines_without_lot)
+                    raise ValidationError(_(
+                        "Rencana DO lanjutan dari lokasi transit wajib memiliki Lot Transit.\n"
+                        "Baris tanpa Lot Transit: %s"
+                    ) % seqs)
+
+                transit_source_lines = delivery.do_line_ids.filtered(
+                    lambda l: l._requires_transit_lot_source()
+                )
+                non_transit_lot_lines = transit_source_lines.mapped("lot_line_ids").filtered(
+                    lambda l: not l.wt_skip_line
+                    and l.lot_id
+                    and l.lot_id.wt_lot_type != "transit"
+                )
+                if non_transit_lot_lines:
+                    lot_names = ", ".join(non_transit_lot_lines.mapped("lot_id.name"))
+                    raise ValidationError(_(
+                        "Rencana DO dari lokasi transit wajib memakai Lot Transit.\n"
+                        "Lot bukan transit: %s"
+                    ) % lot_names)
+
                 pulled_lots = delivery.do_lot_line_ids.filtered(
                     # Ambil baris yang sudah di-pull operator dan tidak di-skip
                     lambda l: l.wt_is_pulled and not l.wt_skip_line
@@ -887,6 +924,16 @@ class Delivery(models.Model):
 
         for line in lines_to_generate.sorted("sequence"):
             line._action_create_done_picking()
+
+        transit_lines_without_result = self.do_line_ids.filtered(
+            lambda l: l.route_id.is_transit and not l.generated_transit_lot_id
+        )
+        if transit_lines_without_result:
+            seqs = ", ".join(str(l.sequence) for l in transit_lines_without_result)
+            raise ValidationError(_(
+                "Validasi belum bisa diselesaikan karena Lot Transit belum terbentuk "
+                "pada baris Rencana DO transit berikut: %s"
+            ) % seqs)
 
         self.write({
             "state": "done",

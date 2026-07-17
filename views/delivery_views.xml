@@ -214,6 +214,11 @@
                                            options="{'no_open': False}"
                                            optional="show"
                                            readonly="1"/>
+                                    <field name="generated_transit_lot_id"
+                                           string="Lot Transit"
+                                           options="{'no_open': False}"
+                                           optional="show"
+                                           readonly="1"/>
                                     <field name="picking_state"
                                            string="Status DO"
                                            widget="badge"
@@ -268,7 +273,7 @@
                                     <sheet>
                                          <field name="picking_state" invisible="1"/>
                                          <field name="picking_id" invisible="1"/>
-                                        <group>
+                                         <group>
                                              <group string="Konfigurasi Operasi">
                                                 <field name="route_id" options="{'no_create': True}" force_save="1"
                                                        readonly="picking_state == 'done'"/>
@@ -293,6 +298,10 @@
                                                        readonly="picking_state == 'done'"/>
                                                 <field name="partner_id" options="{'no_create': True}"
                                                        readonly="picking_state == 'done'"/>
+                                                <field name="generated_transit_lot_id"
+                                                       readonly="1"
+                                                       options="{'no_open': False}"
+                                                       invisible="not generated_transit_lot_id"/>
                                             </group>
                                         </group>
                                         <notebook>

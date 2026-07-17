@@ -284,6 +284,16 @@ class StockOpname(models.Model):
                 ("lot_id", "!=", False),
                 ("quantity", ">", 0),
             ])
+            fallback_production_date = fields.Date.to_date("9999-12-31")
+            quants = quants.sorted(
+                key=lambda quant: (
+                    quant.lot_id.production_date is False,
+                    quant.lot_id.production_date or fallback_production_date,
+                    quant.lot_id.create_date or fields.Datetime.now(),
+                    quant.lot_id.name,
+                    quant.location_id.complete_name,
+                )
+            )
 
             line_vals = []
             for quant in quants:
