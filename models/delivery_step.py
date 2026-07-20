@@ -117,21 +117,23 @@ class DeliveryStep(models.Model):
         """Auto-fill transit_location dari konfigurasi rute jika hanya 1 lokasi asal."""
         company_id = self.company_id.id or self.env.company.id
         if len(self.source_location_ids) == 1:
-            route = self.env["wt.delivery.route"].search([
-                ("source_location_id", "=", self.source_location_ids[0].id),
+            route_line = self.env["wt.delivery.route.line"].search([
+                ("location_id", "=", self.source_location_ids[0].id),
+                ("route_type", "=", "transit"),
                 ("company_id", "=", company_id),
-                ("active", "=", True),
+                ("route_id.active", "=", True),
             ], limit=1)
-            if route:
-                self.transit_location_id = route.transit_location_id
+            if route_line:
+                self.transit_location_id = route_line.location_dest_id
         elif len(self.source_location_ids) > 1:
             # Cek apakah semua lokasi menuju transit yang sama
-            routes = self.env["wt.delivery.route"].search([
-                ("source_location_id", "in", self.source_location_ids.ids),
+            route_lines = self.env["wt.delivery.route.line"].search([
+                ("location_id", "in", self.source_location_ids.ids),
+                ("route_type", "=", "transit"),
                 ("company_id", "=", company_id),
-                ("active", "=", True),
+                ("route_id.active", "=", True),
             ])
-            transit_locations = routes.mapped("transit_location_id")
+            transit_locations = route_lines.mapped("location_dest_id")
             if len(transit_locations) == 1:
                 self.transit_location_id = transit_locations[0]
             else:

@@ -183,6 +183,18 @@ class DeliveryDoLine(models.Model):
         string="Rute",
         help="Pilih Rute untuk mengisi otomatis lokasi sumber dan tujuan.",
     )
+    route_line_id = fields.Many2one(
+        "wt.delivery.route.line",
+        string="Baris Rute",
+        domain="[('route_id', '=', route_id)]",
+        help="Baris rute pengiriman yang menjadi sumber konfigurasi operasi.",
+    )
+    route_type = fields.Selection(
+        related="route_line_id.route_type",
+        string="Route Type",
+        readonly=True,
+        store=True,
+    )
 
     # ── Hasil generate (terisi setelah Validasi) ──────────────────────────────
     picking_id = fields.Many2one(
@@ -251,25 +263,14 @@ class DeliveryDoLine(models.Model):
 
     # ── Onchange ──────────────────────────────────────────────────────────────
 
-    @api.onchange("route_id")
-    def _onchange_route_id(self):
-        """
-        Auto-isi Tipe Operasi, Lokasi Sumber, dan Lokasi Tujuan dari Rute Transit.
-        Route dipilih pertama; lokasi mengikuti mapping rute.
-        Jika route dikosongkan, bersihkan semua field yang terisi otomatis.
-        """
-        if self.route_id:
-            if self.route_id.picking_type_id:
-                self.picking_type_id = self.route_id.picking_type_id
-            if self.route_id.source_location_id:
-                self.location_id = self.route_id.source_location_id
-            if self.route_id.transit_location_id:
-                self.location_dest_id = self.route_id.transit_location_id
-        else:
-            # Kosongkan field yang diisi otomatis oleh route
-            self.picking_type_id = False
-            self.location_id = False
-            self.location_dest_id = False
+    @api.onchange("route_line_id")
+    def _onchange_route_line_id(self):
+        """Isi konfigurasi operasi dari baris master rute."""
+        if self.route_line_id:
+            self.route_id = self.route_line_id.route_id
+            self.picking_type_id = self.route_line_id.picking_type_id
+            self.location_id = self.route_line_id.location_id
+            self.location_dest_id = self.route_line_id.location_dest_id
 
     @api.onchange("picking_type_id")
     def _onchange_picking_type_id(self):
@@ -299,8 +300,8 @@ class DeliveryDoLine(models.Model):
         """
         if not self.location_id:
             return
-        if self.route_id and self.picking_type_id and self.picking_type_id.code == "internal":
-            self.location_dest_id = self.route_id.transit_location_id
+        if self.route_line_id:
+            self.location_dest_id = self.route_line_id.location_dest_id
 
     def _prepare_auto_lot_allocation(self, requested_qty):
         """Build lot-line commands from stock available in the complete source subtree.
@@ -405,6 +406,10 @@ class DeliveryDoLine(models.Model):
         delivery_id = self.env.context.get("default_delivery_id")
         if delivery_id:
             delivery = self.env["wt.delivery"].browse(delivery_id)
+            if delivery.route_id:
+                res["route_id"] = delivery.route_id.id
+            if delivery.partner_id:
+                res["partner_id"] = delivery.partner_id.id
             picking_type = self.env["stock.picking.type"].search(
                 [
                     ("code", "=", "outgoing"),
@@ -431,6 +436,8 @@ class DeliveryDoLine(models.Model):
         self.ensure_one()
         missing = []
         active_lot_lines = self.lot_line_ids.filtered(lambda l: not l.wt_skip_line)
+        if not self.route_line_id:
+            missing.append(_("Baris Rute"))
         if not self.picking_type_id:
             missing.append(_("Tipe Operasi"))
         lot_operators = active_lot_lines.mapped("operator_id")
@@ -442,10 +449,12 @@ class DeliveryDoLine(models.Model):
             missing.append(_("Lokasi Sumber"))
         if not self.location_dest_id:
             missing.append(_("Lokasi Tujuan"))
+        if not self.partner_id:
+            missing.append(_("Kontak Penerima"))
         if self.demand_qty <= 0:
             missing.append(_("Demand (kg) harus > 0"))
         requires_transit_lot = self._requires_transit_lot_source()
-        if self.route_id.is_transit and not active_lot_lines:
+        if self._is_transit_route() and not active_lot_lines:
             missing.append(_("Lot asal untuk rute transit"))
         if requires_transit_lot and not active_lot_lines:
             missing.append(_("Lot transit"))
@@ -546,7 +555,7 @@ class DeliveryDoLine(models.Model):
             return True
 
         transit_destinations = self.delivery_id.do_line_ids.filtered(
-            lambda l: l.id != self.id and l.route_id.is_transit and l.location_dest_id
+            lambda l: l.id != self.id and l._is_transit_route() and l.location_dest_id
         ).mapped("location_dest_id")
         return any(
             dest.parent_path
@@ -562,7 +571,7 @@ class DeliveryDoLine(models.Model):
             return self.env["stock.lot"]
         transit_lines = self.delivery_id.do_line_ids.filtered(
             lambda l: l.id != self.id
-            and l.route_id.is_transit
+            and l._is_transit_route()
             and l.location_dest_id
             and l.generated_transit_lot_id
             and self.location_id.parent_path
@@ -571,14 +580,25 @@ class DeliveryDoLine(models.Model):
         )
         return transit_lines.mapped("generated_transit_lot_id")
 
+    def _is_transit_route(self):
+        self.ensure_one()
+        return self.route_type == "transit" or self.route_line_id.route_type == "transit"
+
     # ── ORM ───────────────────────────────────────────────────────────────────
 
     @api.model_create_multi
     def create(self, vals_list):
         """Saat do_line dibuat, auto-save parent delivery agar header ikut tersimpan."""
+        new_vals_list = []
         for vals in vals_list:
+            vals = self._apply_route_line_vals(vals)
+            delivery = self.env["wt.delivery"].browse(vals.get("delivery_id")) if vals.get("delivery_id") else False
+            if delivery and delivery.route_id and not vals.get("route_line_id"):
+                raise ValidationError(_(
+                    "Baris Rute pada Tugas Pengiriman harus berasal dari master Rute. "
+                    "Pilih Rute di header untuk memuat baris rute."
+                ))
             if not vals.get("product_id"):
-                delivery = self.env["wt.delivery"].browse(vals.get("delivery_id")) if vals.get("delivery_id") else False
                 company = (
                     delivery.company_id
                     if delivery
@@ -587,7 +607,8 @@ class DeliveryDoLine(models.Model):
                 product = self.env["wt.product"].get_active_product(company)
                 if product:
                     vals["product_id"] = product.id
-        records = super().create(vals_list)
+            new_vals_list.append(vals)
+        records = super().create(new_vals_list)
         # Trigger write pada delivery agar frontend tahu record berubah
         # dan agar timestamp write_date diperbarui
         delivery_ids = records.mapped("delivery_id").filtered(lambda d: d.id)
@@ -597,6 +618,7 @@ class DeliveryDoLine(models.Model):
 
     def write(self, vals):
         """Saat do_line di-update, pastikan delivery juga di-touch."""
+        vals = self._apply_route_line_vals(vals)
         if "delivery_id" in vals and "product_id" not in vals:
             delivery = self.env["wt.delivery"].browse(vals["delivery_id"])
             product = self.env["wt.product"].get_active_product(delivery.company_id)
@@ -607,6 +629,39 @@ class DeliveryDoLine(models.Model):
         if delivery_ids and any(k not in ("write_date", "write_uid") for k in vals):
             delivery_ids.write({"write_date": fields.Datetime.now()})
         return res
+
+    def _apply_route_line_vals(self, vals):
+        vals = dict(vals)
+        route_line_id = vals.get("route_line_id")
+        if route_line_id:
+            route_line = self.env["wt.delivery.route.line"].browse(route_line_id)
+            vals.setdefault("route_id", route_line.route_id.id)
+            vals.setdefault("picking_type_id", route_line.picking_type_id.id)
+            vals.setdefault("location_id", route_line.location_id.id)
+            vals.setdefault("location_dest_id", route_line.location_dest_id.id)
+        return vals
+
+    def _check_sequence_ready_for_validation(self):
+        """Prevent validating a route line before earlier route lines are done."""
+        self.ensure_one()
+        if not self.delivery_id or not self.delivery_id.do_line_ids:
+            return
+
+        current_key = (self.sequence or 0, self.id or 0)
+        previous_lines = self.delivery_id.do_line_ids.filtered(
+            lambda candidate: candidate.id != self.id
+            and ((candidate.sequence or 0), (candidate.id or 0)) < current_key
+            and (not candidate.picking_id or candidate.picking_id.state != "done")
+        )
+        if previous_lines:
+            sequences = ", ".join(
+                str(line.sequence)
+                for line in previous_lines.sorted(lambda line: (line.sequence or 0, line.id or 0))
+            )
+            raise ValidationError(_(
+                "Validasi Rencana DO harus dilakukan bertahap sesuai urutan rute. "
+                "Selesaikan baris rute sebelumnya terlebih dahulu: %s"
+            ) % sequences)
 
     # ── Business Logic ────────────────────────────────────────────────────────
 
@@ -621,6 +676,7 @@ class DeliveryDoLine(models.Model):
         if self.picking_id and self.picking_id.state == "done":
             return self.picking_id
 
+        self._check_sequence_ready_for_validation()
         self._validate_before_generate()
 
         src_location = self.location_id or self.picking_type_id.default_location_src_id
@@ -642,8 +698,8 @@ class DeliveryDoLine(models.Model):
         else:
             total_physical = self.demand_qty
 
-        # Cek jika rute ini adalah rute transit (is_transit)
-        is_transit_merge = bool(self.route_id.is_transit)
+        # Cek jika baris rute ini adalah rute transit.
+        is_transit_merge = self._is_transit_route()
 
         move_vals = []
         if is_transit_merge:
@@ -1047,5 +1103,5 @@ class DeliveryDoLine(models.Model):
             if rec.picking_id and rec.picking_id.state == "done":
                 raise ValidationError(_(
                     "Baris DO Rute '%s' tidak dapat dihapus karena sudah divalidasi/selesai."
-                ) % (rec.route_id.display_name or rec.picking_type_id.display_name))
+                ) % (rec.route_line_id.display_name or rec.picking_type_id.display_name))
         return super().unlink()

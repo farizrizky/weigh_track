@@ -39,6 +39,7 @@ access_wt_stock_opname_apply_wizard_line_admin,access.wt.stock_opname.apply.wiza
 access_wt_stock_opname_apply_wizard_allocation_admin,access.wt.stock_opname.apply.wizard.allocation.admin,model_wt_stock_opname_apply_wizard_allocation,group_admin,1,1,1,1
 access_wt_delivery_admin,access.wt.delivery.admin,model_wt_delivery,group_admin,1,1,1,1
 access_wt_delivery_route_admin,access.wt.delivery.route.admin,model_wt_delivery_route,group_admin,1,1,1,1
+access_wt_delivery_route_line_admin,access.wt.delivery.route.line.admin,model_wt_delivery_route_line,group_admin,1,1,1,1
 access_wt_delivery_step_admin,access.wt.delivery.step.admin,model_wt_delivery_step,group_admin,1,1,1,1
 access_wt_delivery_line_allocation_admin,access.wt.delivery.line.allocation.admin,model_wt_delivery_line_allocation,group_admin,1,1,1,1
 access_wt_delivery_do_wizard_admin,access.wt.delivery.do.wizard.admin,model_wt_delivery_do_wizard,group_admin,1,1,1,1

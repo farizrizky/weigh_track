@@ -55,16 +55,14 @@ class ApiDeliveryService(models.AbstractModel):
             ]
         )
 
-        # Kumpulkan transit_location_id dari semua rute yang ditandai is_transit=True.
-        # Field ini diset manual oleh admin di Konfigurasi → Rute Transit Pengiriman,
-        # sehingga deteksi transit sepenuhnya dikontrol user — tidak bergantung pada
-        # tipe/usage lokasi secara otomatis.
+        # Kumpulkan lokasi tujuan dari semua line rute bertipe Transit.
+        # Deteksi transit tetap dikontrol dari master rute, bukan dari usage lokasi saja.
         transit_loc_ids = set(
-            self.env["wt.delivery.route"].sudo().search([
-                ("is_transit", "=", True),
-                ("transit_location_id", "!=", False),
+            self.env["wt.delivery.route.line"].sudo().search([
+                ("route_type", "=", "transit"),
+                ("location_dest_id", "!=", False),
                 ("company_id", "=", device.company_id.id),
-            ]).mapped("transit_location_id.id")
+            ]).mapped("location_dest_id.id")
         )
 
         deliveries_data = []

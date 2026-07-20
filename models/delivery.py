@@ -58,6 +58,13 @@ class Delivery(models.Model):
         tracking=True,
         help="Partner/Customer tujuan pengiriman akhir (untuk Outgoing DO final).",
     )
+    route_id = fields.Many2one(
+        "wt.delivery.route",
+        string="Rute",
+        tracking=True,
+        domain="[('company_id', '=', company_id)]",
+        help="Rute pengiriman yang akan membentuk baris rencana pengiriman.",
+    )
 
     # ── Produk yang dikirim (opsional, digunakan sebagai fallback di step) ────
     product_id = fields.Many2one(
@@ -224,6 +231,48 @@ class Delivery(models.Model):
     def _onchange_company_id_set_product(self):
         for delivery in self:
             delivery.product_id = delivery._get_configured_product()
+            delivery.route_id = False
+            delivery.do_line_ids = [(5, 0, 0)]
+
+    def _prepare_route_do_line_commands(self, route):
+        self.ensure_one()
+        product = self.product_id or self._get_configured_product()
+        commands = [(5, 0, 0)]
+        for route_line in route.line_ids.sorted("sequence"):
+            commands.append((0, 0, {
+                "sequence": route_line.sequence,
+                "route_id": route.id,
+                "route_line_id": route_line.id,
+                "picking_type_id": route_line.picking_type_id.id,
+                "product_id": product.id if product else False,
+                "location_id": route_line.location_id.id,
+                "location_dest_id": route_line.location_dest_id.id,
+                "partner_id": self.partner_id.id if self.partner_id else False,
+                "scheduled_date": fields.Datetime.now(),
+            }))
+        return commands
+
+    @api.onchange("route_id")
+    def _onchange_route_id_load_do_lines(self):
+        for delivery in self:
+            if not delivery.route_id:
+                delivery.do_line_ids = [(5, 0, 0)]
+                continue
+            delivery.do_line_ids = delivery._prepare_route_do_line_commands(delivery.route_id)
+
+    @api.onchange("partner_id")
+    def _onchange_partner_id_update_do_lines(self):
+        for delivery in self:
+            for line in delivery.do_line_ids:
+                if not line.partner_id:
+                    line.partner_id = delivery.partner_id
+
+    @api.onchange("product_id")
+    def _onchange_product_id_update_do_lines(self):
+        for delivery in self:
+            for line in delivery.do_line_ids:
+                if not line.product_id:
+                    line.product_id = delivery.product_id
 
     @api.depends("do_line_ids.lot_line_ids.wt_is_pulled", "do_line_ids.lot_line_ids.qty")
     def _compute_do_lot_line_ids(self):
@@ -695,6 +744,16 @@ class Delivery(models.Model):
         for delivery in self:
             if delivery.state != "draft":
                 raise ValidationError(_("Hanya Draft yang bisa dikonfirmasi."))
+            if not delivery.partner_id:
+                raise ValidationError(_("Customer wajib diisi sebelum pengiriman dikonfirmasi."))
+            if (
+                not delivery.warehouse_step_ids
+                and not delivery.picking_ids
+                and not delivery.route_id
+            ):
+                raise ValidationError(_("Rute wajib diisi sebelum pengiriman dikonfirmasi."))
+            if delivery.route_id and not delivery.do_line_ids:
+                raise ValidationError(_("Baris rute belum terbentuk. Pilih ulang Rute untuk memuat baris rute."))
 
             # Alur baru (multi-step): cukup ada warehouse_step_ids
             if delivery.warehouse_step_ids:
@@ -704,16 +763,19 @@ class Delivery(models.Model):
             # Alur inline do_line_ids: validasi kelengkapan, TIDAK buat picking di sini
             # Picking baru dibuat saat Validasi akhir (action_validate)
             if delivery.do_line_ids:
-                # Cek minimal semua baris punya picking_type, produk, dan operator dari weighing location per lot.
+                # Draft hanya memastikan struktur rute sudah terbentuk.
+                # Detail demand, kontak penerima, lot/operator diatur saat status Confirmed.
                 incomplete = delivery.do_line_ids.filtered(
                     lambda l: not l.picking_type_id
                     or not l.product_id
-                    or not l.lot_line_ids.mapped("operator_id")
+                    or not l.route_line_id
+                    or not l.location_id
+                    or not l.location_dest_id
                 )
                 if incomplete:
                     seqs = ", ".join(str(l.sequence) for l in incomplete)
                     raise ValidationError(_(
-                        "Baris DO berikut belum lengkap (Tipe Operasi / Operator / Produk): %s"
+                        "Baris rute berikut belum lengkap (Baris Rute / Tipe Operasi / Produk / Lokasi): %s"
                     ) % seqs)
 
                 # Validasi: Wajib memiliki tepat 1 baris Outgoing (Order Pengiriman)
@@ -762,7 +824,7 @@ class Delivery(models.Model):
             if delivery.do_line_ids:
                 # Alur baru: menggunakan rincian lot rencana DO
                 transit_lines_without_lot = delivery.do_line_ids.filtered(
-                    lambda l: l.route_id.is_transit
+                    lambda l: l._is_transit_route()
                     and not l.lot_line_ids.filtered(lambda lot: not lot.wt_skip_line)
                 )
                 if transit_lines_without_lot:
@@ -926,7 +988,7 @@ class Delivery(models.Model):
             line._action_create_done_picking()
 
         transit_lines_without_result = self.do_line_ids.filtered(
-            lambda l: l.route_id.is_transit and not l.generated_transit_lot_id
+            lambda l: l._is_transit_route() and not l.generated_transit_lot_id
         )
         if transit_lines_without_result:
             seqs = ", ".join(str(l.sequence) for l in transit_lines_without_result)

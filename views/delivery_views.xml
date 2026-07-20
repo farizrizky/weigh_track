@@ -127,7 +127,11 @@
                             <field name="company_id" groups="base.group_multi_company"
                                    readonly="state != 'draft'"/>
                             <field name="date" readonly="state != 'draft'"/>
-                            <field name="partner_id" readonly="state not in ('draft', 'confirmed')"/>
+                            <field name="partner_id" readonly="state not in ('draft', 'confirmed')" required="1"/>
+                            <field name="route_id"
+                                   options="{'no_create': True}"
+                                   readonly="state != 'draft'"
+                                   required="1"/>
                             <field name="product_id" invisible="1"/>
                         </group>
                         <group>
@@ -164,8 +168,8 @@
 
                     <notebook>
 
-                        <!-- Tab 2: Delivery Orders (DO) -->
-                        <page string="Delivery Orders (DO)">
+                        <!-- Tab 2: Rute -->
+                        <page string="Rute">
 
                             <!-- ── SECTION A: Rencana DO (hanya saat Draft & Confirmed) ── -->
                             <group invisible="state not in ('draft', 'confirmed')">
@@ -181,11 +185,16 @@
 
                             <!-- Tabel Rencana DO (satu field, perilaku berubah berdasarkan state) -->
                             <field name="do_line_ids"
-                                   readonly="state in ('validated', 'done', 'cancelled')"
-                                   context="{'default_delivery_id': id, 'default_company_id': company_id}">
+                                   readonly="state != 'confirmed'"
+                                   context="{'default_delivery_id': id, 'default_company_id': company_id, 'default_route_id': route_id, 'default_partner_id': partner_id}">
                                 <list string="Rencana DO"
+                                      create="false"
+                                      delete="false"
                                       decoration-success="picking_state == 'done'">
                                     <field name="sequence" widget="handle"/>
+                                    <field name="route_id" column_invisible="1"/>
+                                    <field name="route_line_id" column_invisible="1"/>
+                                    <field name="route_type" string="Tipe Rute" optional="show"/>
                                     <field name="picking_type_id"
                                            options="{'no_create': True, 'no_open': True}"
                                            string="Tipe Operasi"/>
@@ -196,15 +205,13 @@
                                     <field name="location_dest_id"
                                            options="{'no_create': True}"
                                            string="Lokasi Tujuan"/>
-                                    <field name="route_id"
-                                           string="Rute"
-                                           optional="show"/>
                                     <field name="demand_qty"
                                            string="Demand (kg)"/>
                                     <field name="partner_id"
                                            options="{'no_create': True}"
-                                           string="Partner Tujuan"
-                                           optional="hide"/>
+                                           string="Kontak Penerima"
+                                           required="1"
+                                           optional="show"/>
                                     <field name="scheduled_date"
                                            string="Tgl Terjadwal"
                                            optional="hide"/>
@@ -232,7 +239,7 @@
                                              type="object"
                                              icon="fa-check"
                                              class="btn-primary"
-                                             invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
+                                             invisible="picking_state == 'done' or parent.state != 'confirmed'"/>
                                     <field name="company_id" column_invisible="1"/>
                                 </list>
                                 <form string="Rincian Rencana DO">
@@ -241,13 +248,13 @@
                                                  string="Muat Lot dari Lokasi Sumber"
                                                  type="object"
                                                  class="btn-secondary"
-                                                 invisible="picking_state == 'done'"
+                                                 invisible="picking_state == 'done' or parent.state != 'confirmed'"
                                                  confirm="Rincian lot yang ada akan diganti berdasarkan stok bebas pada lokasi sumber dan seluruh sublokasinya. Lanjutkan?"/>
                                          <button name="action_validate_line"
                                                  string="Validasi Rencana DO"
                                                  type="object"
                                                  class="btn-primary"
-                                                 invisible="picking_state == 'done' or parent.state in ('validated', 'done', 'cancelled')"/>
+                                                 invisible="picking_state == 'done' or parent.state != 'confirmed'"/>
                                          <button name="action_print_despatch_slip"
                                                  string="Print Despatch Slip"
                                                  type="object"
@@ -274,16 +281,15 @@
                                          <field name="picking_state" invisible="1"/>
                                          <field name="picking_id" invisible="1"/>
                                          <group>
-                                             <group string="Konfigurasi Operasi">
-                                                <field name="route_id" options="{'no_create': True}" force_save="1"
-                                                       readonly="picking_state == 'done'"/>
+                                             <group string="Rute &amp; Tanggal">
+                                                <field name="route_id" invisible="1" force_save="1"/>
+                                                <field name="route_line_id" invisible="1" force_save="1"/>
+                                                <field name="route_type" readonly="1"/>
                                                 <field name="picking_type_id"
                                                        options="{'no_create': True, 'no_open': True}"
                                                        readonly="1"
                                                        force_save="1"/>
                                                 <field name="product_id" invisible="1" force_save="1"/>
-                                            </group>
-                                            <group string="Lokasi &amp; Tanggal">
                                                 <field name="location_id"
                                                        options="{'no_create': True}"
                                                        readonly="1"
@@ -294,9 +300,12 @@
                                                        force_save="1"/>
                                                 <field name="scheduled_date"
                                                        readonly="picking_state == 'done'"/>
+                                            </group>
+                                            <group string="Demand dan Kontak Penerima">
                                                 <field name="demand_qty" force_save="1"
                                                        readonly="picking_state == 'done'"/>
                                                 <field name="partner_id" options="{'no_create': True}"
+                                                       required="1"
                                                        readonly="picking_state == 'done'"/>
                                                 <field name="generated_transit_lot_id"
                                                        readonly="1"
