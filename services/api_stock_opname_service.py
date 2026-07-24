@@ -97,7 +97,7 @@ class ApiStockOpnameService(models.AbstractModel):
         if not opname_id:
             return response.error(
                 "missing_opname_id",
-                _("Opname ID is required."),
+                _("Opname ID wajib diisi."),
                 400,
                 device=device,
             )
@@ -112,7 +112,7 @@ class ApiStockOpnameService(models.AbstractModel):
         if not opname:
             return response.error(
                 "opname_not_found",
-                _("Active stock opname task not found for this operator."),
+                _("Stock opname tidak ditemukan."),
                 404,
                 device=device,
             )
@@ -122,7 +122,7 @@ class ApiStockOpnameService(models.AbstractModel):
         if not isinstance(lines_payload, list):
             return response.error(
                 "invalid_lines",
-                _("Lines must be a list."),
+                _("Data lines tidak valid."),
                 400,
                 device=device,
             )
