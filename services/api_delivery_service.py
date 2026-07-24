@@ -73,6 +73,7 @@ class ApiDeliveryService(models.AbstractModel):
                     "product_name": line.product_id.display_name,
                     "lot_id": line.lot_id.id or False,
                     "lot_name": line.lot_id.name or "",
+                    "lot_production_date": str(line.lot_id.production_date) if line.lot_id.production_date else None,
                     "uom_id": line.product_id.uom_id.id,
                     "uom_name": line.product_id.uom_id.name,
                     "demand_qty": line.qty,
