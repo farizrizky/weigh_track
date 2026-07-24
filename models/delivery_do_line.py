@@ -12,13 +12,13 @@ class DeliveryDoLine(models.Model):
 
     delivery_id = fields.Many2one(
         "wt.delivery",
-        string="Tugas Pengiriman",
+        string="Delivery Task",
         required=False,
         ondelete="cascade",
         index=True,
     )
     sequence = fields.Integer(
-        string="Urutan",
+        string="Sequence",
         default=10,
     )
     company_id = fields.Many2one(
@@ -28,10 +28,10 @@ class DeliveryDoLine(models.Model):
         readonly=True,
     )
 
-    # ── Konfigurasi DO ────────────────────────────────────────────────────────
+    # â”€â”€ Konfigurasi DO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     picking_type_id = fields.Many2one(
         "stock.picking.type",
-        string="Tipe Operasi",
+        string="Operation Type",
         required=True,
         domain="[('code', 'in', ['outgoing', 'internal']), ('company_id', '=', company_id)]",
     )
@@ -107,29 +107,29 @@ class DeliveryDoLine(models.Model):
                 line.operator_id = False
     product_id = fields.Many2one(
         "product.product",
-        string="Produk",
+        string="Product",
         required=True,
         help="Produk yang akan dikirim dalam DO ini.",
     )
     location_id = fields.Many2one(
         "stock.location",
-        string="Lokasi Sumber",
+        string="Source Location",
         domain="[('usage', '=', 'internal')]",
         help="Lokasi asal stok.",
     )
     location_dest_id = fields.Many2one(
         "stock.location",
-        string="Lokasi Tujuan",
+        string="Destination Location",
         domain="[('usage', 'in', ['internal', 'transit', 'customer'])]",
         help="Lokasi tujuan. Auto-isi dari Rute Transit untuk Transfer Internal.",
     )
     partner_id = fields.Many2one(
         "res.partner",
-        string="Partner / Alamat Tujuan",
+        string="Partner / Destination Address",
         help="Alamat tujuan. Kosongkan untuk menggunakan customer di header.",
     )
     scheduled_date = fields.Datetime(
-        string="Tanggal Terjadwal",
+        string="Scheduled Date",
         default=fields.Datetime.now,
     )
     demand_qty = fields.Float(
@@ -141,51 +141,85 @@ class DeliveryDoLine(models.Model):
         help="Total kuantitas yang akan dikirim dalam DO ini. Otomatis terjumlah dari rincian lot jika diisi.",
     )
     handover_date = fields.Date(
-        string="Tanggal Berita Acara",
-        default=fields.Date.context_today,
+        string="Handover Date",
     )
     handover_date_text = fields.Char(
-        string="Tanggal Berita Acara (Teks)",
+        string="Handover Date (Text)",
         compute="_compute_handover_date_text",
     )
-    vehicle_plate = fields.Char(
-        string="Nomor Polisi",
+    handover_day_date_text = fields.Char(
+        string="Handover Day and Date (Text)",
+        compute="_compute_handover_date_text",
     )
-    sent_to_pt = fields.Char(
-        string="Dikirim ke PT",
+    driver_name = fields.Char(
+        string="Driver Name",
+    )
+    vehicle_plate = fields.Char(
+        string="License Plate",
     )
     tare_qty = fields.Float(
         string="Tare (kg)",
         digits="Product Unit of Measure",
     )
+    delivery_letter_no = fields.Char(
+        string="Delivery Letter Number",
+    )
+    delivery_letter_date = fields.Date(
+        string="Delivery Letter Date",
+    )
+    delivery_letter_date_text = fields.Char(
+        string="Delivery Letter Date (Text)",
+        compute="_compute_delivery_letter_date_text",
+    )
+    so_number = fields.Char(
+        string="SO Number",
+    )
+    document_do_number = fields.Char(
+        string="DO Number",
+        help="Defaults from the Delivery Task number, but can be changed manually for the document.",
+    )
+    receiver_name = fields.Char(
+        string="Receiver Name",
+    )
+    receiver_address = fields.Text(
+        string="Receiver Address",
+    )
+    despatch_slip_no = fields.Char(
+        string="Despatch Slip Number",
+    )
+    actual_physical_qty = fields.Float(
+        string="Actual Physical Weight (kg)",
+        compute="_compute_weight_summary",
+        digits="Product Unit of Measure",
+    )
     net_qty = fields.Float(
-        string="Netto (kg)",
+        string="Net Weight (kg)",
         compute="_compute_weight_summary",
         digits="Product Unit of Measure",
     )
     gross_qty = fields.Float(
-        string="Bruto (kg)",
+        string="Gross Weight (kg)",
         compute="_compute_weight_summary",
         digits="Product Unit of Measure",
     )
 
-    # ── Rincian Lot (Sub-form/Perincian Lot) ──────────────────────────────────
+    # â”€â”€ Rincian Lot (Sub-form/Perincian Lot) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     lot_line_ids = fields.One2many(
         "wt.delivery.do.line.lot",
         "do_line_id",
-        string="Rincian Lot",
+        string="Lot Details",
         copy=True,
     )
 
-    # ── Info Rute ─────────────────────────────────────────────────────────────
+    # â”€â”€ Info Rute â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     route_id = fields.Many2one(
         "wt.delivery.route",
-        string="Rute",
+        string="Route",
         help="Pilih Rute untuk mengisi otomatis lokasi sumber dan tujuan.",
     )
     route_line_id = fields.Many2one(
         "wt.delivery.route.line",
-        string="Baris Rute",
+        string="Route Line",
         domain="[('route_id', '=', route_id)]",
         help="Baris rute pengiriman yang menjadi sumber konfigurasi operasi.",
     )
@@ -196,29 +230,52 @@ class DeliveryDoLine(models.Model):
         store=True,
     )
 
-    # ── Hasil generate (terisi setelah Validasi) ──────────────────────────────
+    # â”€â”€ Hasil generate (terisi setelah Validasi) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     picking_id = fields.Many2one(
         "stock.picking",
-        string="DO Terbentuk",
+        string="Created DO",
         readonly=True,
         copy=False,
         help="DO yang dibuat dari baris ini saat Validasi.",
     )
+    return_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Inventory Return",
+        readonly=True,
+        copy=False,
+        index=True,
+        help="Inventory return document created when this delivery line is returned.",
+    )
     picking_state = fields.Selection(
         related="picking_id.state",
-        string="Status DO",
+        string="DO Status",
         readonly=True,
+    )
+    route_process_status = fields.Selection(
+        [
+            ("preparation", "Preparation"),
+            ("in_process", "In Process"),
+            ("done", "Done"),
+        ],
+        string="DO Status",
+        compute="_compute_route_process_status",
+        store=False,
+    )
+    can_validate_line = fields.Boolean(
+        string="Can Validate",
+        compute="_compute_route_process_status",
+        store=False,
     )
     generated_transit_lot_id = fields.Many2one(
         "stock.lot",
-        string="Lot Transit",
+        string="Transit Lot",
         readonly=True,
         copy=False,
         index=True,
         help="Lot baru yang terbentuk saat rute transit divalidasi.",
     )
 
-    # ── Computed ──────────────────────────────────────────────────────────────
+    # â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @api.depends("lot_line_ids.qty")
     def _compute_demand_qty(self):
@@ -226,13 +283,35 @@ class DeliveryDoLine(models.Model):
             if rec.lot_line_ids:
                 rec.demand_qty = sum(rec.lot_line_ids.mapped("qty"))
 
-    @api.depends("demand_qty", "tare_qty", "lot_line_ids.wt_physical_qty", "lot_line_ids.wt_skip_line")
+    @api.depends("tare_qty", "lot_line_ids.wt_physical_qty")
     def _compute_weight_summary(self):
         for rec in self:
-            active_lots = rec.lot_line_ids.filtered(lambda lot: not lot.wt_skip_line)
+            active_lots = rec.lot_line_ids
             physical_qty = sum(active_lots.mapped("wt_physical_qty"))
-            rec.net_qty = physical_qty if physical_qty > 0.0 else rec.demand_qty
-            rec.gross_qty = rec.tare_qty + rec.net_qty
+            rec.actual_physical_qty = physical_qty
+            rec.net_qty = physical_qty
+            rec.gross_qty = (rec.tare_qty or 0.0) + physical_qty if physical_qty or rec.tare_qty else 0.0
+
+    @api.depends(
+        "sequence",
+        "picking_id.state",
+        "lot_line_ids.qty",
+        "lot_line_ids.wt_is_pulled",
+        "lot_line_ids.wt_weighing_status",
+        "lot_line_ids.wt_difference_qty",
+        "lot_line_ids.wt_is_fully_allocated",
+        "delivery_id.do_line_ids.sequence",
+        "delivery_id.do_line_ids.picking_id.state",
+    )
+    def _compute_route_process_status(self):
+        for rec in self:
+            if rec.picking_id and rec.picking_id.state == "done":
+                rec.route_process_status = "done"
+                rec.can_validate_line = False
+                continue
+
+            rec.can_validate_line = rec._is_current_validation_turn()
+            rec.route_process_status = "in_process" if rec.can_validate_line else "preparation"
 
     @api.depends("handover_date")
     def _compute_handover_date_text(self):
@@ -250,6 +329,15 @@ class DeliveryDoLine(models.Model):
             11: "November",
             12: "Desember",
         }
+        day_names = {
+            0: "Senin",
+            1: "Selasa",
+            2: "Rabu",
+            3: "Kamis",
+            4: "Jumat",
+            5: "Sabtu",
+            6: "Minggu",
+        }
         for rec in self:
             if rec.handover_date:
                 date_value = fields.Date.to_date(rec.handover_date)
@@ -258,10 +346,42 @@ class DeliveryDoLine(models.Model):
                     month_names[date_value.month],
                     date_value.year,
                 )
+                rec.handover_day_date_text = "%s, %s" % (
+                    day_names[date_value.weekday()],
+                    rec.handover_date_text,
+                )
             else:
                 rec.handover_date_text = False
+                rec.handover_day_date_text = False
 
-    # ── Onchange ──────────────────────────────────────────────────────────────
+    @api.depends("delivery_letter_date")
+    def _compute_delivery_letter_date_text(self):
+        month_names = {
+            1: "Januari",
+            2: "Februari",
+            3: "Maret",
+            4: "April",
+            5: "Mei",
+            6: "Juni",
+            7: "Juli",
+            8: "Agustus",
+            9: "September",
+            10: "Oktober",
+            11: "November",
+            12: "Desember",
+        }
+        for rec in self:
+            if rec.delivery_letter_date:
+                date_value = fields.Date.to_date(rec.delivery_letter_date)
+                rec.delivery_letter_date_text = "%s %s %s" % (
+                    date_value.day,
+                    month_names[date_value.month],
+                    date_value.year,
+                )
+            else:
+                rec.delivery_letter_date_text = False
+
+    # â”€â”€ Onchange â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @api.onchange("route_line_id")
     def _onchange_route_line_id(self):
@@ -296,14 +416,14 @@ class DeliveryDoLine(models.Model):
     def _onchange_location_id(self):
         """
         Auto-isi lokasi tujuan dari rute ketika picking_type internal.
-        TIDAK mengubah route_id — route ditentukan oleh user, bukan dari lokasi.
+        TIDAK mengubah route_id â€” route ditentukan oleh user, bukan dari lokasi.
         """
         if not self.location_id:
             return
         if self.route_line_id:
             self.location_dest_id = self.route_line_id.location_dest_id
 
-    def _prepare_auto_lot_allocation(self, requested_qty):
+    def _prepare_auto_lot_allocation(self, requested_qty, excluded_lot_ids=None):
         """Build lot-line commands from stock available in the complete source subtree.
 
         Each command keeps the exact physical location of the quant.  This is
@@ -336,7 +456,7 @@ class DeliveryDoLine(models.Model):
         # stok bebasnya.
         current_delivery_id = self._get_persisted_delivery_id()
         active_do_line_domain = [
-            ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+            ("delivery_id.state", "in", ("draft", "confirmed", "in_progress")),
         ]
         if current_delivery_id:
             active_do_line_domain.append(("delivery_id", "!=", current_delivery_id))
@@ -347,7 +467,6 @@ class DeliveryDoLine(models.Model):
         if active_do_lines:
             planned_lot_lines = self.env["wt.delivery.do.line.lot"].sudo().search([
                 ("do_line_id", "in", active_do_lines.ids),
-                ("wt_skip_line", "=", False),
             ])
             for planned_line in planned_lot_lines:
                 planned_reserved_by_lot[planned_line.lot_id.id] = (
@@ -355,11 +474,14 @@ class DeliveryDoLine(models.Model):
                     + planned_line.qty
                 )
 
+        excluded_lot_ids = set(excluded_lot_ids or [])
         remaining_need = requested_qty
         lot_vals = []
         for quant in quants:
             if remaining_need <= 0:
                 break
+            if quant.lot_id.id in excluded_lot_ids:
+                continue
 
             planned_reserved_qty = planned_reserved_by_lot.get(quant.lot_id.id, 0.0)
             physical_available_qty = max(
@@ -398,7 +520,7 @@ class DeliveryDoLine(models.Model):
             or (self.delivery_id.id if isinstance(self.delivery_id.id, int) else False)
         )
 
-    # ── Default get ───────────────────────────────────────────────────────────
+    # â”€â”€ Default get â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @api.model
     def default_get(self, fields_list):
@@ -429,13 +551,13 @@ class DeliveryDoLine(models.Model):
                     res["product_id"] = product.id
         return res
 
-    # ── Validasi ──────────────────────────────────────────────────────────────
+    # â”€â”€ Validasi â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _validate_before_generate(self):
         """Validasi kelengkapan data sebelum generate picking."""
         self.ensure_one()
         missing = []
-        active_lot_lines = self.lot_line_ids.filtered(lambda l: not l.wt_skip_line)
+        active_lot_lines = self.lot_line_ids
         if not self.route_line_id:
             missing.append(_("Baris Rute"))
         if not self.picking_type_id:
@@ -461,35 +583,68 @@ class DeliveryDoLine(models.Model):
         if missing:
             raise ValidationError(_(
                 "Baris DO urutan %d belum lengkap, isi dahulu:\n%s"
-            ) % (self.sequence, "\n".join("• " + m for m in missing)))
+            ) % (self.sequence, "\n".join("â€¢ " + m for m in missing)))
 
         if requires_transit_lot and active_lot_lines:
-            non_transit_lots = active_lot_lines.filtered(
-                lambda l: l.lot_id and l.lot_id.wt_lot_type != "transit"
-            )
-            if non_transit_lots:
-                lot_names = ", ".join(non_transit_lots.mapped("lot_id.name"))
-                raise ValidationError(_(
-                    "Baris DO urutan %d mengambil stok dari lokasi transit. "
-                    "Lot yang dipilih wajib Lot Transit.\n"
-                    "Lot bukan transit: %s"
-                ) % (self.sequence, lot_names))
             expected_transit_lots = self._get_expected_transit_lots()
-            unexpected_lots = active_lot_lines.filtered(
-                lambda l: expected_transit_lots and l.lot_id not in expected_transit_lots
-            )
-            if unexpected_lots:
-                expected_names = ", ".join(expected_transit_lots.mapped("name"))
-                unexpected_names = ", ".join(unexpected_lots.mapped("lot_id.name"))
+
+            missing_expected_lots = expected_transit_lots - active_lot_lines.mapped("lot_id")
+            if missing_expected_lots:
+                lot_names = ", ".join(missing_expected_lots.mapped("name"))
                 raise ValidationError(_(
-                    "Baris DO urutan %d wajib memakai Lot Transit hasil rute transit sebelumnya.\n"
-                    "Lot yang seharusnya dipakai: %s\n"
-                    "Lot yang tidak sesuai: %s"
-                ) % (self.sequence, expected_names, unexpected_names))
+                    "Baris DO urutan %d wajib meload Lot Transit dari rute sebelumnya.\n"
+                    "Lot Transit yang belum masuk: %s"
+                ) % (self.sequence, lot_names))
+
+            expected_qty_by_lot = self._get_expected_transit_lot_qty_map()
+            for expected_lot in expected_transit_lots:
+                required_qty = expected_qty_by_lot.get(expected_lot.id, 0.0)
+                expected_lot_lines = active_lot_lines.filtered(lambda l: l.lot_id == expected_lot)
+                selected_qty = sum(expected_lot_lines.mapped("qty"))
+                if required_qty > 0.0 and selected_qty + 0.001 < required_qty:
+                    original_qty = sum(
+                        lot_line.wt_original_qty if lot_line.wt_original_qty > 0.0 else lot_line.qty
+                        for lot_line in expected_lot_lines
+                    )
+                    if original_qty + 0.001 >= required_qty and len(expected_lot_lines) == 1:
+                        expected_lot_lines.sudo().write({"qty": required_qty})
+                        selected_qty = required_qty
+                    else:
+                        raise ValidationError(_(
+                            "Baris DO urutan %d wajib membawa Lot Transit %s minimal %.4f kg. "
+                            "Demand yang ada saat ini %.4f kg."
+                        ) % (self.sequence, expected_lot.name, required_qty, selected_qty))
+
+        lot_lines_to_weigh = active_lot_lines.filtered(lambda l: l.qty > 0.0)
+        unpulled_lots = lot_lines_to_weigh.filtered(lambda l: not l.wt_is_pulled)
+        if unpulled_lots:
+            lot_names = ", ".join(
+                l.lot_id.name or l.product_id.name
+                for l in unpulled_lots
+            )
+            raise ValidationError(_(
+                "Baris DO urutan %d tidak dapat divalidasi karena masih ada lot "
+                "yang belum di-pull oleh operator: %s.\n"
+                "Minta operator Pull Tugas ulang sebelum validasi Rencana DO."
+            ) % (self.sequence, lot_names))
+
+        unweighed_lots = lot_lines_to_weigh.filtered(
+            lambda l: l.wt_weighing_status != "weighed"
+        )
+        if unweighed_lots:
+            lot_names = ", ".join(
+                l.lot_id.name or l.product_id.name
+                for l in unweighed_lots
+            )
+            raise ValidationError(_(
+                "Baris DO urutan %d tidak dapat divalidasi karena masih ada lot "
+                "yang belum ditimbang: %s.\n"
+                "Lakukan penimbangan dari aplikasi sebelum validasi Rencana DO."
+            ) % (self.sequence, lot_names))
 
         # Cek jika ada lot yang memiliki selisih timbang tapi belum teralokasi penuh
         unallocated_lots = self.lot_line_ids.filtered(
-            lambda l: not l.wt_skip_line and abs(l.wt_difference_qty) > 0.001 and not l.wt_is_fully_allocated
+            lambda l: abs(l.wt_difference_qty) > 0.001 and not l.wt_is_fully_allocated
         )
         if unallocated_lots:
             lot_details = "\n".join(
@@ -546,6 +701,15 @@ class DeliveryDoLine(models.Model):
         value = (value or "").strip()
         return value.replace("/", "-").replace("\\", "-").replace(" ", "-") or "TRANSIT"
 
+    def _locations_overlap(self, location_a, location_b):
+        """Return True when either location is inside the other's hierarchy."""
+        if not location_a or not location_b or not location_a.parent_path or not location_b.parent_path:
+            return False
+        return (
+            location_a.parent_path.startswith(location_b.parent_path)
+            or location_b.parent_path.startswith(location_a.parent_path)
+        )
+
     def _requires_transit_lot_source(self):
         """Return True when this line must consume a transit lot."""
         self.ensure_one()
@@ -553,38 +717,81 @@ class DeliveryDoLine(models.Model):
             return False
         if self.location_id.usage == "transit":
             return True
+        return bool(self._get_expected_transit_source_lines())
 
-        transit_destinations = self.delivery_id.do_line_ids.filtered(
-            lambda l: l.id != self.id and l._is_transit_route() and l.location_dest_id
-        ).mapped("location_dest_id")
-        return any(
-            dest.parent_path
-            and self.location_id.parent_path
-            and self.location_id.parent_path.startswith(dest.parent_path)
-            for dest in transit_destinations
+    def _get_previous_route_lines(self):
+        self.ensure_one()
+        if not self.delivery_id:
+            return self.env["wt.delivery.do.line"]
+        return self.delivery_id.do_line_ids.filtered(
+            lambda line: line.id != self.id
+            and ((line.sequence or 0), (line.id or 0)) < ((self.sequence or 0), (self.id or 0))
+        ).sorted(lambda line: (line.sequence or 0, line.id or 0))
+
+    def _get_expected_transit_source_lines(self):
+        """Previous transit route lines whose generated lot must feed this line."""
+        self.ensure_one()
+        previous_transit_lines = self._get_previous_route_lines().filtered(
+            lambda line: line._is_transit_route() and line.generated_transit_lot_id
         )
+        if not previous_transit_lines:
+            return previous_transit_lines
+
+        if self.location_id and self.location_id.parent_path:
+            matching_lines = previous_transit_lines.filtered(
+                lambda line: self._locations_overlap(self.location_id, line.location_dest_id)
+            )
+            if matching_lines:
+                return matching_lines[-1:]
+
+        return previous_transit_lines[-1:]
 
     def _get_expected_transit_lots(self):
-        """Transit lots generated by previous transit lines into this source."""
+        """Transit lots generated by previous route lines that should feed this line."""
         self.ensure_one()
-        if not self.delivery_id or not self.location_id:
-            return self.env["stock.lot"]
-        transit_lines = self.delivery_id.do_line_ids.filtered(
-            lambda l: l.id != self.id
-            and l._is_transit_route()
-            and l.location_dest_id
-            and l.generated_transit_lot_id
-            and self.location_id.parent_path
-            and l.location_dest_id.parent_path
-            and self.location_id.parent_path.startswith(l.location_dest_id.parent_path)
-        )
-        return transit_lines.mapped("generated_transit_lot_id")
+        return self._get_expected_transit_source_lines().mapped("generated_transit_lot_id")
+
+    def _get_expected_transit_lot_qty_map(self):
+        """Minimum required qty for each expected transit lot on this route line."""
+        self.ensure_one()
+        qty_by_lot = {}
+        for source_line in self._get_expected_transit_source_lines():
+            lot = source_line.generated_transit_lot_id
+            if not lot:
+                continue
+            qty = sum(
+                lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
+                for lot_line in source_line.lot_line_ids
+            )
+            if qty <= 0.0:
+                qty = source_line.demand_qty
+            qty_by_lot[lot.id] = qty_by_lot.get(lot.id, 0.0) + qty
+        return qty_by_lot
+
+    def _prepare_required_transit_lot_values(self):
+        """Values for transit lots that must be carried by this route line."""
+        self.ensure_one()
+        values = []
+        qty_by_lot = self._get_expected_transit_lot_qty_map()
+        for source_line in self._get_expected_transit_source_lines():
+            lot = source_line.generated_transit_lot_id
+            if not lot:
+                continue
+            qty = qty_by_lot.get(lot.id, 0.0)
+            if qty <= 0.0:
+                continue
+            values.append({
+                "lot_id": lot.id,
+                "qty": qty,
+                "source_location_id": (source_line.location_dest_id or self.location_id).id,
+            })
+        return values
 
     def _is_transit_route(self):
         self.ensure_one()
         return self.route_type == "transit" or self.route_line_id.route_type == "transit"
 
-    # ── ORM ───────────────────────────────────────────────────────────────────
+    # â”€â”€ ORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -607,6 +814,13 @@ class DeliveryDoLine(models.Model):
                 product = self.env["wt.product"].get_active_product(company)
                 if product:
                     vals["product_id"] = product.id
+            if (
+                delivery
+                and not vals.get("document_do_number")
+                and delivery.name
+                and delivery.name != _("New")
+            ):
+                vals["document_do_number"] = delivery.name
             new_vals_list.append(vals)
         records = super().create(new_vals_list)
         # Trigger write pada delivery agar frontend tahu record berubah
@@ -644,31 +858,129 @@ class DeliveryDoLine(models.Model):
     def _check_sequence_ready_for_validation(self):
         """Prevent validating a route line before earlier route lines are done."""
         self.ensure_one()
-        if not self.delivery_id or not self.delivery_id.do_line_ids:
+        previous_lines = self._get_unfinished_previous_lines()
+        if not previous_lines:
             return
 
+        sequences = ", ".join(
+            str(line.sequence)
+            for line in previous_lines.sorted(lambda line: (line.sequence or 0, line.id or 0))
+        )
+        raise ValidationError(_(
+            "Validasi Rencana DO harus dilakukan bertahap sesuai urutan rute. "
+            "Selesaikan baris rute sebelumnya terlebih dahulu: %s"
+        ) % sequences)
+
+    def _get_unfinished_previous_lines(self):
+        self.ensure_one()
+        if not self.delivery_id or not self.delivery_id.do_line_ids:
+            return self.env["wt.delivery.do.line"]
+
         current_key = (self.sequence or 0, self.id or 0)
-        previous_lines = self.delivery_id.do_line_ids.filtered(
+        return self.delivery_id.do_line_ids.filtered(
             lambda candidate: candidate.id != self.id
             and ((candidate.sequence or 0), (candidate.id or 0)) < current_key
             and (not candidate.picking_id or candidate.picking_id.state != "done")
         )
-        if previous_lines:
-            sequences = ", ".join(
-                str(line.sequence)
-                for line in previous_lines.sorted(lambda line: (line.sequence or 0, line.id or 0))
-            )
-            raise ValidationError(_(
-                "Validasi Rencana DO harus dilakukan bertahap sesuai urutan rute. "
-                "Selesaikan baris rute sebelumnya terlebih dahulu: %s"
-            ) % sequences)
 
-    # ── Business Logic ────────────────────────────────────────────────────────
+    def _is_current_validation_turn(self):
+        self.ensure_one()
+        return not self._get_unfinished_previous_lines()
+
+    def _is_ready_for_validation_status(self):
+        self.ensure_one()
+        active_lots = self.lot_line_ids.filtered(lambda l: l.qty > 0.0)
+        if not active_lots:
+            return False
+        if any(not lot.wt_is_pulled for lot in active_lots):
+            return False
+        if any(lot.wt_weighing_status != "weighed" for lot in active_lots):
+            return False
+        return not any(
+            abs(lot.wt_difference_qty) > 0.001 and not lot.wt_is_fully_allocated
+            for lot in active_lots
+        )
+
+    # â”€â”€ Business Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    def _apply_line_adjustments(self, active_lot_lines, source_location):
+        self.ensure_one()
+        adjustable_lines = active_lot_lines.filtered(
+            lambda line: abs(line.wt_difference_qty) > 0.001
+            and line.wt_is_fully_allocated
+            and not line.wt_adjustment_applied
+        )
+        if not adjustable_lines:
+            return
+
+        move_vals_list = []
+        for line in adjustable_lines:
+            exact_loc = self._get_lot_line_source_location(line, source_location)
+            for alloc in line.wt_allocation_ids:
+                if line.wt_difference_qty < 0:
+                    location_src = exact_loc
+                    location_dest = alloc.location_dest_id
+                else:
+                    location_src = alloc.location_dest_id
+                    location_dest = exact_loc
+
+                move_vals_list.append({
+                    "inventory_name": _("Pengiriman"),
+                    "description_picking": "%s / %s" % (
+                        line.lot_id.name or line.product_id.display_name,
+                        alloc.reason_id.name,
+                    ),
+                    "state": "confirmed",
+                    "picked": True,
+                    "is_inventory": True,
+                    "product_id": line.product_id.id,
+                    "product_uom": line.product_id.uom_id.id,
+                    "product_uom_qty": alloc.qty,
+                    "location_id": location_src.id,
+                    "location_dest_id": location_dest.id,
+                    "company_id": line.company_id.id,
+                    "origin": self.delivery_id.name,
+                    "move_line_ids": [(0, 0, {
+                        "product_id": line.product_id.id,
+                        "product_uom_id": line.product_id.uom_id.id,
+                        "quantity": alloc.qty,
+                        "lot_id": line.lot_id.id if line.lot_id else False,
+                        "location_id": location_src.id,
+                        "location_dest_id": location_dest.id,
+                        "company_id": line.company_id.id,
+                    })],
+                })
+
+        if move_vals_list:
+            ctx = dict(
+                inventory_mode=False,
+                tracking_disable=True,
+                mail_notrack=True,
+                no_recompute=True,
+                ignore_dest_packages=True,
+            )
+            moves = self.env["stock.move"].sudo().with_context(**ctx).create(move_vals_list)
+            moves.with_context(**ctx)._action_done()
+
+        for line in adjustable_lines:
+            # Demand tetap menjadi angka rencana/kontrol rantai DO.
+            # Berat aktual pengiriman diambil dari wt_physical_qty saat membuat move line,
+            # sehingga susut normal tidak menurunkan demand lot transit wajib.
+            line.sudo().write({"wt_adjustment_applied": True})
+
+        lots = ", ".join(
+            line.lot_id.name or line.product_id.display_name
+            for line in adjustable_lines
+        )
+        self.delivery_id.message_post(body=_(
+            "Penyesuaian stok otomatis diterapkan saat validasi Rencana DO urutan %s. "
+            "Rincian lot yang diproses: %s"
+        ) % (self.sequence, lots))
 
     def _action_create_done_picking(self):
         """
         Buat stock.picking dari baris ini dan langsung validasi ke status 'done'.
-        Dipanggil oleh wt.delivery.action_validate() saat semua proses selesai.
+        Dipanggil saat baris Rencana DO divalidasi.
         """
         self.ensure_one()
         delivery = self.delivery_id
@@ -687,7 +999,7 @@ class DeliveryDoLine(models.Model):
             or False
         )
         product = self.product_id
-        active_lot_lines = self.lot_line_ids.filtered(lambda line: not line.wt_skip_line)
+        active_lot_lines = self.lot_line_ids
 
         # Hitung total physical qty
         if active_lot_lines:
@@ -697,6 +1009,8 @@ class DeliveryDoLine(models.Model):
             )
         else:
             total_physical = self.demand_qty
+
+        self._apply_line_adjustments(active_lot_lines, src_location)
 
         # Cek jika baris rute ini adalah rute transit.
         is_transit_merge = self._is_transit_route()
@@ -845,13 +1159,11 @@ class DeliveryDoLine(models.Model):
                 "location_dest_id": dest_location.id,
                 "company_id": delivery.company_id.id,
             })
-            self.generated_transit_lot_id = new_lot.id
+            self.sudo().write({"generated_transit_lot_id": new_lot.id})
         else:
             move = picking.move_ids[:1]
             if self.lot_line_ids:
                 for lot_line in self.lot_line_ids:
-                    if lot_line.wt_skip_line:
-                        continue
                     qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
                     exact_loc = self._get_lot_line_source_location(lot_line, src_location)
 
@@ -878,7 +1190,7 @@ class DeliveryDoLine(models.Model):
                     "company_id": delivery.company_id.id,
                 })
 
-        # Validasi langsung ke done — tanpa backorder karena demand sudah disesuaikan ke fisik
+        # Validasi langsung ke done â€” tanpa backorder karena demand sudah disesuaikan ke fisik
         picking.with_context(
             skip_backorder=True,
             no_backorder=True,
@@ -901,7 +1213,78 @@ class DeliveryDoLine(models.Model):
             ) % picking.display_name)
 
         self.picking_id = picking.id
+        if is_transit_merge and self.generated_transit_lot_id:
+            self._load_generated_transit_lot_to_next_line(total_physical)
+        elif self.picking_type_id.code == "outgoing":
+            delivery.write({
+                "state": "done",
+                "validated_at": fields.Datetime.now(),
+                "validated_by_id": self.env.user.id,
+            })
+        elif delivery.state == "confirmed":
+            delivery.write({"state": "in_progress"})
         return picking
+
+    def _load_generated_transit_lot_to_next_line(self, qty):
+        self.ensure_one()
+        transit_lot = self.generated_transit_lot_id
+        if not transit_lot or not self.delivery_id or not self.location_dest_id:
+            return
+
+        later_lines = self.delivery_id.do_line_ids.filtered(
+            lambda line: line.id != self.id
+            and not (line.picking_id and line.picking_id.state == "done")
+            and ((line.sequence or 0), (line.id or 0)) > ((self.sequence or 0), (self.id or 0))
+        ).sorted(lambda line: (line.sequence or 0, line.id or 0))
+        if not later_lines:
+            self.delivery_id.message_post(body=_(
+                "Lot Transit %s sudah terbentuk dari Rencana DO urutan %s, "
+                "tetapi tidak ada baris rute berikutnya yang bisa diload."
+            ) % (transit_lot.name, self.sequence))
+            return
+
+        matching_lines = later_lines.filtered(
+            lambda line: self._locations_overlap(line.location_id, self.location_dest_id)
+        )
+        next_line = matching_lines[:1]
+        if not next_line:
+            self.delivery_id.message_post(body=_(
+                "Lot Transit %s sudah terbentuk dari Rencana DO urutan %s, "
+                "tetapi tidak otomatis diload karena tidak ada rute berikutnya dengan "
+                "Lokasi Sumber yang satu rantai dengan Lokasi Transit %s."
+            ) % (
+                transit_lot.name,
+                self.sequence,
+                self.location_dest_id.display_name,
+            ))
+            return
+
+        lot_qty = qty or next_line.demand_qty or 0.0
+        if lot_qty <= 0.0:
+            return
+
+        existing_line = next_line.lot_line_ids.filtered(lambda line: line.lot_id == transit_lot)[:1]
+        if existing_line:
+            if existing_line.qty + 0.001 < lot_qty:
+                existing_line.sudo().write({
+                    "qty": lot_qty,
+                    "source_location_id": self.location_dest_id.id,
+                })
+                self.delivery_id.message_post(body=_(
+                    "Demand Lot Transit %s pada Rencana DO urutan %s disesuaikan menjadi %.4f kg."
+                ) % (transit_lot.name, next_line.sequence, lot_qty))
+            return
+
+        next_line.sudo().write({
+            "lot_line_ids": [(0, 0, {
+                "lot_id": transit_lot.id,
+                "qty": lot_qty,
+                "source_location_id": self.location_dest_id.id,
+            })],
+        })
+        self.delivery_id.message_post(body=_(
+            "Lot Transit %s otomatis diload ke Rencana DO urutan %s."
+        ) % (transit_lot.name, next_line.sequence))
 
     @api.constrains("lot_line_ids", "lot_line_ids.qty", "lot_line_ids.lot_id")
     def _check_lot_stock_limits(self):
@@ -932,7 +1315,7 @@ class DeliveryDoLine(models.Model):
                 # (2) cari lot_lines di do_lines tersebut pakai direct IN clause.
                 current_delivery_id_c = line._get_persisted_delivery_id()
                 active_do_line_domain_c = [
-                    ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+                    ("delivery_id.state", "in", ("draft", "confirmed", "in_progress")),
                 ]
                 if current_delivery_id_c:
                     active_do_line_domain_c.append(("delivery_id", "!=", current_delivery_id_c))
@@ -941,7 +1324,6 @@ class DeliveryDoLine(models.Model):
                     other_active_lines = self.env["wt.delivery.do.line.lot"].search([
                         ("lot_id", "=", lot.id),
                         ("do_line_id", "in", active_do_lines_c.ids),
-                        ("wt_skip_line", "=", False),
                     ])
                     other_active_qty = sum(other_active_lines.mapped("qty"))
                 else:
@@ -989,7 +1371,7 @@ class DeliveryDoLine(models.Model):
             # Gunakan 2-step search yang sama seperti di _compute_qty_available.
             current_delivery_id_o = self._get_persisted_delivery_id()
             active_do_line_domain_o = [
-                ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+                ("delivery_id.state", "in", ("draft", "confirmed", "in_progress")),
             ]
             if current_delivery_id_o:
                 active_do_line_domain_o.append(("delivery_id", "!=", current_delivery_id_o))
@@ -998,7 +1380,6 @@ class DeliveryDoLine(models.Model):
                 other_active_lines = self.env["wt.delivery.do.line.lot"].search([
                     ("lot_id", "=", lot.id),
                     ("do_line_id", "in", active_do_lines_o.ids),
-                    ("wt_skip_line", "=", False),
                 ])
                 other_active_qty = sum(other_active_lines.mapped("qty"))
             else:
@@ -1020,8 +1401,11 @@ class DeliveryDoLine(models.Model):
     def action_validate_line(self):
         """Validasi baris DO ini secara mandiri (membuat & memvalidasi stock.picking)."""
         for line in self:
+            if line.delivery_id.state not in ("confirmed", "in_progress"):
+                raise ValidationError(_("Rencana DO hanya bisa divalidasi saat Tugas Pengiriman berstatus Confirmed atau In Progress."))
             if line.picking_id and line.picking_id.state == "done":
                 raise ValidationError(_("Baris DO ini sudah divalidasi."))
+            line._check_sequence_ready_for_validation()
             line._action_create_done_picking()
         return True
 
@@ -1046,12 +1430,41 @@ class DeliveryDoLine(models.Model):
             raise ValidationError(_("Denah Penyegelan hanya bisa dicetak setelah Rencana DO divalidasi."))
         return self.env.ref("weightrack.action_report_seal_layout").report_action(self)
 
+    def action_print_surat_jalan(self):
+        """Print Surat Jalan untuk baris Rencana DO."""
+        self.ensure_one()
+        if self.picking_state != "done":
+            raise ValidationError(_("Surat Jalan hanya bisa dicetak setelah Rencana DO divalidasi."))
+        return self.env.ref("weightrack.action_report_surat_jalan_line").report_action(self)
+
+    def _get_surat_jalan_company(self):
+        """Return company for Surat Jalan without depending on the delivery header."""
+        self.ensure_one()
+        return (
+            self.picking_type_id.company_id
+            or self.picking_id.company_id
+            or self.env.company
+        )
+    def _get_surat_jalan_lines(self):
+        """Return Surat Jalan item rows for this delivery line."""
+        self.ensure_one()
+        product = self.product_id
+        if not product:
+            return []
+        qty = self.actual_physical_qty if self.actual_physical_qty > 0.0 else self.demand_qty
+        return [{
+            "code": product.default_code or "",
+            "name": product.display_name,
+            "qty": qty,
+            "uom": product.uom_id.name or "",
+        }]
+
     def action_open_handover_details(self):
-        """Buka popup edit khusus detail Berita Acara meskipun Rencana DO sudah readonly."""
+        """Buka popup edit informasi dokumen meskipun Rencana DO sudah readonly."""
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
-            "name": _("Detail Berita Acara"),
+            "name": _("Document Information"),
             "res_model": "wt.delivery.do.line",
             "res_id": self.id,
             "view_mode": "form",
@@ -1064,18 +1477,42 @@ class DeliveryDoLine(models.Model):
         self.ensure_one()
         if not self.product_id or not self.location_id:
             raise ValidationError(_("Harap tentukan Produk dan Lokasi Sumber terlebih dahulu."))
-        if self.demand_qty <= 0:
+
+        required_transit_vals = self._prepare_required_transit_lot_values()
+        required_lot_ids = {vals["lot_id"] for vals in required_transit_vals}
+        required_qty = sum(vals["qty"] for vals in required_transit_vals)
+        if self.demand_qty <= 0 and required_qty <= 0:
             raise ValidationError(_("Masukkan Demand (kg) terlebih dahulu sebelum melakukan auto-alokasi."))
 
-        requested_qty = self.demand_qty
+        requested_qty = max(self.demand_qty, required_qty)
 
-        # Hapus rincian lot lama
-        self.lot_line_ids.unlink()
+        # Hapus rincian non-transit wajib, tetapi pertahankan lot transit wajib
+        # agar rantai pengiriman tidak bisa meninggalkan celah.
+        removable_lots = self.lot_line_ids.filtered(lambda line: line.lot_id.id not in required_lot_ids)
+        if removable_lots:
+            removable_lots.unlink()
 
-        lot_vals, remaining_need = self._prepare_auto_lot_allocation(requested_qty)
+        lot_commands = []
+        for vals in required_transit_vals:
+            existing_line = self.lot_line_ids.filtered(lambda line: line.lot_id.id == vals["lot_id"])[:1]
+            if existing_line:
+                if existing_line.qty + 0.001 < vals["qty"]:
+                    existing_line.sudo().write({
+                        "qty": vals["qty"],
+                        "source_location_id": vals["source_location_id"],
+                    })
+                continue
+            lot_commands.append((0, 0, vals))
 
-        if lot_vals:
-            self.write({"lot_line_ids": lot_vals})
+        remaining_target = max(0.0, requested_qty - required_qty)
+        lot_vals, remaining_need = self._prepare_auto_lot_allocation(
+            remaining_target,
+            excluded_lot_ids=required_lot_ids,
+        )
+        lot_commands.extend(lot_vals)
+
+        if lot_commands:
+            self.write({"lot_line_ids": lot_commands})
 
         # Kirimkan notifikasi jika stok kurang
         if remaining_need > 0:

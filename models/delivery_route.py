@@ -10,12 +10,12 @@ class DeliveryRoute(models.Model):
     _order = "name"
 
     name = fields.Char(
-        string="Nama",
+        string="Name",
         required=True,
     )
     company_id = fields.Many2one(
         "res.company",
-        string="Perusahaan",
+        string="Company",
         required=True,
         default=lambda self: self.env.company,
     )
@@ -25,11 +25,11 @@ class DeliveryRoute(models.Model):
     line_ids = fields.One2many(
         "wt.delivery.route.line",
         "route_id",
-        string="Rute",
+        string="Route",
         copy=True,
     )
     active = fields.Boolean(
-        string="Aktif",
+        string="Active",
         default=True,
     )
 
@@ -63,14 +63,14 @@ class DeliveryRouteLine(models.Model):
 
     route_id = fields.Many2one(
         "wt.delivery.route",
-        string="Rute Pengiriman",
+        string="Delivery Route",
         required=True,
         ondelete="cascade",
         index=True,
     )
     company_id = fields.Many2one(
         "res.company",
-        string="Perusahaan",
+        string="Company",
         related="route_id.company_id",
         store=True,
         readonly=True,

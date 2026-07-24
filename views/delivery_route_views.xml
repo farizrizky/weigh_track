@@ -5,7 +5,7 @@
         <field name="name">wt.delivery.route.list</field>
         <field name="model">wt.delivery.route</field>
         <field name="arch" type="xml">
-            <list string="Rute Pengiriman">
+            <list string="Delivery Route">
                 <field name="name"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </list>
@@ -16,12 +16,12 @@
         <field name="name">wt.delivery.route.form</field>
         <field name="model">wt.delivery.route</field>
         <field name="arch" type="xml">
-            <form string="Rute Pengiriman">
+            <form string="Delivery Route">
                 <sheet>
                     <div class="oe_title">
                         <label for="name"/>
                         <h1>
-                            <field name="name" placeholder="Nama Rute"/>
+                            <field name="name" placeholder="Route Name"/>
                         </h1>
                     </div>
                     <group>
@@ -33,9 +33,9 @@
                         <field name="description" placeholder="Description" colspan="2"/>
                     </group>
                     <notebook>
-                        <page string="Rute">
+                        <page string="Route">
                             <field name="line_ids">
-                                <list editable="bottom" string="Rute">
+                                <list editable="bottom" string="Route">
                                     <field name="sequence"/>
                                     <field name="route_type"/>
                                     <field name="picking_type_id"
@@ -56,16 +56,16 @@
     </record>
 
     <record id="action_wt_delivery_route" model="ir.actions.act_window">
-        <field name="name">Rute Pengiriman</field>
+        <field name="name">Delivery Routes</field>
         <field name="res_model">wt.delivery.route</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Buat Rute Pengiriman Baru
+                Create a New Delivery Route
             </p>
             <p>
-                Simpan alur pengiriman lengkap per rute, termasuk transfer internal,
-                lokasi transit, dan tujuan akhir customer.
+                Save a complete delivery flow for each route, including internal transfers,
+                transit locations, and the final customer destination.
             </p>
         </field>
     </record>

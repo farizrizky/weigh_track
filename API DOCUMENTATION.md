@@ -12,11 +12,15 @@ POST /weightrack/api/v1/pull/master
 POST /weightrack/api/v1/push/weighing
 POST /weightrack/api/v1/pull/stock-opname
 POST /weightrack/api/v1/push/stock-opname
+POST /weightrack/api/v1/pull/delivery
+POST /weightrack/api/v1/push/delivery
 ```
 
 Endpoint push weighing sudah aktif. Push langsung membuat `wt.weighing` draft dan belum membuat inbound/receipt stock resmi.
 
 Endpoint stock opname digunakan operator untuk menarik tugas opname aktif dari Odoo dan mengirim hasil hitung fisik kembali ke Odoo.
+
+Endpoint delivery digunakan operator untuk menarik tugas timbang pengiriman dari Rencana DO dan mengirim berat fisik aktual per lot kembali ke Odoo.
 
 Data cuaca (`wt.weather` dan `wt.weather.data`) saat ini belum diekspos melalui custom API dan belum masuk payload pull master. Data tersebut masih dikelola sebagai data Odoo/UI.
 
@@ -41,13 +45,14 @@ Data cuaca (`wt.weather` dan `wt.weather.data`) saat ini belum diekspos melalui 
 
 ```text
 controllers/api/v1/device_api.py      -> route endpoint activation v1
-controllers/api/v1/pull_api.py        -> route endpoint pull master dan pull stock opname v1
-controllers/api/v1/push_api.py        -> route endpoint push weighing dan push stock opname v1
+controllers/api/v1/pull_api.py        -> route endpoint pull master, pull stock opname, dan pull delivery v1
+controllers/api/v1/push_api.py        -> route endpoint push weighing, push stock opname, dan push delivery v1
 controllers/api/api_handler.py        -> HTTP boundary, JSON parsing, audit log, HTTP response
 services/api_device_service.py        -> proses aktivasi dan payload bootstrap device
 services/api_pull_master_service.py   -> proses pull master dan payload data offline
 services/api_push_weighing_service.py -> autentikasi, validasi root, dan summary push
 services/api_stock_opname_service.py  -> pull tugas stock opname dan push hasil hitung fisik
+services/api_delivery_service.py      -> pull tugas delivery dan push hasil timbang pengiriman
 services/weighing_service.py          -> proses item, idempotency, mapping, dan data problem Weighing
 services/api_security_service.py      -> validasi security API, autentikasi device, lookup bot user, dan cek pull/push enabled
 services/api_response_service.py      -> wrapper response success/error/body
@@ -58,13 +63,14 @@ models/api.py                  -> konfigurasi bot user dan enable/disable pull/p
 Pembagian tanggung jawab:
 
 - `device_api.py` hanya mendefinisikan route.
-- `pull_api.py` mendefinisikan route pull master dan pull stock opname.
-- `push_api.py` mendefinisikan route push weighing dan push stock opname.
+- `pull_api.py` mendefinisikan route pull master, pull stock opname, dan pull delivery.
+- `push_api.py` mendefinisikan route push weighing, push stock opname, dan push delivery.
 - `api_handler.py` membaca request, memanggil service, membuat log, lalu mengembalikan HTTP JSON response.
 - `api_device_service.py` memproses business flow aktivasi dan menyiapkan payload response.
 - `api_pull_master_service.py` memproses scope data master berdasarkan role device.
 - `api_push_weighing_service.py` mengelola satu request/batch push.
 - `api_stock_opname_service.py` mengelola autentikasi operator, pull tugas opname aktif, dan push hasil opname.
+- `api_delivery_service.py` mengelola autentikasi operator, pull tugas timbang delivery, dan push berat fisik delivery.
 - `weighing_service.py` mengelola business logic setiap item Weighing dan recheck data problem.
 - `api_security_service.py` memusatkan validasi security bersama.
 - `api_response_service.py` hanya membungkus response standar, tidak menyiapkan data bisnis.
@@ -806,6 +812,211 @@ Push stock opname belum melakukan apply inventory. Perubahan stok resmi tetap di
 }
 ```
 
+## Delivery API Flow
+
+API delivery dipakai aplikasi operator untuk menerima tugas timbang pengiriman dari Odoo dan mengirim berat fisik aktual per lot kembali ke Odoo.
+
+Alur saat ini:
+
+1. Admin membuat `wt.delivery`, memilih customer dan route.
+2. Saat confirm, Odoo membuat baris `wt.delivery.do.line` berdasarkan master route.
+3. Admin memuat/mengatur lot pada `wt.delivery.do.line.lot`.
+4. Operator melakukan pull delivery dari aplikasi.
+5. Odoo mengirim lot line aktif milik operator tersebut.
+6. Odoo menandai lot line yang terkirim sebagai `wt_is_pulled = True`.
+7. Header Delivery berubah dari `confirmed` menjadi `in_progress` saat pull pertama berhasil.
+8. Operator menimbang lot dan mengirim `physical_qty` serta `weighed_at`.
+9. Odoo menyimpan hasil timbang pada `wt.delivery.do.line.lot`.
+10. Validasi stock/picking resmi tetap dilakukan dari UI Odoo per Rencana DO sesuai sequence route.
+
+Catatan penting:
+
+- Delivery API memakai `delivery_lot_line_id`, bukan `move_line_id`.
+- `delivery_lot_line_id` adalah ID `wt.delivery.do.line.lot`.
+- `stock.move.line` tetap dipakai Odoo untuk stock movement resmi setelah Rencana DO divalidasi, tetapi bukan lagi sumber tugas timbang API.
+
+### Pull Delivery
+
+Endpoint ini digunakan operator untuk menarik tugas timbang delivery aktif yang ditugaskan kepadanya.
+
+```http
+POST /weightrack/api/v1/pull/delivery
+Content-Type: application/json
+```
+
+### Pull Request
+
+```json
+{
+  "device_id": "OPR-DEVICE-001",
+  "token": "device-token"
+}
+```
+
+### Pull Validation Rules
+
+- `device_id` dan `token` wajib cocok dengan device aktif.
+- Role device wajib `operator`.
+- `wt.api.pull_enabled` wajib aktif untuk company device.
+- Odoo hanya mengirim Delivery pada company device.
+- Odoo hanya mengirim lot line yang operatornya sama dengan employee device.
+- Header Delivery yang dikirim hanya status `confirmed` atau `in_progress`.
+- Lot line yang dikirim hanya line dengan `qty > 0` dan `wt_physical_qty = 0`.
+
+### Pull Success Behavior
+
+Jika pull berhasil, Odoo akan:
+
+- mencari `wt.delivery.do.line.lot` aktif milik operator;
+- mengubah header Delivery dari `confirmed` menjadi `in_progress` jika perlu;
+- menandai lot line yang dikirim sebagai `wt_is_pulled = True`;
+- mengirim header Delivery, Rencana DO, dan line lot yang harus ditimbang;
+- mencatat request ke `wt.api.request.log`.
+
+### Pull Success Response
+
+```json
+{
+  "ok": true,
+  "request_id": "uuid",
+  "data": {
+    "deliveries": [
+      {
+        "delivery_id": 20,
+        "name": "DO/20260722/0017",
+        "date": "2026-07-22",
+        "state": "in_progress",
+        "total_demand_qty": 185.0,
+        "pickings": [
+          {
+            "picking_id": 11,
+            "picking_name": "Gudang Induk Sebayur: Transfer Internal"
+          }
+        ],
+        "lines": [
+          {
+            "delivery_lot_line_id": 501,
+            "picking_id": 11,
+            "picking_name": "Gudang Induk Sebayur: Transfer Internal",
+            "product_id": 25,
+            "product_name": "Cup Lump",
+            "lot_id": 80,
+            "lot_name": "LOT/DIV01/20260706/005",
+            "uom_id": 1,
+            "uom_name": "kg",
+            "demand_qty": 100.0,
+            "location_id": 15,
+            "location_name": "GISBY/Stock",
+            "is_transit": false,
+            "weighing_location_id": 3,
+            "weighing_location_name": "Gudang Induk",
+            "operator_employee_id": 101,
+            "operator_name": "Budi Operator"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Pull Response Data
+
+| Path | Description |
+| --- | --- |
+| `data.deliveries` | Daftar tugas Delivery aktif milik operator. |
+| `data.deliveries[].delivery_id` | ID `wt.delivery` yang harus dikirim kembali saat push. |
+| `data.deliveries[].name` | Nomor Delivery. |
+| `data.deliveries[].date` | Tanggal Delivery. |
+| `data.deliveries[].state` | Status header Delivery. |
+| `data.deliveries[].total_demand_qty` | Total demand header Delivery. |
+| `data.deliveries[].pickings` | Daftar Rencana DO/route line dalam Delivery. Nama field tetap `pickings` untuk kompatibilitas payload, tetapi isinya adalah ID `wt.delivery.do.line`. |
+| `data.deliveries[].lines` | Daftar lot line yang harus ditimbang operator. |
+| `data.deliveries[].lines[].delivery_lot_line_id` | ID `wt.delivery.do.line.lot`. Ini adalah primary reference untuk push delivery. |
+| `data.deliveries[].lines[].picking_id` | ID `wt.delivery.do.line`. Nama field dipertahankan untuk kompatibilitas payload lama. |
+| `data.deliveries[].lines[].picking_name` | Nama operation type/Rencana DO. |
+| `data.deliveries[].lines[].product_id` | Product yang dikirim. |
+| `data.deliveries[].lines[].lot_id` | Lot yang ditimbang. |
+| `data.deliveries[].lines[].lot_name` | Nama lot yang ditimbang. |
+| `data.deliveries[].lines[].demand_qty` | Demand lot line. |
+| `data.deliveries[].lines[].location_id` | Lokasi stock asal lot line. |
+| `data.deliveries[].lines[].is_transit` | `true` jika lokasi asal termasuk lokasi tujuan rute transit pada company tersebut. |
+| `data.deliveries[].lines[].weighing_location_id` | Lokasi timbang lot line. |
+| `data.deliveries[].lines[].operator_employee_id` | Employee operator yang bertugas. |
+
+### Push Delivery
+
+Endpoint ini digunakan operator untuk mengirim hasil timbang fisik Delivery.
+
+```http
+POST /weightrack/api/v1/push/delivery
+Content-Type: application/json
+```
+
+### Push Request
+
+```json
+{
+  "device_id": "OPR-DEVICE-001",
+  "token": "device-token",
+  "delivery_id": 20,
+  "lines": [
+    {
+      "delivery_lot_line_id": 501,
+      "lot_id": 80,
+      "lot_name": "LOT/DIV01/20260706/005",
+      "physical_qty": 98.0,
+      "weighed_at": "2026-07-22 18:30:00",
+      "note": "Timbang ulang di gudang transit"
+    }
+  ]
+}
+```
+
+### Push Validation Rules
+
+- `device_id` dan `token` wajib cocok dengan device aktif.
+- Role device wajib `operator`.
+- `wt.api.push_enabled` wajib aktif untuk company device.
+- `delivery_id` wajib dikirim.
+- Delivery harus berada pada company device.
+- Delivery harus berstatus `confirmed` atau `in_progress`.
+- Operator device harus cocok dengan operator pada lot line, atau operator pada Rencana DO jika operator lot line kosong.
+- `lines` wajib berupa list jika dikirim.
+- Setiap item wajib membawa `delivery_lot_line_id`.
+- `delivery_lot_line_id` harus ditemukan pada `wt.delivery.do.line.lot` milik `delivery_id` tersebut.
+- `physical_qty` wajib dikirim, valid sebagai angka, dan harus lebih besar dari 0.
+- `weighed_at` wajib dikirim dan harus berupa datetime valid.
+- Jika `lot_id` dikirim, nilainya harus cocok dengan lot pada `delivery_lot_line_id`.
+- Jika `lot_name` dikirim, nilainya harus cocok dengan nama lot pada `delivery_lot_line_id`.
+
+### Push Success Behavior
+
+Jika push berhasil, Odoo akan:
+
+- menyimpan `physical_qty` ke `wt.delivery.do.line.lot.wt_physical_qty`;
+- menyimpan `weighed_at` ke `wt.delivery.do.line.lot.wt_weighed_at`;
+- menyimpan `note` ke `wt.delivery.do.line.lot.wt_note` jika dikirim;
+- mengembalikan jumlah line yang berhasil diupdate;
+- mengembalikan warning per line jika ada item yang dilewati/ditolak;
+- mencatat request ke `wt.api.request.log`.
+
+Push delivery tidak membuat atau memvalidasi `stock.picking`. Pembuatan picking, penerapan selisih, pembuatan lot transit, dan validasi stock resmi tetap dilakukan dari UI Odoo melalui validasi Rencana DO.
+
+### Push Success Response
+
+```json
+{
+  "ok": true,
+  "request_id": "uuid",
+  "data": {
+    "delivery_id": 20,
+    "state": "in_progress",
+    "updated_lines": 1,
+    "warnings": []
+  }
+}
+```
 ## Error Codes
 
 | HTTP Status | Code | Meaning |
@@ -833,6 +1044,9 @@ Push stock opname belum melakukan apply inventory. Perubahan stok resmi tetap di
 | 400 | `invalid_weighing_date` | Format `weighing_date` tidak valid. |
 | 400 | `invalid_master_synced_at` | Format `master_synced_at` tidak valid. |
 | 400 | `invalid_sent_at` | Format `sent_at` tidak valid. |
+| 400 | `missing_delivery_id` | Field `delivery_id` tidak dikirim pada push delivery. |
+| 400 | `invalid_lines` | Field `lines` pada push delivery bukan list. |
+| 404 | `delivery_not_found` | Tugas delivery aktif tidak ditemukan untuk operator/device tersebut. |
 | 409 | `device_not_inactive` | Device ditemukan tetapi tidak berstatus `inactive`. |
 | 409 | `device_id_already_used` | `device_id` sudah dipakai device lain. |
 | 500 | `api_missing` | Bot user API belum dikonfigurasi untuk company device. |
@@ -920,7 +1134,7 @@ Contoh payload yang tersimpan di log:
 
 ## Future Push Scope
 
-Push yang aktif saat ini menerima transaksi weighing untuk satu product aktif per company melalui mapping `wt.product`.
+Push yang aktif saat ini menerima transaksi weighing, stock opname, dan delivery. Product aktif delivery dan weighing mengikuti mapping `wt.product` per company.
 
 Scope lanjutan yang belum aktif:
 

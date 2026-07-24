@@ -200,7 +200,7 @@
         <field name="paperformat_id" ref="paperformat_despatch_slip"/>
         <field name="binding_model_id" ref="model_wt_delivery_do_line"/>
         <field name="binding_type">report</field>
-        <field name="print_report_name">'Despatch Slip - %s' % (object.picking_id.name or object.delivery_id.name)</field>
+        <field name="print_report_name">'Despatch Slip - %s' % (object.despatch_slip_no or object.picking_id.name or object.document_do_number or object.id)</field>
     </record>
 
     <template id="report_despatch_slip_document">
@@ -350,6 +350,7 @@
                                 <div class="slip-number">
                                     No. :
                                     <span class="dotted-value">
+                                        <span t-esc="doc.despatch_slip_no or ''"/>
                                     </span>
                                 </div>
                             </td>
@@ -388,9 +389,10 @@
                         </tr>
                         <tr class="item-row">
                             <td class="number">
-                                <span t-esc="('{:,.2f}'.format(doc.demand_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                <span t-esc="('{:,.2f}'.format((doc.actual_physical_qty if doc.actual_physical_qty else doc.demand_qty) or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                <span t-if="doc.product_id.uom_id.name"> <span t-esc="doc.product_id.uom_id.name"/></span>
                             </td>
-                            <td>Cup lump</td>
+                            <td><span t-esc="doc.product_id.display_name or ''"/></td>
                             <td></td>
                             <td colspan="2"></td>
                         </tr>
@@ -449,7 +451,7 @@
         <field name="paperformat_id" ref="paperformat_delivery_handover"/>
         <field name="binding_model_id" ref="model_wt_delivery_do_line"/>
         <field name="binding_type">report</field>
-        <field name="print_report_name">'Berita Acara - %s' % (object.picking_id.name or object.delivery_id.name)</field>
+        <field name="print_report_name">'Berita Acara - %s' % (object.picking_id.name or object.document_do_number or object.id)</field>
     </record>
 
     <template id="report_delivery_handover_document">
@@ -557,10 +559,9 @@
 
                     <p class="intro">
                         Pada hari ini tanggal
-                        <span t-if="doc.handover_date_text" t-esc="doc.handover_date_text"/>
-                        <span t-else="">........................</span>
+                        <span t-esc="doc.handover_day_date_text or ''"/>
                         telah diserah terimakan barang dari gudang
-                        <span t-esc="doc.company_id.name or '........................'"/>.
+                        <span t-esc="doc.company_id.name or ''"/>.
                     </p>
 
                     <table class="goods-table">
@@ -582,21 +583,21 @@
                                     <span t-esc="doc.product_id.display_name or ''"/>
                                 </td>
                                 <td class="number">
-                                    <span t-esc="('{:,.2f}'.format(doc.net_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                    <span t-if="doc.actual_physical_qty" t-esc="('{:,.2f}'.format(doc.actual_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
                                 </td>
-                                <td class="center">Kg</td>
+                                <td class="center"><span t-esc="doc.product_id.uom_id.name or ''"/></td>
                                 <td class="summary-lines">
                                     <div>
                                         Bruto :
-                                        <span t-esc="('{:,.2f}'.format(doc.gross_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                        <span t-if="doc.gross_qty" t-esc="('{:,.2f}'.format(doc.gross_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
                                     </div>
                                     <div>
                                         Tare :
-                                        <span t-esc="('{:,.2f}'.format(doc.tare_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                        <span t-if="doc.tare_qty" t-esc="('{:,.2f}'.format(doc.tare_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
                                     </div>
                                     <div>
                                         Netto :
-                                        <span t-esc="('{:,.2f}'.format(doc.net_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                        <span t-if="doc.actual_physical_qty" t-esc="('{:,.2f}'.format(doc.actual_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
                                     </div>
                                 </td>
                             </tr>
@@ -612,9 +613,9 @@
                             <tr class="total-row">
                                 <td colspan="2">TOTAL</td>
                                 <td class="number">
-                                    <span t-esc="('{:,.2f}'.format(doc.net_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                    <span t-if="doc.actual_physical_qty" t-esc="('{:,.2f}'.format(doc.actual_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
                                 </td>
-                                <td class="center">Kg</td>
+                                <td class="center"><span t-esc="doc.product_id.uom_id.name or ''"/></td>
                                 <td></td>
                             </tr>
                         </tbody>
@@ -622,11 +623,11 @@
 
                     <p class="paragraph">
                         Dengan surat jalan no :
-                        <span style="display: inline-block; min-width: 180px;"> </span>
+                        <span t-esc="doc.delivery_letter_no or ''" style="display: inline-block; min-width: 180px;"/>
                         kepada pihak angkutan sebagai transporter menggunakan kendaraan truck nomor polisi
-                        <span t-esc="doc.vehicle_plate or '........................'"/>
+                        <span t-esc="doc.vehicle_plate or ''"/>
                         dikirim ke
-                        <span t-esc="doc.sent_to_pt or '........................'"/>.
+                        <span t-esc="doc.receiver_name or ''"/>.
                     </p>
                     <p class="intro">
                         Pada saat penyerahan jumlah off grade cukup dan baik, barang ditutup dengan terpal dan disegel/gembok.
@@ -634,8 +635,7 @@
                     </p>
 
                     <div class="place-date">
-                        <span t-if="doc.handover_date_text" t-esc="doc.handover_date_text"/>
-                        <span t-else="">........................</span>
+                        <span t-esc="doc.handover_date_text or ''"/>
                     </div>
 
                     <table class="signature-table">
@@ -643,7 +643,7 @@
                             <td>
                                 <div class="signature-title">Diterima oleh,</div>
                                 <div style="height: 68px;"></div>
-                                <div class="signature-name"></div>
+                                <div class="signature-name" t-esc="doc.driver_name or ''"/>
                                 <div>Supir</div>
                             </td>
                             <td>
@@ -703,7 +703,7 @@
         <field name="paperformat_id" ref="paperformat_seal_layout"/>
         <field name="binding_model_id" ref="model_wt_delivery_do_line"/>
         <field name="binding_type">report</field>
-        <field name="print_report_name">'Denah Penyegelan - %s' % (object.picking_id.name or object.delivery_id.name)</field>
+        <field name="print_report_name">'Denah Penyegelan - %s' % (object.picking_id.name or object.document_do_number or object.id)</field>
     </record>
 
     <template id="report_seal_layout_document">
@@ -870,21 +870,21 @@
                             <tr>
                                 <td>Nama Supir</td>
                                 <td class="meta-separator">:</td>
-                                <td></td>
+                                <td><span t-esc="doc.driver_name or ''"/></td>
                             </tr>
                             <tr>
                                 <td>Tanggal</td>
                                 <td class="meta-separator">:</td>
-                                <td><span t-esc="doc.handover_date_text or doc.delivery_id.date_text or ''"/></td>
+                                <td><span t-esc="doc.handover_date_text or ''"/></td>
                             </tr>
                             <tr>
                                 <td>Jumlah Muatan</td>
                                 <td class="meta-separator">:</td>
                                 <td>
                                     <div class="cargo-row">
-                                        <span class="cargo-label">Cup Lump</span>
-                                        <span class="cargo-value" t-esc="('{:,.0f}'.format(doc.net_qty or doc.demand_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
-                                        <span>Kg</span>
+                                        <span class="cargo-label" t-esc="doc.product_id.display_name or ''"/>
+                                        <span class="cargo-value" t-if="doc.actual_physical_qty" t-esc="('{:,.2f}'.format(doc.actual_physical_qty)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                        <span t-esc="doc.product_id.uom_id.name or ''"/>
                                     </div>
                                 </td>
                             </tr>
@@ -934,7 +934,7 @@
 
                     <div class="signature-date">
                         <span t-esc="doc.company_id.name or 'PT. Julang Oca Permana'"/>,
-                        <span t-esc="doc.handover_date_text or doc.delivery_id.date_text or ''"/>
+                        <span t-esc="doc.handover_date_text or ''"/>
                     </div>
                     <table class="signature-table">
                         <tr>
@@ -968,21 +968,35 @@
     </record>
 
     <record id="action_report_surat_jalan" model="ir.actions.report">
-        <field name="name">Surat Jalan</field>
-        <field name="model">wt.delivery</field>
+        <field name="name">Surat Jalan (Obsolete Header)</field>
+        <field name="model">wt.delivery.do.line</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">weightrack.report_surat_jalan_document</field>
         <field name="report_file">weightrack.report_surat_jalan_document</field>
         <field name="paperformat_id" ref="paperformat_surat_jalan"/>
-        <field name="binding_model_id" ref="model_wt_delivery"/>
+        <field name="binding_model_id" eval="False"/>
         <field name="binding_type">report</field>
-        <field name="print_report_name">'Surat Jalan - %s' % (object.name)</field>
+        <field name="print_report_name">'Surat Jalan - %s' % (object.delivery_letter_no or object.picking_id.name or object.document_do_number or object.id)</field>
+    </record>
+
+    <record id="action_report_surat_jalan_line" model="ir.actions.report">
+        <field name="name">Surat Jalan</field>
+        <field name="model">wt.delivery.do.line</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_surat_jalan_document</field>
+        <field name="report_file">weightrack.report_surat_jalan_document</field>
+        <field name="paperformat_id" ref="paperformat_surat_jalan"/>
+        <field name="binding_model_id" ref="model_wt_delivery_do_line"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Surat Jalan - %s' % (object.delivery_letter_no or object.picking_id.name or object.document_do_number or object.id)</field>
     </record>
 
     <template id="report_surat_jalan_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-set="sj_lines" t-value="doc._get_surat_jalan_lines()"/>
+                <t t-set="sj_doc_line" t-value="doc if doc._name == 'wt.delivery.do.line' else doc._get_surat_jalan_document_line()"/>
+                <t t-set="sj_company" t-value="sj_doc_line._get_surat_jalan_company() if sj_doc_line else user.company_id"/>
+                <t t-set="sj_lines" t-value="sj_doc_line._get_surat_jalan_lines() if sj_doc_line else []"/>
                 <div class="page wt-surat-jalan">
                     <style>
                         .wt-surat-jalan {
@@ -1083,11 +1097,11 @@
                     <table class="header-table">
                         <tr>
                             <td style="width: 28%;">
-                                <t t-if="doc.company_id.logo">
-                                    <img class="logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
+                                <t t-if="sj_company.logo">
+                                    <img class="logo" t-att-src="image_data_uri(sj_company.logo)" alt="Logo"/>
                                 </t>
                                 <t t-else="">
-                                    <div class="company-fallback" t-esc="doc.company_id.name"/>
+                                    <div class="company-fallback" t-esc="sj_company.name"/>
                                 </t>
                             </td>
                             <td class="title" style="width: 34%;">SURAT JALAN (SJ)</td>
@@ -1111,22 +1125,22 @@
                                     <tr>
                                         <td>Nomor</td>
                                         <td>:</td>
-                                        <td></td>
+                                        <td><span t-esc="sj_doc_line.delivery_letter_no if sj_doc_line else ''"/></td>
                                     </tr>
                                     <tr>
                                         <td>Tanggal</td>
                                         <td>:</td>
-                                        <td><span t-esc="doc.date_text or ''"/></td>
+                                        <td><span t-esc="sj_doc_line.delivery_letter_date_text if sj_doc_line else ''"/></td>
                                     </tr>
                                     <tr>
                                         <td>Nomor S/O</td>
                                         <td>:</td>
-                                        <td></td>
+                                        <td><span t-esc="sj_doc_line.so_number if sj_doc_line else ''"/></td>
                                     </tr>
                                     <tr>
                                         <td>Nomor D/O</td>
                                         <td>:</td>
-                                        <td></td>
+                                        <td><span t-esc="sj_doc_line.document_do_number if sj_doc_line else ''"/></td>
                                     </tr>
                                 </table>
                             </td>
@@ -1136,11 +1150,11 @@
                     <div class="recipient">
                         <div>
                             Kepada Yth :
-                            <span t-esc="doc.partner_id.name or ''"/>
+                            <span t-esc="sj_doc_line.receiver_name if sj_doc_line else ''"/>
                         </div>
                         <div>
                             Alamat :
-                            <span t-esc="doc.partner_id.contact_address or ''"/>
+                            <span t-esc="sj_doc_line.receiver_address if sj_doc_line else ''"/>
                         </div>
                     </div>
 
@@ -1161,6 +1175,7 @@
                                     <td><span t-esc="line['name']"/></td>
                                     <td class="number">
                                         <span t-esc="('{:,.2f}'.format(line['qty'] or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/>
+                                        <span t-if="line.get('uom')"> <span t-esc="line['uom']"/></span>
                                     </td>
                                     <td></td>
                                     <td></td>
@@ -1185,7 +1200,7 @@
                                     </td>
                                     <td>
                                         <div class="signature-title">Diterima dengan baik oleh,</div>
-                                        <div class="signature-name">Customer</div>
+                                        <div class="signature-name" t-esc="sj_doc_line.receiver_name if sj_doc_line else ''"/>
                                     </td>
                                     <td>
                                         <div class="signature-title">Ekspedisi</div>

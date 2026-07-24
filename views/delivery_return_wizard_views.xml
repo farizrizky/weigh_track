@@ -4,7 +4,7 @@
         <field name="name">wt.delivery.return.wizard.form</field>
         <field name="model">wt.delivery.return.wizard</field>
         <field name="arch" type="xml">
-            <form string="Retur Pengiriman">
+            <form string="Delivery Return">
                 <sheet>
                     <div class="alert alert-warning" role="alert">
                         <i class="fa fa-exclamation-triangle me-1"/>
@@ -13,12 +13,12 @@
                     </div>
                     <group>
                         <field name="delivery_id"/>
-                        <field name="reason" placeholder="Contoh: Barang cacat / ditolak oleh customer..." required="1"/>
+                        <field name="reason" placeholder="Example: damaged goods / rejected by customer..." required="1"/>
                     </group>
                 </sheet>
                 <footer>
-                    <button name="action_confirm" type="object" string="Proses Retur" class="btn-danger" confirm="Yakin ingin memproses retur untuk pengiriman ini?"/>
-                    <button string="Batal" special="cancel" class="btn-secondary"/>
+                    <button name="action_confirm" type="object" string="Process Return" class="btn-danger" confirm="Are you sure you want to process the return for this delivery?"/>
+                    <button string="Cancel" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

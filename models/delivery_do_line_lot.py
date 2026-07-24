@@ -11,7 +11,7 @@ class DeliveryDoLineLot(models.Model):
 
     do_line_id = fields.Many2one(
         "wt.delivery.do.line",
-        string="Baris Rencana DO",
+        string="Delivery Plan Line",
         required=False,
         ondelete="cascade",
         index=True,
@@ -40,30 +40,30 @@ class DeliveryDoLineLot(models.Model):
         related="do_line_id.route_id",
         store=True,
         readonly=True,
-        string="Rute Transit",
+        string="Transit Route",
     )
     picking_type_id = fields.Many2one(
         "stock.picking.type",
         related="do_line_id.picking_type_id",
         store=True,
         readonly=True,
-        string="Tipe Operasi",
+        string="Operation Type",
     )
     lot_id = fields.Many2one(
         "stock.lot",
-        string="Nomor Lot",
+        string="Lot Number",
         required=True,
         domain="[('product_id', '=', product_id), '|', ('company_id', '=', company_id), ('company_id', '=', False)]",
     )
     location_id = fields.Many2one(
         "stock.location",
-        string="Lokasi",
+        string="Location",
         compute="_compute_location_id",
         help="Lokasi fisik tempat lot berada saat ini.",
     )
     source_location_id = fields.Many2one(
         "stock.location",
-        string="Lokasi Sumber Fisik",
+        string="Physical Source Location",
         readonly=True,
         copy=False,
         ondelete="restrict",
@@ -88,19 +88,19 @@ class DeliveryDoLineLot(models.Model):
         readonly=True,
     )
     qty_available = fields.Float(
-        string="Stok Bebas (kg)",
+        string="Available Stock (kg)",
         compute="_compute_qty_available",
         digits="Product Unit of Measure",
         help="Kuantitas stok lot bebas (siap pakai) saat ini.",
     )
     wt_qty_on_hand = fields.Float(
-        string="Stok Fisik (kg)",
+        string="Physical Stock (kg)",
         compute="_compute_qty_available",
         digits="Product Unit of Measure",
         help="Kuantitas stok lot fisik di tangan saat ini.",
     )
     wt_qty_reserved = fields.Float(
-        string="Terpesan (kg)",
+        string="Reserved (kg)",
         compute="_compute_qty_available",
         digits="Product Unit of Measure",
         help="Kuantitas stok lot yang sedang dipesan/direservasi oleh transaksi lain.",
@@ -112,40 +112,50 @@ class DeliveryDoLineLot(models.Model):
         help="Kuantitas rencana yang akan diambil dari lot ini.",
     )
     wt_original_qty = fields.Float(
-        string="Demand Awal (kg)",
+        string="Original Demand (kg)",
         digits="Product Unit of Measure",
         help="Kuantitas demand rencana awal sebelum adjustment.",
     )
 
     wt_physical_qty = fields.Float(
-        string="Berat Fisik (kg)",
+        string="Physical Weight (kg)",
         digits="Product Unit of Measure",
         default=0.0,
         help="Berat fisik hasil timbang dari timbangan (di-update via API).",
     )
+    wt_weighed_at = fields.Datetime(
+        string="Weighed At",
+        copy=False,
+        help="Waktu timbang aktual yang dikirim dari aplikasi timbangan.",
+    )
+    wt_weighing_status = fields.Selection(
+        [
+            ("not_pulled", "Not Pulled"),
+            ("unweighed", "Unweighed"),
+            ("weighed", "Weighed"),
+        ],
+        string="Weighing Status",
+        compute="_compute_wt_weighing_status",
+        store=True,
+    )
     wt_difference_qty = fields.Float(
-        string="Selisih (kg)",
+        string="Difference (kg)",
         compute="_compute_wt_difference_qty",
         store=True,
         digits="Product Unit of Measure",
         help="Berat fisik dikurangi demand awal.",
     )
-    wt_skip_line = fields.Boolean(
-        string="Lewati",
-        default=False,
-        help="Centang untuk melewati baris ini saat validasi.",
-    )
     wt_note = fields.Char(
-        string="Catatan Timbang",
+        string="Weighing Note",
     )
     wt_adjustment_applied = fields.Boolean(
-        string="Adjustment Diterapkan",
+        string="Adjustment Applied",
         default=False,
         readonly=True,
         copy=False,
     )
     wt_is_pulled = fields.Boolean(
-        string="Sudah Di-Push",
+        string="Pulled",
         default=False,
         copy=False,
     )
@@ -154,32 +164,45 @@ class DeliveryDoLineLot(models.Model):
     wt_allocation_ids = fields.One2many(
         "wt.delivery.line.allocation",
         "do_lot_line_id",
-        string="Alokasi Selisih",
+        string="Difference Allocation",
     )
     wt_allocated_qty = fields.Float(
-        string="Teralokasi (kg)",
+        string="Allocated (kg)",
         compute="_compute_wt_allocation_qty",
         store=True,
         digits="Product Unit of Measure",
     )
     wt_unallocated_qty = fields.Float(
-        string="Belum Teralokasi (kg)",
+        string="Unallocated (kg)",
         compute="_compute_wt_allocation_qty",
         store=True,
         digits="Product Unit of Measure",
     )
     wt_is_fully_allocated = fields.Boolean(
-        string="Teralokasi Penuh",
+        string="Fully Allocated",
         compute="_compute_wt_allocation_qty",
         store=True,
     )
 
 
-    @api.depends("wt_physical_qty", "wt_original_qty", "qty")
+    @api.depends("wt_is_pulled", "wt_physical_qty", "wt_original_qty", "qty")
     def _compute_wt_difference_qty(self):
         for line in self:
+            if not line.wt_is_pulled or line.wt_physical_qty <= 0.0:
+                line.wt_difference_qty = 0.0
+                continue
             demand = line.wt_original_qty if line.wt_original_qty > 0.0 else line.qty
             line.wt_difference_qty = line.wt_physical_qty - demand
+
+    @api.depends("wt_is_pulled", "wt_physical_qty", "qty")
+    def _compute_wt_weighing_status(self):
+        for line in self:
+            if not line.wt_is_pulled or line.qty <= 0.0:
+                line.wt_weighing_status = "not_pulled"
+            elif line.wt_physical_qty > 0.0:
+                line.wt_weighing_status = "weighed"
+            else:
+                line.wt_weighing_status = "unweighed"
 
     @api.depends(
         "lot_id",
@@ -231,7 +254,7 @@ class DeliveryDoLineLot(models.Model):
                     else False
                 )
                 active_do_line_domain = [
-                    ("delivery_id.state", "in", ("draft", "confirmed", "in_progress", "completed")),
+                    ("delivery_id.state", "in", ("draft", "confirmed", "in_progress")),
                 ]
                 if current_delivery_id:
                     active_do_line_domain.append(("delivery_id", "!=", current_delivery_id))
@@ -244,7 +267,6 @@ class DeliveryDoLineLot(models.Model):
                     other_active_lines = self.env["wt.delivery.do.line.lot"].search([
                         ("lot_id", "=", rec.lot_id.id),
                         ("do_line_id", "in", active_do_lines.ids),
-                        ("wt_skip_line", "=", False),
                     ])
                     other_active_qty = sum(other_active_lines.mapped("qty"))
                 else:
@@ -336,10 +358,28 @@ class DeliveryDoLineLot(models.Model):
 
     # ── ORM ───────────────────────────────────────────────────────────────────
 
+    def _is_required_transit_lot(self):
+        self.ensure_one()
+        return bool(
+            self.do_line_id
+            and self.lot_id
+            and self.lot_id in self.do_line_id._get_expected_transit_lots()
+        )
+
+    def _get_required_transit_qty(self):
+        self.ensure_one()
+        if not self.do_line_id or not self.lot_id:
+            return 0.0
+        return self.do_line_id._get_expected_transit_lot_qty_map().get(self.lot_id.id, 0.0)
+
     def unlink(self):
         """Saat lot line dihapus, pastikan picking parent (jika ada) di-unreserve
         agar reserved_quantity di stock.quant dibebaskan."""
         for rec in self:
+            if rec._is_required_transit_lot():
+                raise ValidationError(_(
+                    "Lot Transit %s wajib dipakai oleh rute pengiriman berikutnya dan tidak dapat dihapus."
+                ) % (rec.lot_id.name or rec.display_name))
             if rec.do_line_id and rec.do_line_id.picking_id:
                 picking = rec.do_line_id.picking_id
                 if picking.state not in ("done", "cancel"):
@@ -351,17 +391,10 @@ class DeliveryDoLineLot(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Jika lot baru ditambahkan saat delivery sudah 'completed',
-        revert ke 'in_progress' agar operator bisa pull dan menimbang lot baru."""
         for vals in vals_list:
             if "qty" in vals and "wt_original_qty" not in vals:
                 vals["wt_original_qty"] = vals["qty"]
         records = super().create(vals_list)
-        deliveries = records.mapped("delivery_id").filtered(
-            lambda d: d.state == "completed"
-        )
-        if deliveries:
-            deliveries.write({"state": "in_progress"})
         records._set_default_weighing_location_if_unique()
         return records
 
@@ -404,12 +437,19 @@ class DeliveryDoLineLot(models.Model):
         for rec in self:
             if rec.qty <= 0:
                 raise ValidationError(_("Demand quantity untuk lot harus lebih dari nol."))
+            required_qty = rec._get_required_transit_qty()
+            if required_qty > 0.0 and rec.qty + 0.001 < required_qty:
+                raise ValidationError(_(
+                    "Demand Lot Transit %s tidak boleh kurang dari berat transit yang masuk (%.4f kg)."
+                ) % (rec.lot_id.name or rec.display_name, required_qty))
 
 
 
     def action_configure_allocation(self):
         """Buka popup alokasi selisih untuk lot rencana DO."""
         self.ensure_one()
+        if self.wt_weighing_status != "weighed":
+            raise ValidationError(_("Cannot allocate difference before the delivery lot line is weighed."))
         return {
             "type": "ir.actions.act_window",
             "name": _("Alokasi Selisih (Rencana): %s") % (self.lot_id.name or self.product_id.display_name),

@@ -6,6 +6,14 @@ Dokumen ini adalah konteks kerja ringkas untuk melanjutkan pengembangan module W
 
 WeighTrack adalah custom module Odoo 19 untuk aplikasi operasional penimbangan estate.
 
+Lokasi repo lokal aktif:
+
+```text
+D:/Project/Odoo Addons/weightrack
+```
+
+Catatan kerja: repo lokal ini menjadi sumber kerja utama. Repo SSHFS/server hanya disentuh jika diminta eksplisit.
+
 Lokasi server:
 
 ```text
@@ -65,6 +73,10 @@ Custom API yang aktif saat ini:
 POST /weightrack/api/v1/device/activate
 POST /weightrack/api/v1/pull/master
 POST /weightrack/api/v1/push/weighing
+POST /weightrack/api/v1/pull/stock-opname
+POST /weightrack/api/v1/push/stock-opname
+POST /weightrack/api/v1/pull/delivery
+POST /weightrack/api/v1/push/delivery
 ```
 
 ## Important Conventions
@@ -152,6 +164,8 @@ Abstract service model:
 - `wt.weighing.service`
 - `wt.api.security.service`
 - `wt.api.response.service`
+- `wt.api.stock.opname.service`
+- `wt.api.delivery.service`
 
 ## Menu Structure
 
@@ -944,44 +958,97 @@ Inventory Receipt aktif:
 
 ## Delivery / Pengiriman
 
-Delivery adalah dokumen operasional untuk mengatur stock keluar dari gudang, transfer internal antar gudang, dan pengiriman final ke customer.
+Delivery adalah dokumen operasional untuk mengatur stock keluar dari gudang, transfer internal antar gudang, transit antar gudang, dan pengiriman final ke customer.
 
 Model aktif:
 
 - `wt.delivery`
 - `wt.delivery.route`
+- `wt.delivery.route.line`
 - `wt.delivery.do.line`
 - `wt.delivery.do.line.lot`
 - `wt.delivery.line.allocation`
+- `wt.delivery.return.wizard`
 
-Konsep:
+Konsep utama:
 
 - Header `wt.delivery` menjadi tugas pengiriman.
+- `wt.delivery.route` menyimpan master rute lengkap.
+- `wt.delivery.route.line` menyimpan urutan rute dengan `route_type`: `transit` atau `outgoing`.
 - Baris `wt.delivery.do.line` adalah Rencana DO per rute operasi.
-- Rincian `wt.delivery.do.line.lot` menyimpan lot yang akan dikirim, lokasi fisik asal lot, lokasi timbang, operator, demand, berat fisik, selisih, dan status pull/timbang.
-- Product pada delivery dan Rencana DO mengikuti product aktif dari `wt.product`.
+- Rincian `wt.delivery.do.line.lot` adalah sumber tugas timbang DO dan kontrak lot yang dikirim ke aplikasi operator.
+- Product pada Delivery dan Rencana DO mengikuti product aktif dari `wt.product`.
 - Rencana DO tidak membuat `stock.picking` saat draft/confirmed/in progress.
-- Stock picking resmi baru dibuat saat Validasi & Kirim.
-- Selisih timbang diterapkan otomatis saat validasi, bukan lewat tombol manual dari detail timbang.
+- `stock.picking`, `stock.move`, dan `stock.move.line` resmi baru dibuat saat validasi Rencana DO.
+- Selisih timbang diterapkan otomatis per Rencana DO saat Rencana DO divalidasi, bukan lewat tombol manual dari detail timbang.
 
-Rute Pengiriman:
+### Delivery Lot Line vs Stock Move Line
 
-- `wt.delivery.route` menyimpan mapping source location, picking type, destination/transit location, dan flag `is_transit`.
-- Jika `is_transit = True`, rute dianggap sebagai rute menuju lokasi transit/holding internal.
-- Jika `is_transit = False`, rute dianggap sebagai rute keluar final ke customer.
+Alur lama memakai `stock.move.line` sebagai detail timbang DO. Alur ini sudah dibersihkan.
+
+Alur aktif sekarang:
+
+```text
+wt.delivery.do.line.lot = kontrak/tugas timbang WeighTrack
+stock.move.line         = hasil eksekusi inventory resmi Odoo
+```
+
+Dampaknya:
+
+- API pull/push Delivery memakai `delivery_lot_line_id`, bukan `move_line_id`.
+- Status pull/timbang (`not_pulled`, `unweighed`, `weighed`) disimpan di `wt.delivery.do.line.lot`.
+- Berat fisik aktual, waktu timbang, selisih, dan alokasi selisih disimpan di `wt.delivery.do.line.lot`.
+- `stock.move.line` tetap dipakai Odoo untuk stock movement resmi, laporan stok, histori pergerakan, Production Receipt, Stock Opname, return, dan inventory normal.
+- Penimbangan lapangan tidak lagi bergantung pada reservasi Odoo yang dapat berubah karena unreserve/reassign/validasi picking.
+
+### Rute Pengiriman
+
+- `route_type = transit` berarti rute menuju lokasi transit/holding internal.
+- `route_type = outgoing` berarti rute keluar final ke customer.
 - Rute transit wajib memakai Operation Type internal transfer.
-- Rute final/customer wajib memakai Operation Type outgoing.
+- Rute outgoing wajib memakai Operation Type delivery/outgoing.
+- Source Location pada route line dibatasi berdasarkan warehouse dari Operation Type.
+- Saat Delivery memilih Route dan dikonfirmasi, sistem membuat baris Rencana DO dari route line.
+- Baris Rencana DO tidak bisa ditambah manual dari form Delivery; struktur mengikuti master Route.
+- Detail Rencana DO hanya bisa diatur saat header Delivery berstatus `confirmed` atau `in_progress`.
 
-Flow rute transit:
+Status header Delivery:
 
-1. User membuat Rencana DO dengan rute yang `is_transit = True`.
-2. User memuat atau memilih lot asal dari lokasi sumber.
-3. Operator melakukan pull/timbang sehingga lot line menjadi weighed/pulled.
-4. Saat `Selesai Timbang`, Rencana DO transit wajib memiliki lot asal aktif.
-5. Saat `Validasi & Kirim`, sistem membuat stock picking internal.
-6. Sistem mengonsumsi lot asal dari lokasi fisik masing-masing ke lokasi Inventory Loss teknis.
-7. Sistem membuat satu Lot Transit baru dan memasukkannya ke lokasi tujuan transit.
-8. Lot Transit hasil rute tersebut disimpan pada `wt.delivery.do.line.generated_transit_lot_id`.
+- `draft`: dokumen awal, route belum dikunci.
+- `confirmed`: route sudah dipilih dan baris Rencana DO terbentuk.
+- `in_progress`: minimal ada pull Delivery pertama dari operator.
+- `done`: rute outgoing/final sudah tervalidasi.
+- `returned`: state terminal setelah return delivery.
+- `cancelled`: dokumen dibatalkan.
+
+Status proses Rencana DO:
+
+- `preparation`: belum giliran validasi.
+- `in_process`: giliran validasi sesuai sequence.
+- `done`: Rencana DO sudah tervalidasi dan picking terkait selesai.
+
+### Flow Pull/Push Delivery
+
+- Operator pull tugas Delivery melalui custom API.
+- Odoo mengirim line dari `wt.delivery.do.line.lot` yang sesuai operator/lokasi timbang dan belum memiliki `wt_physical_qty`.
+- Saat berhasil dipull, Odoo menandai lot line `wt_is_pulled = True`.
+- Aplikasi mengirim kembali hasil timbang memakai `delivery_lot_line_id`.
+- Push Delivery wajib membawa `physical_qty` dan `weighed_at`.
+- Jika `lot_id` atau `lot_name` dikirim, Odoo memvalidasi kecocokannya dengan lot pada `delivery_lot_line_id`.
+- Line yang belum dipull, belum ditimbang, atau memiliki selisih belum dialokasikan tidak boleh tervalidasi.
+
+### Flow Rute Transit
+
+1. User membuat Delivery dan memilih master Route.
+2. Saat confirm, sistem membuat Rencana DO sesuai sequence route.
+3. User mengatur lot asal pada Rencana DO transit.
+4. Operator pull dan push hasil timbang ke `wt.delivery.do.line.lot`.
+5. Saat Rencana DO transit divalidasi, sistem membuat stock picking internal.
+6. Sistem mengonsumsi lot asal dan membuat satu Lot Transit baru pada lokasi tujuan transit.
+7. Lot Transit hasil rute tersebut disimpan pada `wt.delivery.do.line.generated_transit_lot_id`.
+8. Rencana DO berikutnya yang mengambil stock dari lokasi transit otomatis menerima Lot Transit wajib dari rute sebelumnya.
+9. Demand pada Rencana DO lanjutan minimal harus mencakup total Lot Transit wajib.
+10. Lot Transit wajib tidak boleh dihapus dari Rencana DO lanjutan agar rantai pengiriman tidak meninggalkan celah.
 
 Format Lot Transit:
 
@@ -998,14 +1065,14 @@ Catatan Lot Transit:
 - Lot transit diberi `wt_lot_type = transit`.
 - Lot transit menyimpan source Delivery, source Picking, receiving location, transit date, division jika seluruh lot asal berasal dari satu division, dan production date paling awal dari lot asal.
 
-Flow rute setelah transit:
+### Flow Rute Setelah Transit
 
 - Rencana DO lanjutan yang mengambil stock dari lokasi transit wajib memiliki lot line aktif.
-- Lot line pada rute lanjutan dari lokasi transit wajib memakai Lot Transit, bukan lot produksi asli.
-- Jika pada dokumen delivery yang sama sudah ada Rencana DO transit yang menghasilkan Lot Transit ke lokasi tersebut, Rencana DO lanjutan wajib memakai Lot Transit hasil Rencana DO transit tersebut.
-- Jika Lot Transit tidak ada atau lot yang dipilih bukan Lot Transit yang sesuai, `Selesai Timbang` dan `Validasi & Kirim` harus ditolak.
+- Jika pada dokumen Delivery yang sama sudah ada Rencana DO transit yang menghasilkan Lot Transit ke lokasi transit tersebut, Rencana DO lanjutan wajib memakai Lot Transit tersebut.
+- Rencana DO lanjutan boleh memiliki lot tambahan lain dari lokasi sumber, tetapi Lot Transit wajib tetap harus ada dan demand-nya tidak boleh kurang dari berat Lot Transit yang masuk.
+- Saat tombol muat lot dari lokasi sumber dipakai, sistem memprioritaskan Lot Transit wajib terlebih dahulu, lalu baru FIFO dari lokasi sumber.
 
-Traceability:
+### Traceability
 
 - Trace dari lot produksi ke lot transit tidak memakai model genealogy khusus.
 - Trace dilakukan melalui:
@@ -1017,13 +1084,29 @@ Traceability:
   - metadata `stock.lot` pada lot transit.
 - Sejarah pergerakan stock dari Stock Opname dan Pengiriman ditandai melalui origin/reference yang mengarah ke nomor dokumen WeighTrack terkait.
 
-Prinsip FIFO:
+### Dokumen Delivery
+
+Dokumen cetak Delivery saat ini dibuat per Rencana DO/line, bukan dari tombol header Delivery untuk Surat Jalan.
+
+Dokumen per Rencana DO:
+
+- Berita Acara Serah Terima Barang.
+- Despatch Slip.
+- Denah Penyegelan Truk.
+- Surat Jalan.
+
+Informasi dokumen berada pada Rencana DO dan bersifat optional:
+
+- Ekspedisi: nama supir, nomor polisi, tare, tanggal serah terima.
+- Surat Jalan: nomor surat jalan, tanggal surat jalan, nomor SO, nomor DO, nama penerima, alamat penerima.
+- Despatch Slip: nomor despatch slip.
+
+### Prinsip FIFO
 
 - Saat muat lot pada Rencana DO, lot diurutkan berdasarkan `production_date` paling lama terlebih dahulu.
 - Jika `production_date` kosong, lot diletakkan setelah lot yang memiliki tanggal produksi.
 - Urutan berikutnya memakai `create_date`, nama lot, dan lokasi fisik.
 - Stock Opname juga mengurutkan lot berdasarkan `production_date` agar pemeriksaan mengikuti umur produksi.
-
 ## Localization Notes
 
 File translasi:

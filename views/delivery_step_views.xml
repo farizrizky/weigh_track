@@ -9,21 +9,21 @@
             <form string="Warehouse Step">
                 <header>
                     <button name="action_start_weighing"
-                            string="Mulai Timbang"
+                            string="Start Weighing"
                             type="object"
                             class="btn-primary"
                             invisible="state != 'pending'"/>
                     <button name="action_finish_weighing"
-                            string="Selesai Timbang"
+                            string="Finish Weighing"
                             type="object"
                             class="btn-primary"
                             invisible="state != 'weighing'"/>
                     <button name="action_validate_step"
-                            string="Validasi Step"
+                            string="Validate Step"
                             type="object"
                             class="btn-success"
                             invisible="state != 'weighing_done'"
-                            confirm="Validasi step ini akan membuat picking secara otomatis. Lanjutkan?"/>
+                            confirm="Validating this step will automatically create a picking. Continue?"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="pending,weighing,weighing_done,done"/>
                 </header>
@@ -35,7 +35,7 @@
                                 class="oe_stat_button"
                                 icon="fa-balance-scale"
                                 invisible="weighing_count == 0">
-                            <field name="weighing_count" widget="statinfo" string="Timbang"/>
+                            <field name="weighing_count" widget="statinfo" string="Weigh"/>
                         </button>
                         <button name="action_view_picking"
                                 type="object"
@@ -55,28 +55,28 @@
 
                     <div class="oe_title">
                         <h1>
-                            <field name="warehouse_id" placeholder="Pilih Gudang..."/>
+                            <field name="warehouse_id" placeholder="Choose Warehouse..."/>
                         </h1>
                     </div>
 
                     <group>
-                        <group string="Konfigurasi Step">
+                        <group string="Step Configuration">
                             <field name="sequence"/>
                             <field name="delivery_id" readonly="1"/>
                             <field name="is_last_step"/>
                             <field name="requested_qty"/>
                             <field name="net_qty" readonly="1"/>
                         </group>
-                        <group string="Lokasi">
+                        <group string="Location">
                             <field name="source_location_ids" widget="many2many_tags"/>
                             <field name="transit_location_id"
                                    invisible="is_last_step"/>
                         </group>
                     </group>
 
-                    <group string="Sesi Timbang">
+                    <group string="Weighing Session">
                         <field name="weighing_ids" nolabel="1">
-                            <list string="Sesi Timbang" create="false" delete="false">
+                            <list string="Weighing Session" create="false" delete="false">
                                 <field name="name"/>
                                 <field name="weighing_date"/>
                                 <field name="product_id"/>
@@ -86,7 +86,7 @@
                         </field>
                     </group>
 
-                    <group string="Informasi Picking" invisible="not picking_id">
+                    <group string="Picking Information" invisible="not picking_id">
                         <field name="picking_id" readonly="1"/>
                         <field name="picking_state" readonly="1" widget="badge"
                                decoration-success="picking_state in ('assigned','done')"
@@ -94,7 +94,7 @@
                                decoration-danger="picking_state == 'cancel'"/>
                     </group>
 
-                    <group string="Catatan" col="1">
+                    <group string="Notes" col="1">
                         <field name="note" nolabel="1"/>
                     </group>
                 </sheet>
@@ -127,17 +127,17 @@
                        decoration-success="state == 'done'"
                        decoration-danger="state == 'cancelled'"/>
                 <button name="action_start_weighing"
-                        string="Mulai"
+                        string="Start"
                         type="object"
                         icon="fa-play"
                         invisible="state != 'pending'"/>
                 <button name="action_finish_weighing"
-                        string="Selesai Timbang"
+                        string="Finish Weighing"
                         type="object"
                         icon="fa-check"
                         invisible="state != 'weighing'"/>
                 <button name="action_validate_step"
-                        string="Validasi"
+                        string="Validate"
                         type="object"
                         icon="fa-paper-plane"
                         invisible="state != 'weighing_done'"/>

@@ -6,26 +6,26 @@
         <field name="name">wt.delivery.list</field>
         <field name="model">wt.delivery</field>
         <field name="arch" type="xml">
-            <list string="Tugas Pengiriman"
+            <list string="Delivery Task"
                   decoration-info="state == 'draft'"
                   decoration-primary="state in ('confirmed','in_progress')"
-                  decoration-success="state in ('validated', 'done')"
-                  decoration-warning="state == 'completed'"
+                  decoration-success="state == 'done'"
+                  decoration-warning="state == 'returned'"
                   decoration-danger="state == 'cancelled'">
                 <field name="name"/>
                 <field name="date"/>
                 <field name="partner_id" string="Customer" optional="show"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="step_count" string="Steps" optional="show"/>
-                <field name="picking_count" string="Jumlah DO"/>
-                <field name="total_demand_qty" string="Total Rencana Awal (kg)"/>
-                <field name="total_physical_qty" string="Total Fisik Terkirim (kg)"/>
-                <field name="total_difference_qty" string="Total Selisih (kg)"/>
+                <field name="picking_count" string="DO Count"/>
+                <field name="total_demand_qty" string="Total Planned Qty (kg)"/>
+                <field name="total_physical_qty" string="Total Delivered Qty (kg)"/>
+                <field name="total_difference_qty" string="Total Difference (kg)"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-primary="state in ('confirmed','in_progress')"
-                       decoration-warning="state == 'completed'"
-                       decoration-success="state in ('validated', 'done')"
+                       decoration-warning="state == 'returned'"
+                       decoration-success="state == 'done'"
                        decoration-danger="state == 'cancelled'"/>
             </list>
         </field>
@@ -35,19 +35,31 @@
         <field name="name">wt.delivery.do.line.handover.form</field>
         <field name="model">wt.delivery.do.line</field>
         <field name="arch" type="xml">
-            <form string="Detail Berita Acara">
+            <form string="Document Information">
                 <sheet>
                     <group>
-                        <group string="Informasi Pengiriman">
-                            <field name="handover_date"/>
+                        <group string="Expedition">
+                            <field name="driver_name"/>
                             <field name="vehicle_plate"/>
-                            <field name="sent_to_pt"/>
-                        </group>
-                        <group string="Berat">
                             <field name="tare_qty"/>
-                            <field name="net_qty" readonly="1"/>
+                            <field name="handover_date"/>
+                            <field name="actual_physical_qty" readonly="1"/>
                             <field name="gross_qty" readonly="1"/>
                         </group>
+                        <group string="Delivery Letter">
+                            <field name="delivery_letter_no"/>
+                            <field name="delivery_letter_date"/>
+                            <field name="so_number"/>
+                            <field name="document_do_number"/>
+                            <field name="receiver_name"/>
+                            <field name="receiver_address"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Despatch Slip">
+                            <field name="despatch_slip_no"/>
+                        </group>
+                        <group/>
                     </group>
                 </sheet>
             </form>
@@ -59,47 +71,31 @@
         <field name="name">wt.delivery.form</field>
         <field name="model">wt.delivery</field>
         <field name="arch" type="xml">
-            <form string="Tugas Pengiriman">
+            <form string="Delivery Task">
                 <header>
                     <button name="action_confirm"
-                            string="Konfirmasi"
+                            string="Confirm"
                             type="object"
                             class="btn-primary"
                             invisible="state != 'draft'"/>
-                    <button name="action_complete"
-                            string="Selesai Timbang"
-                            type="object"
-                            class="btn-primary"
-                            invisible="state != 'in_progress' or step_count &gt; 0"/>
-                    <button name="action_validate"
-                            string="Validasi &amp; Kirim"
-                            type="object"
-                            class="btn-success"
-                            invisible="state != 'completed'"
-                            confirm="Aksi ini akan mengupdate DO dan membuat dokumen Scrap susut secara otomatis. Lanjutkan?"/>
                     <button name="action_cancel"
-                             string="Batalkan"
+                             string="Cancel"
                              type="object"
                              class="btn-danger"
-                             invisible="state in ('validated','done','returned','cancelled')"
-                             confirm="Yakin ingin membatalkan tugas pengiriman ini?"/>
+                             invisible="state in ('done','returned','cancelled')"
+                             confirm="Are you sure you want to cancel this delivery task?"/>
                     <button name="action_draft"
-                            string="Set ke Draft"
+                            string="Reset to Draft"
                             type="object"
                             invisible="state != 'cancelled'"/>
                     <button name="action_return_delivery"
-                            string="Retur Pengiriman"
+                            string="Return Delivery"
                             type="object"
                             class="btn-danger"
-                            invisible="state not in ('validated', 'done') or wt_is_returned"
-                            confirm="Yakin ingin melakukan retur pada semua barang yang terkirim dari tugas pengiriman ini? Tindakan ini akan mengembalikan stok fisik dari customer ke gudang."/>
-                    <button name="action_print_surat_jalan"
-                            string="Print Surat Jalan"
-                            type="object"
-                            class="btn-secondary"
-                            invisible="state not in ('validated', 'done')"/>
+                            invisible="state != 'done' or wt_is_returned"
+                            confirm="Are you sure you want to return all delivered goods from this delivery task? Applied shrinkage remains valid and will not be reversed."/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,in_progress,completed,validated,done,returned"/>
+                           statusbar_visible="draft,confirmed,in_progress,done,returned"/>
                 </header>
                 <sheet>
                     <field name="wt_is_returned" invisible="1"/>
@@ -107,13 +103,13 @@
                             invisible="not wt_is_returned"/>
                     <!-- Smart Buttons -->
                     <div class="oe_button_box" name="button_box">
-                        <!-- Smart button DO: muncul setelah validated (picking dari do_lines) -->
+                        <!-- Smart button DO: muncul setelah done (picking dari do_lines) -->
                         <button name="action_view_pickings"
                                 type="object"
                                 class="oe_stat_button"
                                 icon="fa-truck"
                                 invisible="picking_count == 0">
-                            <field name="picking_count" widget="statinfo" string="DO Dibuat"/>
+                            <field name="picking_count" widget="statinfo" string="Created DO"/>
                         </button>
                     </div>
 
@@ -141,23 +137,12 @@
                         </group>
                     </group>
 
-                    <!-- Banner Peringatan jika ada Lot baru yang belum di-pull oleh operator -->
-                    <div class="alert alert-warning d-flex align-items-center" role="alert"
-                         invisible="not wt_has_unpulled_lines">
-                        <i class="fa fa-exclamation-triangle me-2" style="font-size: 1.5em;"/>
-                        <div>
-                            <strong>Perhatian:</strong> Terdapat lot baru/tambahan yang belum di-pull oleh operator timbangan di lapangan. 
-                            Hal ini biasanya terjadi karena perubahan stock reservasi setelah penyesuaian stok otomatis. 
-                            Harap informasikan ke operator untuk melakukan <strong>Pull Tugas</strong> ulang pada perangkat mereka.
-                        </div>
-                    </div>
-
                     <!-- Banner Retur -->
                     <div class="alert alert-danger d-flex align-items-center" role="alert"
                          invisible="not wt_is_returned">
                         <i class="fa fa-undo me-2" style="font-size: 1.5em;"/>
                         <div>
-                            <strong>Pengiriman ini telah diretur dengan alasan:</strong>
+                            <strong>This delivery has been returned for the following reason:</strong>
                             <br/>
                             <field name="wt_return_reason" readonly="1" class="font-weight-bold"/>
                         </div>
@@ -168,56 +153,54 @@
 
                     <notebook>
 
-                        <!-- Tab 2: Rute -->
-                        <page string="Rute">
+                        <!-- Tab 2: Route -->
+                        <page string="Route">
 
-                            <!-- ── SECTION A: Rencana DO (hanya saat Draft & Confirmed) ── -->
-                            <group invisible="state not in ('draft', 'confirmed')">
-                                <div class="alert alert-info d-flex align-items-start mb-3" role="alert">
-                                    <i class="fa fa-info-circle me-2 mt-1" style="font-size:1.2em;"/>
-                                    <div>
-                                        Isi rencana DO di bawah ini. Tidak ada DO Odoo yang dibuat selama proses.
-                                        DO akan dibuat otomatis dengan status <strong>Selesai</strong>
-                                        saat klik <strong>Validasi &amp; Kirim</strong>.
-                                    </div>
-                                </div>
-                            </group>
-
+                            <!-- ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ SECTION A: Rencana DO (hanya saat Draft & Confirmed) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ -->
                             <!-- Tabel Rencana DO (satu field, perilaku berubah berdasarkan state) -->
                             <field name="do_line_ids"
-                                   readonly="state != 'confirmed'"
+                                   readonly="state not in ('confirmed', 'in_progress')"
                                    context="{'default_delivery_id': id, 'default_company_id': company_id, 'default_route_id': route_id, 'default_partner_id': partner_id}">
-                                <list string="Rencana DO"
+                                <list string="Delivery Plan"
                                       create="false"
                                       delete="false"
                                       decoration-success="picking_state == 'done'">
                                     <field name="sequence" widget="handle"/>
                                     <field name="route_id" column_invisible="1"/>
                                     <field name="route_line_id" column_invisible="1"/>
-                                    <field name="route_type" string="Tipe Rute" optional="show"/>
+                                    <field name="route_type" string="Route Type" optional="show"/>
                                     <field name="picking_type_id"
                                            options="{'no_create': True, 'no_open': True}"
-                                           string="Tipe Operasi"/>
+                                           string="Operation Type"/>
                                     <field name="product_id" column_invisible="True"/>
                                     <field name="location_id"
                                            options="{'no_create': True}"
-                                           string="Lokasi Sumber"/>
+                                           string="Source Location"/>
                                     <field name="location_dest_id"
                                            options="{'no_create': True}"
-                                           string="Lokasi Tujuan"/>
+                                           string="Destination Location"/>
                                     <field name="demand_qty"
                                            string="Demand (kg)"/>
+                                    <field name="actual_physical_qty"
+                                           string="Actual Physical Weight (kg)"
+                                           optional="show"
+                                           readonly="1"/>
                                     <field name="partner_id"
                                            options="{'no_create': True}"
-                                           string="Kontak Penerima"
+                                           string="Receiver Contact"
                                            required="1"
                                            optional="show"/>
                                     <field name="scheduled_date"
-                                           string="Tgl Terjadwal"
+                                           string="Scheduled Date"
                                            optional="hide"/>
-                                    <!-- Kolom hasil generate — hanya tampil setelah validated -->
+                                    <!-- Kolom hasil generate ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â hanya tampil setelah done -->
                                     <field name="picking_id"
-                                           string="DO Terbentuk"
+                                           string="Created DO"
+                                           options="{'no_open': False}"
+                                           optional="show"
+                                           readonly="1"/>
+                                    <field name="return_picking_id"
+                                           string="Inventory Return"
                                            options="{'no_open': False}"
                                            optional="show"
                                            readonly="1"/>
@@ -226,52 +209,60 @@
                                            options="{'no_open': False}"
                                            optional="show"
                                            readonly="1"/>
-                                    <field name="picking_state"
-                                           string="Status DO"
+                                    <field name="route_process_status"
+                                           string="DO Status"
                                            widget="badge"
-                                           decoration-success="picking_state == 'done'"
-                                           decoration-info="picking_state == 'confirmed'"
-                                           decoration-danger="picking_state == 'cancel'"
+                                           decoration-success="route_process_status == 'done'"
+                                           decoration-info="route_process_status == 'in_process'"
+                                           decoration-muted="route_process_status == 'preparation'"
                                            optional="show"
                                            readonly="1"/>
+                                    <field name="picking_state" column_invisible="1"/>
+                                    <field name="can_validate_line" column_invisible="1"/>
                                     <button name="action_validate_line"
-                                             string="Validasi"
+                                             string="Validate"
                                              type="object"
                                              icon="fa-check"
                                              class="btn-primary"
-                                             invisible="picking_state == 'done' or parent.state != 'confirmed'"/>
+                                             invisible="not can_validate_line or parent.state not in ('confirmed', 'in_progress')"/>
                                     <field name="company_id" column_invisible="1"/>
                                 </list>
-                                <form string="Rincian Rencana DO">
+                                <form string="Delivery Plan Detail">
                                      <header>
+                                         <field name="can_validate_line" invisible="1"/>
                                          <button name="action_auto_allocate_lots"
-                                                 string="Muat Lot dari Lokasi Sumber"
+                                                 string="Load Lots from Source Location"
                                                  type="object"
                                                  class="btn-secondary"
-                                                 invisible="picking_state == 'done' or parent.state != 'confirmed'"
-                                                 confirm="Rincian lot yang ada akan diganti berdasarkan stok bebas pada lokasi sumber dan seluruh sublokasinya. Lanjutkan?"/>
+                                                 invisible="picking_state == 'done' or parent.state not in ('confirmed', 'in_progress')"
+                                                 confirm="Existing lot details will be replaced based on available stock in the source location and all child locations. Continue?"/>
                                          <button name="action_validate_line"
-                                                 string="Validasi Rencana DO"
+                                                 string="Validate Delivery Plan"
                                                  type="object"
                                                  class="btn-primary"
-                                                 invisible="picking_state == 'done' or parent.state != 'confirmed'"/>
+                                                 invisible="not can_validate_line or parent.state not in ('confirmed', 'in_progress')"/>
                                          <button name="action_print_despatch_slip"
                                                  string="Print Despatch Slip"
                                                  type="object"
                                                  class="btn-secondary"
                                                  invisible="picking_state != 'done'"/>
                                          <button name="action_print_handover_report"
-                                                 string="Print Berita Acara"
+                                                 string="Print Handover Report"
                                                  type="object"
                                                  class="btn-secondary"
                                                  invisible="picking_state != 'done'"/>
                                          <button name="action_print_seal_layout"
-                                                 string="Print Denah Penyegelan"
+                                                 string="Print Seal Layout"
+                                                 type="object"
+                                                 class="btn-secondary"
+                                                 invisible="picking_state != 'done'"/>
+                                         <button name="action_print_surat_jalan"
+                                                 string="Print Delivery Letter"
                                                  type="object"
                                                  class="btn-secondary"
                                                  invisible="picking_state != 'done'"/>
                                          <button name="action_open_handover_details"
-                                                 string="Edit Berita Acara"
+                                                 string="Edit Document Information"
                                                  type="object"
                                                  class="btn-secondary"
                                                  invisible="picking_state != 'done'"/>
@@ -281,10 +272,11 @@
                                          <field name="picking_state" invisible="1"/>
                                          <field name="picking_id" invisible="1"/>
                                          <group>
-                                             <group string="Rute &amp; Tanggal">
+                                             <group string="Route &amp; Date">
                                                 <field name="route_id" invisible="1" force_save="1"/>
                                                 <field name="route_line_id" invisible="1" force_save="1"/>
                                                 <field name="route_type" readonly="1"/>
+                                                <field name="route_process_status" readonly="1" widget="badge"/>
                                                 <field name="picking_type_id"
                                                        options="{'no_create': True, 'no_open': True}"
                                                        readonly="1"
@@ -298,54 +290,82 @@
                                                        options="{'no_create': True}"
                                                        readonly="1"
                                                        force_save="1"/>
+                                                <field name="partner_id"
+                                                       string="Receiver"
+                                                       options="{'no_create': True}"
+                                                       required="1"
+                                                       readonly="picking_state == 'done'"/>
                                                 <field name="scheduled_date"
                                                        readonly="picking_state == 'done'"/>
                                             </group>
-                                            <group string="Demand dan Kontak Penerima">
+                                            <group string="Stock Information">
                                                 <field name="demand_qty" force_save="1"
+                                                       string="Demand (kg)"
                                                        readonly="picking_state == 'done'"/>
-                                                <field name="partner_id" options="{'no_create': True}"
-                                                       required="1"
-                                                       readonly="picking_state == 'done'"/>
+                                                <field name="actual_physical_qty"
+                                                       string="Actual Physical Weight (kg)"
+                                                       readonly="1"/>
                                                 <field name="generated_transit_lot_id"
+                                                       string="Transit Lot"
                                                        readonly="1"
                                                        options="{'no_open': False}"
                                                        invisible="not generated_transit_lot_id"/>
                                             </group>
                                         </group>
                                         <notebook>
-                                            <page string="Perincian Lot (Lot Details)">
+                                            <page string="Lot Details">
                                                 <field name="lot_line_ids" context="{'default_do_line_id': id}"
                                                        readonly="picking_state == 'done'">
-                                                    <list string="Perincian Lot" editable="bottom">
+                                                    <list string="Lot Details" editable="bottom"
+                                                          decoration-info="wt_weighing_status == 'not_pulled'"
+                                                          decoration-warning="wt_weighing_status == 'unweighed'"
+                                                          decoration-success="wt_weighing_status == 'weighed'">
                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}"/>
-                                                        <field name="location_id" readonly="1" string="Lokasi"/>
-                                                        <field name="allowed_weighing_location_ids" column_invisible="True"/>
+                                                        <field name="location_id" readonly="1" string="Location"/>
+                                                        <field name="allowed_weighing_location_ids" column_invisible="1"/>
                                                         <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location"/>
                                                         <field name="operator_id" readonly="1" string="Operator"/>
-                                                        <field name="wt_qty_on_hand" readonly="1" string="Stok Fisik (kg)"/>
-                                                        <field name="wt_qty_reserved" readonly="1" string="Terpesan (kg)"/>
-                                                        <field name="qty_available" readonly="1" string="Stok Bebas (kg)"/>
+                                                        <field name="wt_qty_on_hand" readonly="1" string="Physical Stock (kg)"/>
+                                                        <field name="wt_qty_reserved" readonly="1" string="Reserved (kg)"/>
+                                                        <field name="qty_available" readonly="1" string="Available Stock (kg)"/>
                                                         <field name="qty" string="Demand (kg)"/>
-                                                        <field name="wt_physical_qty" string="Berat Fisik (kg)" readonly="1" optional="show"/>
-                                                        <field name="wt_difference_qty" string="Selisih (kg)" readonly="1" optional="show"/>
-                                                        <field name="wt_skip_line" string="Lewati" optional="hide"/>
-                                                        <field name="wt_note" string="Catatan" optional="hide"/>
+                                                        <field name="wt_is_pulled" column_invisible="1"/>
+                                                        <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1" optional="show"/>
+                                                        <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
+                                                        <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
+                                                               decoration-success="wt_weighing_status == 'weighed'"
+                                                               decoration-warning="wt_weighing_status == 'unweighed'"
+                                                               decoration-info="wt_weighing_status == 'not_pulled'"
+                                                               optional="show"/>
+                                                        <field name="wt_difference_qty" string="Difference (kg)" readonly="1" optional="show"/>
+                                                        <field name="wt_note" string="Notes" optional="hide"/>
                                                     </list>
                                                 </field>
                                             </page>
-                                            <page string="Detail Berita Acara">
+                                            <page string="Document Information">
                                                 <group>
-                                                    <group string="Informasi Pengiriman">
-                                                        <field name="handover_date"/>
+                                                    <group string="Expedition">
+                                                        <field name="driver_name"/>
                                                         <field name="vehicle_plate"/>
-                                                        <field name="sent_to_pt"/>
-                                                    </group>
-                                                    <group string="Berat">
                                                         <field name="tare_qty"/>
-                                                        <field name="net_qty" readonly="1"/>
+                                                        <field name="handover_date"/>
+                                                        <field name="actual_physical_qty" readonly="1"/>
                                                         <field name="gross_qty" readonly="1"/>
                                                     </group>
+                                                    <group string="Delivery Letter">
+                                                        <field name="delivery_letter_no"/>
+                                                        <field name="delivery_letter_date"/>
+                                                        <field name="so_number"/>
+                                                        <field name="document_do_number"/>
+                                                        <field name="receiver_name"/>
+                                                        <field name="receiver_address"/>
+                                                    </group>
+                                                </group>
+                                                <group>
+                                                    <group string="Despatch Slip">
+                                                        <field name="despatch_slip_no"/>
+                                                    </group>
+                                                    <group/>
                                                 </group>
                                             </page>
                                         </notebook>
@@ -353,141 +373,69 @@
                                 </form>
                             </field>
 
-                            <!-- Info saat proses berlangsung -->
-                            <div class="alert alert-warning d-flex align-items-center mt-3"
-                                 invisible="state not in ('in_progress', 'completed') or not do_line_ids"
-                                 role="alert">
-                                <i class="fa fa-clock-o me-2" style="font-size:1.2em;"/>
-                                <div>
-                                    DO Odoo belum dibuat. DO akan dibuat otomatis (langsung <strong>Selesai</strong>)
-                                    setelah klik <strong>Validasi &amp; Kirim</strong>.
-                                </div>
-                            </div>
                         </page>
 
 
 
                         <!-- Tab 2: Detail Timbang -->
-                        <page string="Detail Timbang">
-                            <!-- Tabel Detail Timbang Rencana DO (alur baru) -->
-                            <field name="pulled_do_lot_line_ids"
+                        <page string="Weighing Details">
+                            <field name="do_lot_line_ids"
                                    invisible="not do_line_ids"
-                                   readonly="state in ('validated','cancelled')">
-                                <list string="Detail Timbang (Rencana)" create="false" delete="false" edit="false"
-                                      decoration-danger="not wt_skip_line and wt_physical_qty == 0.0"
-                                      decoration-warning="wt_difference_qty &lt; -0.001 and not wt_is_fully_allocated"
-                                      decoration-success="wt_physical_qty &gt; 0.0 and (wt_difference_qty == 0.0 or wt_is_fully_allocated)">
-                                    <field name="route_id" string="Rute" readonly="1"/>
-                                    <field name="lot_id" readonly="1"/>
-                                    <field name="wt_original_qty" string="Demand Rencana (kg)" readonly="1"/>
-                                    <field name="qty" string="Demand DO (kg)" readonly="1" optional="hide"/>
-                                    <field name="wt_physical_qty" string="Berat Fisik (kg)" readonly="1"/>
-                                    <field name="wt_difference_qty" string="Selisih (kg)" readonly="1"
-                                           decoration-danger="wt_difference_qty &lt; -0.001"
-                                           decoration-success="wt_difference_qty &gt;= -0.001"/>
-                                    <field name="wt_is_fully_allocated" column_invisible="1"/>
-                                    <field name="wt_unallocated_qty" string="Belum Teralokasi"
-                                           readonly="1" optional="show"
-                                           decoration-danger="wt_unallocated_qty &gt; 0.001"
-                                           decoration-success="wt_unallocated_qty &lt;= 0.001"/>
-                                    <field name="wt_adjustment_applied" column_invisible="1"/>
-                                    <button name="action_configure_allocation"
-                                            string="Alokasi"
-                                            type="object"
-                                            icon="fa-sliders"
-                                            invisible="wt_difference_qty == 0.0 or wt_adjustment_applied"/>
-                                    <field name="wt_note" string="Catatan" optional="hide"/>
-                                    <field name="wt_skip_line" string="Lewati" optional="hide"/>
-                                </list>
-                            </field>
-
-                            <!-- Tabel Detail Timbang DO Asli (alur lama) -->
-                            <field name="pulled_move_line_ids"
-                                   invisible="do_line_ids"
-                                   readonly="state in ('validated','cancelled')"
-                                   domain="[]"
-                                   context="{'show_original_demand': state == 'validated'}">
-                                <list string="Detail Timbang"
-                                      editable="bottom"
+                                   readonly="state in ('done','returned','cancelled')">
+                                <list string="Weighing Details"
                                       create="false"
                                       delete="false"
-                                      decoration-danger="not wt_skip_line and wt_physical_qty == 0.0"
-                                      decoration-warning="wt_difference_qty &lt; -0.001 and not wt_is_fully_allocated"
-                                      decoration-success="wt_physical_qty &gt; 0.0 and (wt_difference_qty == 0.0 or wt_is_fully_allocated)">
-                                    <field name="picking_id" string="DO" readonly="1" optional="show"/>
+                                      edit="false"
+                                      decoration-info="wt_weighing_status == 'not_pulled'"
+                                      decoration-warning="wt_weighing_status == 'unweighed'"
+                                      decoration-success="wt_weighing_status == 'weighed'">
+                                    <field name="route_id" string="Route" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
-                                    <field name="product_uom_id" readonly="1" optional="hide"/>
-                                    <field name="wt_original_demand_qty" string="Demand Awal (kg)" readonly="1"
-                                           optional="show"
-                                           decoration-info="wt_original_demand_qty == 0"/>
-                                    <field name="quantity" string="Terkirim (kg)" readonly="1"/>
-                                    <field name="wt_physical_qty" string="Berat Fisik (kg)"/>
-                                    <field name="wt_difference_qty" string="Selisih (kg)" readonly="1"
+                                    <field name="location_id" readonly="1" string="Location"/>
+                                    <field name="allowed_weighing_location_ids" column_invisible="1"/>
+                                    <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location"/>
+                                    <field name="operator_id" readonly="1" string="Operator"/>
+                                    <field name="wt_is_pulled" column_invisible="1"/>
+                                    <field name="wt_original_qty" string="Planned Demand (kg)" readonly="1"/>
+                                    <field name="qty" string="DO Demand (kg)" readonly="1" optional="hide"/>
+                                    <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1"/>
+                                    <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
+                                    <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
+                                           decoration-success="wt_weighing_status == 'weighed'"
+                                           decoration-warning="wt_weighing_status == 'unweighed'"
+                                           decoration-info="wt_weighing_status == 'not_pulled'"
+                                           optional="show"/>
+                                    <field name="wt_difference_qty" string="Difference (kg)" readonly="1"
                                            decoration-danger="wt_difference_qty &lt; -0.001"
                                            decoration-success="wt_difference_qty &gt;= -0.001"/>
                                     <field name="wt_is_fully_allocated" column_invisible="1"/>
-                                    <field name="wt_unallocated_qty" string="Belum Teralokasi"
+                                    <field name="wt_unallocated_qty" string="Unallocated"
                                            readonly="1" optional="show"
                                            decoration-danger="wt_unallocated_qty &gt; 0.001"
                                            decoration-success="wt_unallocated_qty &lt;= 0.001"/>
                                     <field name="wt_adjustment_applied" column_invisible="1"/>
                                     <button name="action_configure_allocation"
-                                            string="Alokasi"
+                                            string="Allocate"
                                             type="object"
                                             icon="fa-sliders"
-                                            invisible="wt_difference_qty == 0.0 or wt_adjustment_applied"/>
-                                    <field name="wt_note" string="Catatan" optional="hide"/>
-                                    <field name="wt_skip_line" string="Lewati" optional="hide"/>
+                                            invisible="wt_difference_qty == 0.0 or wt_adjustment_applied or wt_weighing_status != 'weighed'"/>
+                                    <field name="wt_note" string="Notes" optional="hide"/>
                                 </list>
                             </field>
-
-                            <!-- Section Lot Belum Di-Push Rencana DO (alur baru) -->
-                            <div class="mt-4" invisible="not wt_has_unpulled_lines or not do_line_ids">
-                                <h4 class="text-warning">
-                                    <i class="fa fa-info-circle me-1"/>
-                                    Daftar Lot Rencana yang Belum Di-Push (Operator Harus Pull Ulang)
-                                </h4>
-                                <field name="unpulled_do_lot_line_ids" readonly="1">
-                                    <list string="Lot Rencana Belum Di-Push" create="false" delete="false" edit="false">
-                                        <field name="route_id" string="Rute"/>
-                                        <field name="lot_id" string="Nomor Seri/Lot"/>
-                                        <field name="weighing_location_id" string="Weighing Location"/>
-                                        <field name="operator_id" string="Operator"/>
-                                        <field name="qty" string="Qty Demand (kg)"/>
-                                    </list>
-                                </field>
-                            </div>
-
-                            <!-- Section Lot Belum Di-Push DO Asli (alur lama) -->
-                            <div class="mt-4" invisible="not wt_has_unpulled_lines or do_line_ids">
-                                <h4 class="text-warning">
-                                    <i class="fa fa-info-circle me-1"/>
-                                    Daftar Lot Baru yang Belum Di-Push (Operator Harus Pull Ulang)
-                                </h4>
-                                <field name="unpulled_move_line_ids" readonly="1">
-                                    <list string="Lot Belum Di-Push" create="false" delete="false" edit="false">
-                                        <field name="picking_id" string="DO"/>
-                                        <field name="lot_id" string="Nomor Seri/Lot"/>
-                                        <field name="quantity" string="Qty Demand (kg)"/>
-                                        <field name="location_id" string="Lokasi Asal"/>
-                                        <field name="location_dest_id" string="Lokasi Tujuan"/>
-                                    </list>
-                                </field>
-                            </div>
                         </page>
 
-                        <!-- Tab 3: Catatan -->
-                        <page string="Catatan">
+                        <!-- Tab 3: Notes -->
+                        <page string="Notes">
                             <group>
-                                <field name="note" placeholder="Tambahkan catatan di sini..."/>
+                                <field name="note" placeholder="Add notes here..."/>
                             </group>
-                            <group string="Informasi Retur" invisible="not wt_is_returned">
+                            <group string="Return Information" invisible="not wt_is_returned">
                                 <field name="wt_return_reason" readonly="1"/>
                             </group>
                         </page>
                     </notebook>
 
-                    <group string="Informasi Validasi" invisible="state != 'validated'">
+                    <group string="Validation Information" invisible="state not in ('done', 'returned')">
                         <field name="validated_at" readonly="1"/>
                         <field name="validated_by_id" readonly="1"/>
                     </group>
@@ -508,29 +456,28 @@
                 <filter string="Draft"       name="draft"       domain="[('state', '=', 'draft')]"/>
                 <filter string="Confirmed"   name="confirmed"   domain="[('state', '=', 'confirmed')]"/>
                 <filter string="In Progress" name="in_progress" domain="[('state', '=', 'in_progress')]"/>
-                <filter string="Completed"   name="completed"   domain="[('state', '=', 'completed')]"/>
-                <filter string="Validated"   name="validated"   domain="[('state', '=', 'validated')]"/>
+                <filter string="Done"        name="done"        domain="[('state', '=', 'done')]"/>
+                <filter string="Returned"    name="returned"    domain="[('state', '=', 'returned')]"/>
                 <filter string="Cancelled"   name="cancelled"   domain="[('state', '=', 'cancelled')]"/>
                 <filter string="Status"  name="group_state" context="{'group_by': 'state'}"/>
-                <filter string="Tanggal" name="group_date"  context="{'group_by': 'date'}"/>
+                <filter string="Date" name="group_date"  context="{'group_by': 'date'}"/>
             </search>
         </field>
     </record>
 
     <!-- WINDOW ACTION -->
     <record id="action_wt_delivery" model="ir.actions.act_window">
-        <field name="name">Tugas Pengiriman</field>
+        <field name="name">Delivery Tasks</field>
         <field name="res_model">wt.delivery</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_wt_delivery_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Buat Tugas Pengiriman Baru
+                Create a New Delivery Task
             </p>
             <p>
-                Klik "+ Tambah Pengiriman" untuk menambahkan Delivery Order.
-                Setelah DO berstatus Siap (Ready), konfirmasi dan mulai untuk
-                mengirim data ke aplikasi timbang via Pull API.
+                Create a delivery task, choose a route, confirm it, then manage each route line.
+                Operators receive delivery lot lines from the Pull API.
             </p>
         </field>
     </record>

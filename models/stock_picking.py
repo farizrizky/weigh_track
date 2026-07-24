@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
-from odoo import fields, models
 
 
 class StockPicking(models.Model):
@@ -10,7 +9,7 @@ class StockPicking(models.Model):
 
     wt_delivery_id = fields.Many2one(
         "wt.delivery",
-        string="Tugas Pengiriman",
+        string="Delivery Task",
         ondelete="set null",
         index=True,
         copy=False,
@@ -23,38 +22,19 @@ class StockPicking(models.Model):
         help="Operator yang bertanggung jawab atas Delivery Order ini.",
     )
     wt_push_done = fields.Boolean(
-        string="Push Selesai",
+        string="Push Completed",
         default=False,
         copy=False,
         help="Ditandai True secara otomatis saat operator selesai push semua data timbang via API.",
     )
     wt_push_done_at = fields.Datetime(
-        string="Waktu Push Selesai",
+        string="Push Completed At",
         readonly=True,
         copy=False,
         help="Waktu operator menyelesaikan push data timbang.",
     )
 
     # ── Alokasi Selisih (via move lines) ─────────────────────────────────────
-    wt_allocation_ids = fields.Many2many(
-        "wt.delivery.line.allocation",
-        string="Alokasi Selisih",
-        compute="_compute_wt_allocation_ids",
-        help="Semua alokasi selisih timbang dari move lines pengiriman ini.",
-    )
-    wt_has_allocation = fields.Boolean(
-        string="Ada Alokasi",
-        compute="_compute_wt_allocation_ids",
-        help="True jika terdapat alokasi selisih pada pengiriman ini.",
-    )
-
-    @api.depends("move_line_ids.wt_allocation_ids")
-    def _compute_wt_allocation_ids(self):
-        for picking in self:
-            allocs = picking.move_line_ids.mapped("wt_allocation_ids")
-            picking.wt_allocation_ids = allocs
-            picking.wt_has_allocation = bool(allocs)
-
     def button_validate(self):
         """Blokir validasi manual jika DO ini berasal dari Tugas Pengiriman WeighTrack."""
         if not self.env.context.get("wt_force_validate"):

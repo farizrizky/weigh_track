@@ -6,35 +6,35 @@
         <field name="name">wt.delivery.do.wizard.form</field>
         <field name="model">wt.delivery.do.wizard</field>
         <field name="arch" type="xml">
-            <form string="Buat Delivery Order (DO)">
+            <form string="Create Delivery Order (DO)">
                 <sheet>
                     <group>
-                        <group string="Informasi Pengiriman">
+                        <group string="Delivery Information">
                             <field name="delivery_id" readonly="1"/>
                             <field name="company_id" invisible="1"/>
                             <field name="picking_type_id"
                                    options="{'no_create': True, 'no_open': True}"
-                                   help="Hanya menampilkan tipe operasi pengiriman (outgoing)."/>
+                                   help="Only shows outgoing delivery operation types."/>
                             <field name="operator_id"
                                    options="{'no_create': True}"
-                                   help="Pilih operator yang bertanggung jawab atas DO ini."/>
+                                   help="Choose the operator responsible for this DO."/>
                         </group>
-                        <group string="Alamat &amp; Jadwal">
+                        <group string="Address &amp; Schedule">
                             <field name="location_id"
                                    options="{'no_create': True}"/>
                             <field name="partner_id"
                                    options="{'no_create': True}"
-                                   help="Alamat tujuan pengiriman yang akan tampil di form DO."/>
+                                   help="Destination address that will appear on the DO form."/>
                             <field name="scheduled_date"/>
                         </group>
                     </group>
                 </sheet>
                 <footer>
                     <button name="action_create_do"
-                            string="Buat DO"
+                            string="Create DO"
                             type="object"
                             class="btn-primary"/>
-                    <button string="Batal"
+                    <button string="Cancel"
                             class="btn-secondary"
                             special="cancel"/>
                 </footer>

@@ -40,6 +40,7 @@ msgstr "Kode"
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route__name
 msgid "Name"
 msgstr "Nama"
 
@@ -56,6 +57,7 @@ msgstr "Nama"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather__active
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__status__active
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_search
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route__active
 msgid "Active"
 msgstr "Aktif"
 
@@ -75,6 +77,9 @@ msgstr "Aktif"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -150,12 +155,16 @@ msgstr "Data Cuaca"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather__description
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route__description
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_route_form
 msgid "Description"
 msgstr "Deskripsi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__weather_date
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_data_search
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__date
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Date"
 msgstr "Tanggal"
 
@@ -435,12 +444,16 @@ msgstr "Jabatan"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__product_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_product_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__product_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__product_id
 msgid "Product"
 msgstr "Produk"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__product
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__product
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__product_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__product_id
 msgid "Product"
 msgstr "Produk"
 
@@ -516,11 +529,18 @@ msgstr "Tujuan Stok"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__location_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__location_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
 msgid "Location"
 msgstr "Lokasi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__operation_type_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__picking_type_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__picking_type_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__picking_type_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Operation Type"
 msgstr "Tipe Operasi"
 
@@ -532,6 +552,8 @@ msgstr "Tipe Operasi"
 #: model:ir.model,name:weightrack.model_wt_weighing_location
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__weighing_location_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__weighing_location_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Weighing Location"
 msgstr "Lokasi Timbang"
 
@@ -549,6 +571,7 @@ msgstr "Nama Lokasi Timbang"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__warehouse_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__warehouse_id
 msgid "Warehouse"
 msgstr "Gudang"
 
@@ -562,6 +585,10 @@ msgstr "Penimbangan"
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role__role__operator
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__operator
 #: code:addons/weightrack/constants/roles.py:0
+#: model:ir.model.fields,field_description:weightrack.field_stock_picking__wt_operator_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__operator_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__operator_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Operator"
 msgstr "Operator"
 
@@ -692,6 +719,9 @@ msgstr "Penugasan"
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__status
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__state
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__state
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__state
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Status"
 msgstr "Status"
 
@@ -743,19 +773,24 @@ msgstr "Aksi"
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_device_state_reason_wizard__reason
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__reason_id
 msgid "Reason"
 msgstr "Alasan"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Confirm"
 msgstr "Konfirmasi"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_return_wizard_form
 msgid "Cancel"
-msgstr "Batal"
+msgstr "Batalkan"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
@@ -1221,8 +1256,10 @@ msgstr "Service API Push Inbound Penimbangan"
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__draft
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__draft
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__draft
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_search
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Draft"
 msgstr "Draft"
 
@@ -1295,6 +1332,8 @@ msgstr "Manual"
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_list
 msgid "Validate"
 msgstr "Validasi"
 
@@ -1350,8 +1389,9 @@ msgid "Clean Weighing Details"
 msgstr "Detail Penimbangan Bersih"
 
 #. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Weighing Details"
-msgstr "Detail Penimbangan"
+msgstr "Detail Timbang"
 
 #. module: weightrack
 msgid "Data OK"
@@ -1380,6 +1420,7 @@ msgstr "Stok Inbound"
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__name
 msgid "Number"
 msgstr "Nomor"
 
@@ -1958,6 +1999,8 @@ msgstr "Diproses"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__cancelled
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__cancelled
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Cancelled"
 msgstr "Dibatalkan"
 
@@ -2000,6 +2043,8 @@ msgstr "Penimbangan"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Weight"
 msgstr "Berat"
 
@@ -2009,10 +2054,12 @@ msgid "Process"
 msgstr "Proses"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__validated_at
 msgid "Validated At"
 msgstr "Divalidasi Pada"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__validated_by_id
 msgid "Validated By"
 msgstr "Divalidasi Oleh"
 
@@ -2338,6 +2385,8 @@ msgstr "Setiap item penimbangan harus berupa object."
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__product_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__product_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__product_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__product_id
 msgid "Product"
 msgstr "Produk"
 
@@ -2349,16 +2398,23 @@ msgstr "Kerani"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__operation_type_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__picking_type_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__picking_type_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__picking_type_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Operation Type"
 msgstr "Tipe Operasi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__warehouse_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__warehouse_id
 msgid "Warehouse"
 msgstr "Gudang"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__weighing_location_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__weighing_location_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Weighing Location"
 msgstr "Lokasi Timbang"
 
@@ -2379,6 +2435,8 @@ msgstr "Nomor Timbang"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Weight"
 msgstr "Berat"
 
@@ -2397,3 +2455,1005 @@ msgstr "Jumlah Lot"
 #. module: weightrack
 msgid "No active Receipt Rule exists for this Production Receipt scope."
 msgstr "Tidak ada Aturan Penerimaan aktif untuk scope Penerimaan Produksi ini."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_weighed_at
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Weighed At"
+msgstr "Waktu Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_weighing_status
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Weighing Status"
+msgstr "Status Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line_lot__wt_weighing_status__not_pulled
+msgid "Not Pulled"
+msgstr "Belum Di-pull"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line_lot__wt_weighing_status__unweighed
+msgid "Unweighed"
+msgstr "Belum Ditimbang"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line_lot__wt_weighing_status__weighed
+msgid "Weighed"
+msgstr "Sudah Ditimbang"
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery.py:0
+msgid "Cannot complete delivery because some pulled lots have not been weighed yet: %s."
+msgstr "Tidak dapat menyelesaikan pengiriman karena masih ada lot yang sudah di-pull tetapi belum ditimbang: %s."
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery_do_line_lot.py:0
+#: code:addons/weightrack/models/delivery_line_allocation.py:0
+#, python-format
+msgid "Cannot allocate difference before the delivery lot line is weighed."
+msgstr "Selisih belum bisa dialokasikan sebelum baris lot pengiriman ditimbang."
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line__route_process_status__in_process
+msgid "In Process"
+msgstr "Dalam Proses"
+
+#. module: weightrack
+msgid "Not Ready"
+msgstr "Belum Siap"
+
+#. module: weightrack
+msgid "Ready to Validate"
+msgstr "Siap Validasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__wt_is_returned
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__returned
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
+msgid "Returned"
+msgstr "Diretur"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_stock_picking__wt_delivery_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__delivery_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__wt_delivery_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Delivery Task"
+msgstr "Tugas Pengiriman"
+
+#. module: weightrack
+#: model:ir.actions.act_window,name:weightrack.action_wt_delivery
+msgid "Delivery Tasks"
+msgstr "Tugas Pengiriman"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__do_line_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__delivery_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Delivery Plan"
+msgstr "Rencana DO"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Delivery Plan Detail"
+msgstr "Detail Rencana DO"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__do_line_id
+msgid "Delivery Plan Line"
+msgstr "Baris Rencana DO"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__do_lot_line_ids
+msgid "All Delivery Plan Lot Details"
+msgstr "Semua Rincian Lot Rencana DO"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__pulled_do_lot_line_ids
+msgid "Weighing Details (Plan)"
+msgstr "Detail Timbang (Rencana)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__unpulled_do_lot_line_ids
+msgid "Unpulled Planned Lots"
+msgstr "Lot Rencana Belum Di-pull"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__picking_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Created DO"
+msgstr "DO Terbentuk"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__return_picking_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Inventory Return"
+msgstr "Pengembalian Inventory"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__picking_count
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "DO Count"
+msgstr "Jumlah DO"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__picking_state
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__route_process_status
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "DO Status"
+msgstr "Status DO"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line__route_process_status__preparation
+msgid "Preparation"
+msgstr "Persiapan"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line__route_process_status__done
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__done
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
+msgid "Done"
+msgstr "Selesai"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__confirmed
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
+msgid "Confirmed"
+msgstr "Terkonfirmasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Reset to Draft"
+msgstr "Kembalikan ke Draft"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Return Delivery"
+msgstr "Retur Pengiriman"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Print Delivery Letter"
+msgstr "Cetak Surat Jalan"
+
+#. module: weightrack
+#: model_terms:ir.actions.act_window,help:weightrack.action_wt_delivery
+msgid "Created a New Delivery Task"
+msgstr "Buat Tugas Pengiriman Baru"
+
+#. module: weightrack
+#: model_terms:ir.actions.act_window,help:weightrack.action_wt_delivery
+msgid "Create a New Delivery Task"
+msgstr "Buat Tugas Pengiriman Baru"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__route_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__route_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route__line_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_route_form
+msgid "Route"
+msgstr "Rute"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__route_type
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__route_type
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Route Type"
+msgstr "Tipe Rute"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__route_line_id
+msgid "Route Line"
+msgstr "Baris Rute"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Route & Date"
+msgstr "Rute & Tanggal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__location_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__source_location_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Source Location"
+msgstr "Lokasi Sumber"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__location_dest_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__location_dest_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Destination Location"
+msgstr "Lokasi Tujuan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Receiver Contact"
+msgstr "Kontak Penerima"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__scheduled_date
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Scheduled Date"
+msgstr "Tanggal Terjadwal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__date_text
+msgid "Date (Text)"
+msgstr "Tanggal (Teks)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__note
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__note
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__note
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Notes"
+msgstr "Catatan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__partner_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Customer"
+msgstr "Customer"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_demand_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Total Planned Qty (kg)"
+msgstr "Total Rencana Awal (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_physical_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Total Delivered Qty (kg)"
+msgstr "Total Fisik Terkirim (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Total Difference (kg)"
+msgstr "Total Selisih (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__step_count
+msgid "Step Count"
+msgstr "Jumlah Step"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__wt_has_unpulled_lines
+msgid "Has Unpulled Lots"
+msgstr "Ada Lot Belum Di-pull"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__has_adjustable_lines
+msgid "Has Adjustable Lines"
+msgstr "Ada Baris Bisa Di-adjust"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__wt_return_reason
+msgid "Return Reason"
+msgstr "Alasan Retur"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Validate Delivery Plan"
+msgstr "Validasi Rencana DO"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Load Lots from Source Location"
+msgstr "Muat Lot dari Lokasi Sumber"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Print Handover Report"
+msgstr "Cetak Berita Acara"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Print Seal Layout"
+msgstr "Cetak Denah Penyegelan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Edit Handover Details"
+msgstr "Edit Berita Acara"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Handover Details"
+msgstr "Detail Berita Acara"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Delivery Information"
+msgstr "Informasi Pengiriman"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Demand and Receiver Contact"
+msgstr "Demand dan Kontak Penerima"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__lot_line_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Lot Details"
+msgstr "Rincian Lot"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_qty_on_hand
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Physical Stock (kg)"
+msgstr "Stok Fisik (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_qty_reserved
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Reserved (kg)"
+msgstr "Terpesan (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__qty_available
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Available Stock (kg)"
+msgstr "Stok Bebas (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__demand_qty
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__qty
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__requested_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Demand (kg)"
+msgstr "Demand (kg)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Planned Demand (kg)"
+msgstr "Demand Rencana (kg)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "DO Demand (kg)"
+msgstr "Demand DO (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_original_qty
+msgid "Original Demand (kg)"
+msgstr "Demand Awal (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_physical_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Physical Weight (kg)"
+msgstr "Berat Fisik (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Difference (kg)"
+msgstr "Selisih (kg)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Unallocated"
+msgstr "Belum Teralokasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Allocate"
+msgstr "Alokasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_note
+msgid "Weighing Note"
+msgstr "Catatan Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_adjustment_applied
+msgid "Adjustment Applied"
+msgstr "Adjustment Diterapkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_is_pulled
+msgid "Pulled"
+msgstr "Sudah Di-pull"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_allocation_ids
+msgid "Difference Allocation"
+msgstr "Alokasi Selisih"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_allocated_qty
+msgid "Allocated (kg)"
+msgstr "Teralokasi (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_unallocated_qty
+msgid "Unallocated (kg)"
+msgstr "Belum Teralokasi (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_is_fully_allocated
+msgid "Fully Allocated"
+msgstr "Teralokasi Penuh"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Return Information"
+msgstr "Informasi Retur"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Validation Information"
+msgstr "Informasi Validasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Add notes here..."
+msgstr "Tambahkan catatan di sini..."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_stock_picking__wt_push_done
+msgid "Push Completed"
+msgstr "Push Selesai"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_stock_picking__wt_push_done_at
+msgid "Push Completed At"
+msgstr "Waktu Push Selesai"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__can_validate_line
+msgid "Can Validate"
+msgstr "Bisa Validasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__generated_transit_lot_id
+msgid "Transit Lot"
+msgstr "Lot Transit"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__route_id
+msgid "Transit Route"
+msgstr "Rute Transit"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__lot_id
+msgid "Lot Number"
+msgstr "Nomor Lot"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__source_location_id
+msgid "Physical Source Location"
+msgstr "Lokasi Sumber Fisik"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__handover_date
+msgid "Handover Date"
+msgstr "Tanggal Serah Terima"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__handover_date_text
+msgid "Handover Date (Text)"
+msgstr "Tanggal Serah Terima (Teks)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__vehicle_plate
+msgid "License Plate"
+msgstr "Nomor Polisi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__net_qty
+msgid "Net Weight (kg)"
+msgstr "Netto (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__gross_qty
+msgid "Gross Weight (kg)"
+msgstr "Bruto (kg)"
+
+#. module: weightrack
+msgid "Attention:"
+msgstr "Perhatian:"
+
+#. module: weightrack
+msgid "New or additional lots have not been pulled by the field weighing operator."
+msgstr "Terdapat lot baru/tambahan yang belum di-pull oleh operator timbangan di lapangan."
+
+#. module: weightrack
+msgid "This usually happens when stock reservation changes after automatic stock adjustment."
+msgstr "Hal ini biasanya terjadi karena perubahan reservasi stok setelah penyesuaian stok otomatis."
+
+#. module: weightrack
+msgid "Please ask the operator to pull the delivery task again on their device."
+msgstr "Harap informasikan ke operator untuk melakukan Pull Tugas ulang pada perangkat mereka."
+
+#. module: weightrack
+msgid "This delivery has been returned for the following reason:"
+msgstr "Pengiriman ini telah diretur dengan alasan:"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Are you sure you want to cancel this delivery task?"
+msgstr "Yakin ingin membatalkan tugas pengiriman ini?"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Are you sure you want to return all delivered goods from this delivery task? Applied shrinkage remains valid and will not be reversed."
+msgstr "Yakin ingin melakukan retur pada semua barang yang terkirim dari tugas pengiriman ini? Susut yang sudah diterapkan tetap dianggap sah dan tidak ikut dikembalikan."
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Existing lot details will be replaced based on available stock in the source location and all child locations. Continue?"
+msgstr "Rincian lot yang ada akan diganti berdasarkan stok bebas pada lokasi sumber dan seluruh sublokasinya. Lanjutkan?"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__picking_ids
+msgid "Delivery Orders (DO)"
+msgstr "Delivery Order (DO)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__final_picking_id
+msgid "Final DO"
+msgstr "DO Final"
+
+#. module: weightrack
+#: model:ir.actions.act_window,name:weightrack.action_wt_delivery_step
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__warehouse_step_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_list
+msgid "Warehouse Steps"
+msgstr "Step Gudang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_return_wizard_form
+msgid "Delivery Return"
+msgstr "Retur Pengiriman"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_return_wizard_form
+msgid "Process Return"
+msgstr "Proses Retur"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_return_wizard_form
+msgid "Are you sure you want to process the return for this delivery?"
+msgstr "Yakin ingin memproses retur untuk pengiriman ini?"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_return_wizard_form
+msgid "Example: damaged goods / rejected by customer..."
+msgstr "Contoh: barang cacat / ditolak oleh customer..."
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__in_progress
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
+msgid "In Progress"
+msgstr "Dalam Proses"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Save"
+msgstr "Simpan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Close"
+msgstr "Tutup"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_list
+msgid "Start"
+msgstr "Mulai"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Start Weighing"
+msgstr "Mulai Timbang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_list
+msgid "Finish Weighing"
+msgstr "Selesai Timbang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Validate Step"
+msgstr "Validasi Step"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Validating this step will automatically create a picking. Continue?"
+msgstr "Validasi step ini akan membuat picking secara otomatis. Lanjutkan?"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_route_form
+msgid "Route Name"
+msgstr "Nama Rute"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__route_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_route_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_route_list
+msgid "Delivery Route"
+msgstr "Rute Pengiriman"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Route &amp; Date"
+msgstr "Rute & Tanggal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__transit_location_id
+msgid "Destination Transit Location"
+msgstr "Lokasi Transit Tujuan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Choose Warehouse..."
+msgstr "Pilih Gudang..."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__allowed_source_location_ids
+msgid "Allowed Source Locations"
+msgstr "Lokasi Sumber yang Diizinkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__location_id
+msgid "Location Source"
+msgstr "Lokasi Sumber"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__location_dest_id
+msgid "Location Destination"
+msgstr "Lokasi Tujuan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__sequence
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__sequence
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__sequence
+msgid "Sequence"
+msgstr "Urutan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__allowed_operator_ids
+msgid "Allowed Operators"
+msgstr "Operator yang Diizinkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__partner_id
+msgid "Partner / Destination Address"
+msgstr "Partner / Alamat Tujuan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+msgid "Address & Schedule"
+msgstr "Alamat & Jadwal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+msgid "Create Delivery Order (DO)"
+msgstr "Buat Delivery Order (DO)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+msgid "Create DO"
+msgstr "Buat DO"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__tare_qty
+msgid "Tare (kg)"
+msgstr "Berat Kosong Kendaraan (Tare)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__net_qty
+msgid "Actual Physical Weight (kg)"
+msgstr "Berat Fisik Aktual (kg)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Lot Information"
+msgstr "Informasi Lot"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__lot_id
+msgid "Lot No."
+msgstr "No. Lot"
+
+#. module: weightrack
+msgid "No. Lot"
+msgstr "No. Lot"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__allowed_weighing_location_ids
+msgid "Allowed Weighing Locations"
+msgstr "Lokasi Timbang yang Diizinkan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Difference Allocation (Plan)"
+msgstr "Alokasi Selisih (Rencana)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Allocation Qty"
+msgstr "Qty Alokasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Qty"
+msgstr "Qty"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Allocated Qty"
+msgstr "Qty Teralokasi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Unallocated Qty"
+msgstr "Qty Belum Teralokasi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__uom_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Unit"
+msgstr "Satuan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__do_lot_line_id
+msgid "Delivery Plan Lot Line"
+msgstr "Baris Rencana Lot DO"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Print Despatch Slip"
+msgstr "Cetak Despatch Slip"
+
+#. module: weightrack
+#: model:report.paperformat,name:weightrack.paperformat_delivery_slip
+msgid "Delivery Slip A4 Portrait"
+msgstr "Delivery Slip A4 Portrait"
+
+#. module: weightrack
+#: model:ir.actions.report,name:weightrack.action_report_delivery_slip
+msgid "Dokumen Delivery Order"
+msgstr "Dokumen Delivery Order"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Despatch Slip"
+msgstr "Despatch Slip"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Document Information"
+msgstr "Informasi Dokumen"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Expedition"
+msgstr "Ekspedisi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Delivery Letter"
+msgstr "Surat Jalan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Edit Document Information"
+msgstr "Edit Informasi Dokumen"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__driver_name
+msgid "Driver Name"
+msgstr "Nama Supir"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__handover_day_date_text
+msgid "Handover Day and Date (Text)"
+msgstr "Hari dan Tanggal Serah Terima (Teks)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__delivery_letter_no
+msgid "Delivery Letter Number"
+msgstr "Nomor Surat Jalan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__delivery_letter_date
+msgid "Delivery Letter Date"
+msgstr "Tanggal Surat Jalan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__delivery_letter_date_text
+msgid "Delivery Letter Date (Text)"
+msgstr "Tanggal Surat Jalan (Teks)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__so_number
+msgid "SO Number"
+msgstr "Nomor SO"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__document_do_number
+msgid "DO Number"
+msgstr "Nomor DO"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__receiver_name
+msgid "Receiver Name"
+msgstr "Nama Penerima"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__receiver_address
+msgid "Receiver Address"
+msgstr "Alamat Penerima"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__despatch_slip_no
+msgid "Despatch Slip Number"
+msgstr "Nomor Despatch Slip"
+
+#. module: weightrack
+#: model:report.paperformat,name:weightrack.paperformat_despatch_slip
+msgid "Despatch Slip A4 Portrait"
+msgstr "Despatch Slip A4 Portrait"
+
+#. module: weightrack
+msgid "Surat Jalan"
+msgstr "Surat Jalan"
+
+#. module: weightrack
+msgid "Surat Jalan A4 Landscape"
+msgstr "Surat Jalan A4 Landscape"
+
+#. module: weightrack
+msgid "Berita Acara Serah Terima Barang"
+msgstr "Berita Acara Serah Terima Barang"
+
+#. module: weightrack
+msgid "Berita Acara Serah Terima A4 Portrait"
+msgstr "Berita Acara Serah Terima A4 Portrait"
+
+#. module: weightrack
+msgid "Denah Penyegelan"
+msgstr "Denah Penyegelan"
+
+#. module: weightrack
+msgid "Denah Penyegelan A4 Portrait"
+msgstr "Denah Penyegelan A4 Portrait"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Warehouse Step"
+msgstr "Step Gudang"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Step Configuration"
+msgstr "Konfigurasi Step"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Picking Information"
+msgstr "Informasi Picking"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__picking_id
+msgid "Picking Document"
+msgstr "Dokumen Picking"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__picking_state
+msgid "Picking Status"
+msgstr "Status Picking"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__weighing_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Weighing Session"
+msgstr "Sesi Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__weighing_count
+msgid "Weighing Session Count"
+msgstr "Jumlah Sesi Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__is_last_step
+msgid "Last Step"
+msgstr "Step Terakhir"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_step_form
+msgid "Weigh"
+msgstr "Timbang"
+
+#. module: weightrack
+msgid "Address &amp; Schedule"
+msgstr "Alamat & Jadwal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_lot_allocation_popup
+msgid "Demand DO (kg)"
+msgstr "Demand DO (kg)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Lot Transit"
+msgstr "Lot Transit"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Steps"
+msgstr "Step"
+
+#. module: weightrack
+#: model:ir.actions.act_window,name:weightrack.action_wt_delivery_route
+msgid "Delivery Routes"
+msgstr "Rute Pengiriman"
+
+#. module: weightrack
+#: model_terms:ir.actions.act_window,help:weightrack.action_wt_delivery_route
+msgid "Create a New Delivery Route"
+msgstr "Buat Rute Pengiriman Baru"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+msgid "Only shows outgoing delivery operation types."
+msgstr "Hanya menampilkan tipe operasi pengiriman (outgoing)."
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+msgid "Choose the operator responsible for this DO."
+msgstr "Pilih operator yang bertanggung jawab atas DO ini."
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
+msgid "Destination address that will appear on the DO form."
+msgstr "Alamat tujuan pengiriman yang akan tampil di form DO."
+#. module: weightrack
+#: model_terms:ir.actions.act_window,help:weightrack.action_wt_delivery
+msgid "Create a delivery task, choose a route, confirm it, then manage each route line. Operators receive delivery lot lines from the Pull API."
+msgstr ""
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_route_line__route_type__outgoing
+msgid "Outgoing"
+msgstr ""
+
+#. module: weightrack
+#: model_terms:ir.actions.act_window,help:weightrack.action_wt_delivery_route
+msgid "Save a complete delivery flow for each route, including internal transfers, transit locations, and the final customer destination."
+msgstr ""
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_route_line__route_type__transit
+msgid "Transit"
+msgstr ""
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Receiver"
+msgstr "Penerima"
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Stock Information"
+msgstr "Informasi Stok"

@@ -25,7 +25,7 @@ class DeliveryStep(models.Model):
         index=True,
     )
     sequence = fields.Integer(
-        string="Urutan",
+        string="Sequence",
         default=10,
     )
     company_id = fields.Many2one(
@@ -36,7 +36,7 @@ class DeliveryStep(models.Model):
     )
     warehouse_id = fields.Many2one(
         "stock.warehouse",
-        string="Gudang",
+        string="Warehouse",
         required=True,
     )
     source_location_ids = fields.Many2many(
@@ -44,23 +44,23 @@ class DeliveryStep(models.Model):
         "wt_delivery_step_source_loc_rel",
         "step_id",
         "location_id",
-        string="Lokasi Asal",
+        string="Source Location",
         domain="[('usage', '=', 'internal')]",
         help="Lokasi stok asal di gudang ini (bisa lebih dari satu).",
     )
     transit_location_id = fields.Many2one(
         "stock.location",
-        string="Lokasi Transit Tujuan",
+        string="Destination Transit Location",
         domain="[('usage', 'in', ['internal', 'transit'])]",
         help="Diisi otomatis dari konfigurasi rute. Kosongkan jika step ini adalah step terakhir.",
     )
     requested_qty = fields.Float(
-        string="Kebutuhan (kg)",
+        string="Demand (kg)",
         digits="Product Unit of Measure",
         help="Total kuantitas yang dibutuhkan dari gudang/lokasi ini.",
     )
     net_qty = fields.Float(
-        string="Berat Fisik Aktual (kg)",
+        string="Actual Physical Weight (kg)",
         digits="Product Unit of Measure",
         readonly=True,
         copy=False,
@@ -69,26 +69,26 @@ class DeliveryStep(models.Model):
     weighing_ids = fields.One2many(
         "wt.weighing",
         "delivery_step_id",
-        string="Sesi Timbang",
+        string="Weighing Session",
     )
     weighing_count = fields.Integer(
-        string="Jumlah Sesi Timbang",
+        string="Weighing Session Count",
         compute="_compute_weighing_count",
     )
     picking_id = fields.Many2one(
         "stock.picking",
-        string="Dokumen Picking",
+        string="Picking Document",
         readonly=True,
         copy=False,
         help="Dokumen picking (Internal Transfer atau Outgoing DO) yang dibuat untuk step ini.",
     )
     picking_state = fields.Selection(
         related="picking_id.state",
-        string="Status Picking",
+        string="Picking Status",
         readonly=True,
     )
     is_last_step = fields.Boolean(
-        string="Step Terakhir",
+        string="Last Step",
         help=(
             "Jika dicentang, validasi step ini akan membuat Outgoing DO ke customer. "
             "Jika tidak, akan membuat Internal Transfer ke lokasi transit."
@@ -102,7 +102,7 @@ class DeliveryStep(models.Model):
         index=True,
         tracking=True,
     )
-    note = fields.Text(string="Catatan")
+    note = fields.Text(string="Notes")
 
     # ── Computed ──────────────────────────────────────────────────────────────
 

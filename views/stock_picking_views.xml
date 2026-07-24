@@ -1,66 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- ============================================================
-         Inherit stock.picking form view
-         Menambahkan ringkasan alokasi selisih timbang di tab Catatan
-         ============================================================ -->
     <record id="view_stock_picking_form_inherit_wt_notes" model="ir.ui.view">
-        <field name="name">stock.picking.form.inherit.wt.notes</field>
+        <field name="name">stock.picking.form.inherit.wt.notes.obsolete</field>
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="active" eval="False"/>
         <field name="arch" type="xml">
-
-            <!-- Sisipkan field hidden ke sheet agar bisa dipakai di invisible -->
-            <xpath expr="//sheet" position="before">
-                <field name="wt_has_allocation" invisible="1"/>
+            <xpath expr="//field[@name='origin']" position="attributes">
+                <attribute name="optional">show</attribute>
             </xpath>
-
-            <!-- Sisipkan section alokasi ke dalam tab Catatan (page name="note") -->
-            <xpath expr="//page[@name='note']" position="inside">
-                <separator string="Ringkasan Alokasi Selisih Timbang"/>
-
-                <!-- Tabel alokasi — tampil jika ada alokasi -->
-                <field name="wt_allocation_ids"
-                       nolabel="1"
-                       readonly="1"
-                       invisible="not wt_has_allocation">
-                    <list string="Alokasi Selisih"
-                          create="false"
-                          delete="false">
-                        <field name="move_line_id"
-                               string="Formulir Picking"
-                               readonly="1"/>
-                        <field name="lot_id"
-                               string="No. Lot"
-                               readonly="1"
-                               optional="show"/>
-                        <field name="reason_id"
-                               string="Alasan"
-                               readonly="1"/>
-                        <field name="qty"
-                               string="Qty Alokasi (kg)"
-                               readonly="1"/>
-                        <field name="uom_id"
-                               string="Satuan"
-                               readonly="1"/>
-                        <field name="location_dest_id"
-                               string="Lokasi Tujuan"
-                               readonly="1"/>
-                        <field name="note"
-                               string="Catatan"
-                               readonly="1"
-                               optional="show"/>
-                    </list>
-                </field>
-
-                <!-- Pesan jika tidak ada alokasi -->
-                <div class="text-muted fst-italic" invisible="wt_has_allocation">
-                    <i class="fa fa-info-circle me-1"/>
-                    Tidak ada alokasi selisih untuk pengiriman ini.
-                </div>
-
-            </xpath>
-
         </field>
     </record>
 

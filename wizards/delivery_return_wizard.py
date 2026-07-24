@@ -50,6 +50,11 @@ class DeliveryReturnWizard(models.TransientModel):
             return_picking_id = res.get("res_id")
             if return_picking_id:
                 return_picking = self.env["stock.picking"].browse(return_picking_id)
+                delivery.do_line_ids.filtered(
+                    lambda line: line.picking_id == picking
+                ).write({
+                    "return_picking_id": return_picking.id,
+                })
                 # Validasi otomatis return picking ke status 'done'
                 return_picking.with_context(
                     skip_backorder=True,
