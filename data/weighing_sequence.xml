@@ -21,5 +21,15 @@
             <field name="implementation">standard</field>
             <field name="company_id" eval="False"/>
         </record>
+        <record id="sequence_wt_shrinkage_tolerance_override" model="ir.sequence">
+            <field name="name">Override Toleransi Susut</field>
+            <field name="code">wt.shrinkage.tolerance.override</field>
+            <field name="prefix">STO/%(year)s%(month)s%(day)s/</field>
+            <field name="padding">3</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

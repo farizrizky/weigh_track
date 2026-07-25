@@ -28,7 +28,11 @@
                 <field name="name"/>
                 <field name="role"/>
                 <field name="employee_id"/>
-                <field name="status"/>
+                <field name="status" widget="badge"
+                       decoration-muted="status == 'inactive'"
+                       decoration-success="status == 'active'"
+                       decoration-warning="status == 'blocked'"
+                       decoration-danger="status == 'revoked'"/>
                 <field name="last_seen"/>
                 <field name="app_version" optional="show"/>
                 <field name="device_type" optional="show"/>

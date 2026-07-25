@@ -6,12 +6,7 @@
         <field name="name">wt.delivery.list</field>
         <field name="model">wt.delivery</field>
         <field name="arch" type="xml">
-            <list string="Delivery Task"
-                  decoration-info="state == 'draft'"
-                  decoration-primary="state in ('confirmed','in_progress')"
-                  decoration-success="state == 'done'"
-                  decoration-warning="state == 'returned'"
-                  decoration-danger="state == 'cancelled'">
+            <list string="Delivery Task">
                 <field name="name"/>
                 <field name="date"/>
                 <field name="partner_id" string="Customer" optional="show"/>
@@ -163,8 +158,7 @@
                                    context="{'default_delivery_id': id, 'default_company_id': company_id, 'default_route_id': route_id, 'default_partner_id': partner_id}">
                                 <list string="Delivery Plan"
                                       create="false"
-                                      delete="false"
-                                      decoration-success="picking_state == 'done'">
+                                      delete="false">
                                     <field name="sequence" widget="handle"/>
                                     <field name="route_id" column_invisible="1"/>
                                     <field name="route_line_id" column_invisible="1"/>
@@ -276,7 +270,10 @@
                                                 <field name="route_id" invisible="1" force_save="1"/>
                                                 <field name="route_line_id" invisible="1" force_save="1"/>
                                                 <field name="route_type" readonly="1"/>
-                                                <field name="route_process_status" readonly="1" widget="badge"/>
+                                                <field name="route_process_status" readonly="1" widget="badge"
+                                                       decoration-success="route_process_status == 'done'"
+                                                       decoration-info="route_process_status == 'in_process'"
+                                                       decoration-muted="route_process_status == 'preparation'"/>
                                                 <field name="picking_type_id"
                                                        options="{'no_create': True, 'no_open': True}"
                                                        readonly="1"
@@ -316,10 +313,7 @@
                                             <page string="Lot Details">
                                                 <field name="lot_line_ids" context="{'default_do_line_id': id}"
                                                        readonly="picking_state == 'done'">
-                                                    <list string="Lot Details" editable="bottom"
-                                                          decoration-info="wt_weighing_status == 'not_pulled'"
-                                                          decoration-warning="wt_weighing_status == 'unweighed'"
-                                                          decoration-success="wt_weighing_status == 'weighed'">
+                                                    <list string="Lot Details" editable="bottom">
                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}"/>
                                                         <field name="location_id" readonly="1" string="Location"/>
                                                         <field name="allowed_weighing_location_ids" column_invisible="1"/>
@@ -385,10 +379,7 @@
                                 <list string="Weighing Details"
                                       create="false"
                                       delete="false"
-                                      edit="false"
-                                      decoration-info="wt_weighing_status == 'not_pulled'"
-                                      decoration-warning="wt_weighing_status == 'unweighed'"
-                                      decoration-success="wt_weighing_status == 'weighed'">
+                                      edit="false">
                                     <field name="route_id" string="Route" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
                                     <field name="location_id" readonly="1" string="Location"/>

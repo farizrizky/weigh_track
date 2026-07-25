@@ -50,7 +50,11 @@
                 <field name="has_data_problem"/>
                 <field name="data_problem_code"/>
                 <field name="production_receipt_id"/>
-                <field name="state"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'not_receipted'"
+                       decoration-info="state == 'in_production_receipt'"
+                       decoration-success="state == 'receipt_validated'"
+                       decoration-danger="state == 'receipt_cancelled'"/>
             </list>
         </field>
     </record>
@@ -143,6 +147,21 @@
                                     <field name="manual_weighing_reason" readonly="state == 'receipt_validated'" required="is_manual_weighing"/>
                                     <field name="note" readonly="state == 'receipt_validated'"/>
                                 </group>
+                            </group>
+                            <group string="Shrinkage Tolerance Override">
+                                <group>
+                                    <field name="shrinkage_tolerance_override" readonly="1"/>
+                                    <field name="shrinkage_tolerance_override_id" readonly="1" invisible="not shrinkage_tolerance_override"/>
+                                    <field name="shrinkage_tolerance_override_by_id" readonly="1" invisible="not shrinkage_tolerance_override"/>
+                                    <field name="shrinkage_tolerance_override_at" readonly="1" invisible="not shrinkage_tolerance_override"/>
+                                    <field name="original_shrinkage_tolerance_percentage" readonly="1" invisible="not shrinkage_tolerance_override"/>
+                                    <field name="original_shrinkage_tolerance_weight" readonly="1" invisible="not shrinkage_tolerance_override"/>
+                                </group>
+                                <group>
+                                    <field name="original_production_weight" readonly="1" invisible="not shrinkage_tolerance_override"/>
+                                    <field name="original_net_weight" readonly="1" invisible="not shrinkage_tolerance_override"/>
+                                </group>
+                                <field name="shrinkage_tolerance_override_reason" readonly="1" colspan="4" invisible="not shrinkage_tolerance_override"/>
                             </group>
                         </page>
                         <page string="Initial Weighing">

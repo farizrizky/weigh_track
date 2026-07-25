@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_shrinkage_tolerance_override_search" model="ir.ui.view">
+        <field name="name">wt.shrinkage.tolerance.override.search</field>
+        <field name="model">wt.shrinkage.tolerance.override</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="company_id"/>
+                <field name="estate_id"/>
+                <field name="division_id"/>
+                <field name="foreman_id"/>
+                <field name="tapper_id"/>
+                <field name="production_date"/>
+                <field name="state"/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="applied" string="Applied" domain="[('state', '=', 'applied')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_shrinkage_tolerance_override_list" model="ir.ui.view">
+        <field name="name">wt.shrinkage.tolerance.override.list</field>
+        <field name="model">wt.shrinkage.tolerance.override</field>
+        <field name="arch" type="xml">
+            <list string="Override Toleransi Susut">
+                <field name="name"/>
+                <field name="production_date"/>
+                <field name="company_id"/>
+                <field name="estate_id"/>
+                <field name="division_id"/>
+                <field name="foreman_id" optional="show"/>
+                <field name="tapper_id" optional="show"/>
+                <field name="shrinkage_tolerance_percentage"/>
+                <field name="total_count"/>
+                <field name="applied_at"/>
+                <field name="applied_by_id"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'draft'"
+                       decoration-success="state == 'applied'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_shrinkage_tolerance_override_form" model="ir.ui.view">
+        <field name="name">wt.shrinkage.tolerance.override.form</field>
+        <field name="model">wt.shrinkage.tolerance.override</field>
+        <field name="arch" type="xml">
+            <form string="Override Toleransi Susut">
+                <header>
+                    <button name="action_preview" type="object" string="Muat Data Penimbangan" class="btn-secondary" invisible="state != 'draft'"/>
+                    <button name="action_apply" type="object" string="Apply Override" class="oe_highlight" invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,applied"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Filter">
+                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="estate_id" readonly="state != 'draft'"/>
+                            <field name="division_id" readonly="state != 'draft'"/>
+                            <field name="foreman_id" readonly="state != 'draft'"/>
+                            <field name="tapper_id" readonly="state != 'draft'"/>
+                            <field name="production_date" readonly="state != 'draft'"/>
+                        </group>
+                        <group string="Override">
+                            <field name="shrinkage_tolerance_percentage" readonly="state != 'draft'"/>
+                            <field name="reason" readonly="state != 'draft'" placeholder="Alasan"/>
+                            <field name="applied_at" readonly="1" invisible="state != 'applied'"/>
+                            <field name="applied_by_id" readonly="1" invisible="state != 'applied'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Data Timbangan">
+                            <field name="line_ids" readonly="state != 'draft'">
+                                <list string="Data Timbangan" create="0" edit="0" delete="1">
+                                    <field name="sequence" optional="hide"/>
+                                    <field name="weighing_id" options="{'no_open': False}"/>
+                                    <field name="production_receipt_id" optional="show"/>
+                                    <field name="weighing_state" widget="badge"
+                                           decoration-muted="weighing_state == 'not_receipted'"
+                                           decoration-info="weighing_state == 'in_production_receipt'"
+                                           decoration-success="weighing_state == 'receipt_validated'"
+                                           decoration-danger="weighing_state == 'receipt_cancelled'"/>
+                                    <field name="foreman_id"/>
+                                    <field name="tapper_id"/>
+                                    <field name="initial_weight"/>
+                                    <field name="reject_weight" optional="hide"/>
+                                    <field name="slab_weight" optional="hide"/>
+                                    <field name="current_shrinkage_tolerance_percentage" optional="show"/>
+                                    <field name="current_shrinkage_tolerance_weight" optional="hide"/>
+                                    <field name="current_production_weight" optional="show"/>
+                                    <field name="current_net_weight" optional="show"/>
+                                    <field name="new_shrinkage_tolerance_weight"/>
+                                    <field name="new_production_weight"/>
+                                    <field name="new_net_weight"/>
+                                    <field name="already_overridden"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_shrinkage_tolerance_override" model="ir.actions.act_window">
+        <field name="name">Override Toleransi Susut</field>
+        <field name="res_model">wt.shrinkage.tolerance.override</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_shrinkage_tolerance_override_search"/>
+        <field name="context">{}</field>
+    </record>
+</odoo>

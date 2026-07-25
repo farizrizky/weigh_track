@@ -26,7 +26,9 @@
             <list string="API Request Logs" create="false" edit="false" delete="false">
                 <field name="requested_at"/>
                 <field name="endpoint"/>
-                <field name="status"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'success'"
+                       decoration-danger="status == 'failed'"/>
                 <field name="http_status"/>
                 <field name="device_id"/>
                 <field name="device_record_id"/>
@@ -55,7 +57,9 @@
                         <group string="Request">
                             <field name="endpoint"/>
                             <field name="method"/>
-                            <field name="status"/>
+                            <field name="status" widget="badge"
+                                   decoration-success="status == 'success'"
+                                   decoration-danger="status == 'failed'"/>
                             <field name="http_status"/>
                             <field name="duration_ms"/>
                             <field name="requested_at"/>

@@ -11,9 +11,10 @@
             <menuitem id="menu_wt_tapper" name="Tappers" parent="menu_wt_master_data" action="action_wt_tapper" sequence="60" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_operations" name="Operations" parent="menu_wt_root" sequence="11" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_weighing" name="Weighing" parent="menu_wt_operations" action="action_wt_weighing" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_shrinkage_tolerance_override" name="Override Toleransi Susut" parent="menu_wt_operations" action="action_wt_shrinkage_tolerance_override" sequence="15" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_production_receipt" name="Production Receipt" parent="menu_wt_operations" action="action_wt_production_receipt" sequence="20" groups="weightrack.group_admin"/>
-            <menuitem id="menu_wt_stock_opname" name="Stock Opname" parent="menu_wt_operations" action="action_wt_stock_opname" sequence="20" groups="weightrack.group_admin"/>
-            <menuitem id="menu_wt_delivery" name="Pengiriman" parent="menu_wt_operations" action="action_wt_delivery" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_stock_opname" name="Stock Opname" parent="menu_wt_operations" action="action_wt_stock_opname" sequence="30" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_delivery" name="Pengiriman" parent="menu_wt_operations" action="action_wt_delivery" sequence="40" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_device" name="Device" parent="menu_wt_root" action="action_wt_device" sequence="12" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_reports" name="Reports" parent="menu_wt_root" sequence="13" groups="weightrack.group_admin"/>
         <record id="menu_wt_reports" model="ir.ui.menu">

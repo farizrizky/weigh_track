@@ -2,6 +2,7 @@
 
 import json
 
+import pytz
 from psycopg2 import IntegrityError
 
 from odoo import _, fields, models
@@ -202,7 +203,7 @@ class WeighingService(models.AbstractModel):
             return self._duplicate_item_response(item, existing)
 
         production_date = self._to_date(item.get("production_date"))
-        weighing_date = self._to_datetime(item.get("weighing_date"))
+        weighing_date = self._to_datetime(item.get("weighing_date"), bot_user)
         records = self._records_from_weighing_item(item, device.company_id)
         problem = self._evaluate_weighing_data_problem(
             item,
@@ -210,6 +211,7 @@ class WeighingService(models.AbstractModel):
             device,
             master_synced_at,
             production_date,
+            bot_user,
         )
         try:
             with self.env.cr.savepoint():
@@ -217,6 +219,7 @@ class WeighingService(models.AbstractModel):
                     self.env["wt.weighing"]
                     .with_user(bot_user)
                     .sudo()
+                    .with_context(tz=bot_user.tz or "UTC")
                     .create(
                         self._weighing_values(
                             item,
@@ -229,6 +232,7 @@ class WeighingService(models.AbstractModel):
                             sent_at,
                             received_at,
                             problem,
+                            bot_user,
                         )
                     )
                 )
@@ -276,6 +280,7 @@ class WeighingService(models.AbstractModel):
         sent_at,
         received_at,
         problem,
+        bot_user=False,
     ):
         initial = item.get("initial_weighing") or {}
         operator = item.get("operator") or {}
@@ -284,7 +289,7 @@ class WeighingService(models.AbstractModel):
         tapper = item.get("tapper") or {}
         product = item.get("product") or {}
         uom = product.get("uom") or {}
-        initial_device = self._initial_device(initial, device.company_id)
+        initial_device = records["initial_device"]
         initial_location = records["initial_weighing_location"]
         weighing_product = records["product"]
         uom_id = (
@@ -346,7 +351,10 @@ class WeighingService(models.AbstractModel):
             "is_manual_weighing": bool(item.get("is_manual_weighing")),
             "manual_weighing_reason": item.get("manual_weighing_reason"),
             "note": item.get("note"),
-            "initial_weighing_date": self._to_datetime(initial.get("weighing_date")),
+            "initial_weighing_date": self._to_datetime(
+                initial.get("weighing_date"),
+                bot_user,
+            ),
             "initial_weighing_location_id": initial_location.id or False,
             "initial_device_id": initial_device.id or False,
             "initial_weight": initial.get("weight") or 0.0,
@@ -404,11 +412,14 @@ class WeighingService(models.AbstractModel):
         )
         initial = item.get("initial_weighing") or {}
         initial = initial if isinstance(initial, dict) else {}
-        initial_location = self._browse(
-            "wt.weighing.location",
-            self._initial_weighing_location_id(initial),
-        )
+        initial_device = self._initial_device(initial, company)
         division = self._browse("wt.division", self._nested_id(item, "division"))
+        initial_location = self._initial_weighing_location_from_device(
+            initial_device,
+            company,
+            division,
+            location,
+        )
         foreman = self._foreman_from_employee_division(
             self._nested_employee_id(item, "foreman"),
             division,
@@ -443,6 +454,7 @@ class WeighingService(models.AbstractModel):
             "company": company,
             "estate": self._browse("wt.estate", self._nested_id(item, "estate")),
             "weighing_location": location,
+            "initial_device": initial_device,
             "initial_weighing_location": initial_location,
             "division": division,
             "product": product_mapping.product_id,
@@ -464,6 +476,7 @@ class WeighingService(models.AbstractModel):
         device,
         master_synced_at,
         production_date,
+        bot_user=False,
     ):
         issues = []
         notes_en = []
@@ -532,18 +545,16 @@ class WeighingService(models.AbstractModel):
         initial = item.get("initial_weighing") or {}
         initial = initial if isinstance(initial, dict) else {}
         initial_device_id = initial.get("device_id")
-        initial_location_id = self._initial_weighing_location_id(initial)
+        initial_device = records["initial_device"]
         initial_location = records["initial_weighing_location"]
         if initial.get("weighing_date") and not initial_device_id:
             add("missing_master", "Initial weighing device is required.")
-        if initial_device_id and not self._initial_device(initial, company):
+        if initial_device_id and not initial_device:
             add(
                 "missing_master",
                 "Initial weighing device was not found in Odoo.",
             )
-        if initial.get("weighing_date") and not initial_location_id:
-            add("missing_master", "Initial weighing location is required.")
-        if initial_location_id and not initial_location:
+        if initial.get("weighing_date") and initial_device and not initial_location:
             add(
                 "missing_master",
                 "Initial weighing location was not found in Odoo.",
@@ -769,8 +780,13 @@ class WeighingService(models.AbstractModel):
                 "Tapper foreman employee does not match weighing foreman.",
             )
 
-        self._evaluate_initial_weighing_date_rule(item, production_date, add)
-        self._evaluate_weighing_weight_rules(item, production_date, add)
+        self._evaluate_initial_weighing_date_rule(
+            item,
+            production_date,
+            add,
+            bot_user,
+        )
+        self._evaluate_weighing_weight_rules(item, production_date, add, bot_user)
 
         unique_issues = list(dict.fromkeys(issues))
         return {
@@ -784,9 +800,15 @@ class WeighingService(models.AbstractModel):
             ),
         }
 
-    def _evaluate_weighing_weight_rules(self, item, production_date, add):
+    def _evaluate_weighing_weight_rules(
+        self,
+        item,
+        production_date,
+        add,
+        bot_user=False,
+    ):
         initial = item.get("initial_weighing") or {}
-        weighing_date = self._to_datetime(item.get("weighing_date"))
+        weighing_date = self._to_datetime(item.get("weighing_date"), bot_user)
         production_weight = self._to_float(item.get("production_weight"))
         slab_weight = self._to_float(item.get("slab_weight"))
         reject_weight = self._to_float(item.get("reject_weight"))
@@ -814,7 +836,7 @@ class WeighingService(models.AbstractModel):
                 "Shrinkage tolerance weight must equal initial weight * shrinkage percentage.",
             )
 
-        if not self._is_after_production_date(production_date, weighing_date):
+        if not self._is_after_production_date(production_date, weighing_date, bot_user):
             return
 
         expected_production_weight = initial_weight - expected_shrinkage_weight
@@ -824,12 +846,21 @@ class WeighingService(models.AbstractModel):
                 "Production weight must equal initial weight minus shrinkage tolerance weight for cross-day weighing.",
             )
 
-    def _evaluate_initial_weighing_date_rule(self, item, production_date, add):
+    def _evaluate_initial_weighing_date_rule(
+        self,
+        item,
+        production_date,
+        add,
+        bot_user=False,
+    ):
         initial = item.get("initial_weighing") or {}
         if not initial.get("weighing_date"):
             return
         production_date_value = self._date_part(production_date)
-        initial_weighing_date_value = self._date_part(initial.get("weighing_date"))
+        initial_weighing_date_value = self._date_part(
+            initial.get("weighing_date"),
+            bot_user,
+        )
         if (
             production_date_value
             and initial_weighing_date_value
@@ -852,25 +883,23 @@ class WeighingService(models.AbstractModel):
                 "weighing_date",
                 "weight",
                 "device_id",
-                "weighing_location_id",
-                "weighing_location",
             )
         )
 
-    def _is_after_production_date(self, production_date, weighing_date):
+    def _is_after_production_date(self, production_date, weighing_date, bot_user=False):
         if not production_date or not weighing_date:
             return False
-        return self._date_part(weighing_date) > fields.Date.to_date(production_date)
+        return self._date_part(weighing_date, bot_user) > fields.Date.to_date(production_date)
 
-    def _date_part(self, value):
+    def _date_part(self, value, bot_user=False):
         if not value:
             return False
         if hasattr(value, "hour"):
-            return fields.Datetime.context_timestamp(self, value).date()
+            return self._user_datetime_date(value, bot_user)
         if isinstance(value, str) and ":" in value:
-            datetime_value = self._to_datetime(value)
+            datetime_value = self._to_datetime(value, bot_user)
             if datetime_value:
-                return fields.Datetime.context_timestamp(self, datetime_value).date()
+                return self._user_datetime_date(datetime_value, bot_user)
         return fields.Date.to_date(value)
 
     def _to_float(self, value):
@@ -1071,18 +1100,87 @@ class WeighingService(models.AbstractModel):
             domain.append(("company_id", "=", company.id))
         return self.env["wt.device"].sudo().search(domain, limit=1)
 
-    def _initial_weighing_location_id(self, initial):
-        if not isinstance(initial, dict):
-            return False
-        return initial.get("weighing_location_id") or self._payload_id(
-            initial.get("weighing_location") or {}
+    def _initial_weighing_location_from_device(
+        self,
+        initial_device,
+        company,
+        division=False,
+        final_location=False,
+    ):
+        if not initial_device or not initial_device.employee_id:
+            return self.env["wt.weighing.location"].browse()
+
+        base_domain = [
+            ("location_type", "=", "field"),
+            ("operator_id", "=", initial_device.employee_id.id),
+        ]
+        if company:
+            base_domain.append(("company_id", "=", company.id))
+
+        prioritized_domains = []
+        if final_location and division:
+            prioritized_domains.append(
+                base_domain
+                + [
+                    ("warehouse_weighing_location_id", "=", final_location.id),
+                    ("allowed_division_ids", "in", division.id),
+                ]
+            )
+        if final_location:
+            prioritized_domains.append(
+                base_domain
+                + [("warehouse_weighing_location_id", "=", final_location.id)]
+            )
+        if division:
+            prioritized_domains.append(
+                base_domain + [("allowed_division_ids", "in", division.id)]
+            )
+        prioritized_domains.append(base_domain)
+
+        location_model = self.env["wt.weighing.location"].sudo().with_context(
+            active_test=False
         )
+        for domain in prioritized_domains:
+            location = location_model.search(domain, limit=1, order="active desc, id")
+            if location:
+                return location
+        return location_model.browse()
 
     def _to_date(self, value):
         return fields.Date.to_date(value) if value else False
 
-    def _to_datetime(self, value):
-        return fields.Datetime.to_datetime(value) if value else False
+    def _to_datetime(self, value, bot_user=False):
+        datetime_value = fields.Datetime.to_datetime(value) if value else False
+        if not datetime_value:
+            return False
+        if datetime_value.tzinfo:
+            return datetime_value.astimezone(pytz.UTC).replace(tzinfo=None)
+
+        tz_name = bot_user.tz if bot_user and bot_user.tz else "UTC"
+        try:
+            user_tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            user_tz = pytz.UTC
+        try:
+            localized = user_tz.localize(datetime_value, is_dst=None)
+        except (pytz.AmbiguousTimeError, pytz.NonExistentTimeError):
+            localized = user_tz.localize(datetime_value, is_dst=False)
+        return localized.astimezone(pytz.UTC).replace(tzinfo=None)
+
+    def _user_datetime_date(self, value, bot_user=False):
+        if not value:
+            return False
+        if value.tzinfo:
+            utc_value = value.astimezone(pytz.UTC)
+        else:
+            utc_value = pytz.UTC.localize(value)
+
+        tz_name = bot_user.tz if bot_user and bot_user.tz else "UTC"
+        try:
+            user_tz = pytz.timezone(tz_name)
+        except pytz.UnknownTimeZoneError:
+            user_tz = pytz.UTC
+        return utc_value.astimezone(user_tz).date()
 
     def _is_valid_date(self, value):
         try:

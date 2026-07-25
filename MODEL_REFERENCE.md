@@ -891,6 +891,10 @@ Field utama:
 | `slab_weight` | `Float` | Berat slab. |
 | `net_weight` | `Float` | Berat net. |
 | `shrinkage_tolerance_percentage`, `shrinkage_tolerance_weight` | `Float` | Persentase dan berat toleransi penyusutan. |
+| `shrinkage_tolerance_override` | `Boolean` | True jika toleransi susut pernah dioverride. |
+| `shrinkage_tolerance_override_reason`, `shrinkage_tolerance_override_at`, `shrinkage_tolerance_override_by_id` | Audit | Alasan, waktu, dan user override toleransi susut terakhir. |
+| `shrinkage_tolerance_override_id` | `Many2one(wt.shrinkage.tolerance.override)` | Dokumen override batch terakhir yang mengubah data timbang. |
+| `original_shrinkage_tolerance_percentage`, `original_shrinkage_tolerance_weight`, `original_production_weight`, `original_net_weight` | `Float` readonly | Nilai awal sebelum override pertama, disimpan untuk audit. |
 | `initial_weighing_date`, `initial_weight` | Initial weighing | Waktu dan berat penimbangan awal. |
 | `initial_weighing_location_id` | `Many2one(wt.weighing.location)` | Lokasi timbang awal/lapangan. Wajib bertipe `field` jika diisi. |
 | `initial_device_id` | `Many2one(wt.device)` | Device penimbangan awal (`By Device`). |
@@ -910,6 +914,7 @@ Aturan:
 - Idempotency hanya berlaku untuk data API.
 - Data manual baru menyimpan `local_id`, `device_id`, `device_record_id`, dan `batch_local_id` sebagai null.
 - Data API mewajibkan `local_id`, `device_id`, dan `device_record_id`.
+- Datetime dari push API (`weighing_date`, `initial_weighing.weighing_date`, `master_synced_at`, `sent_at`, dan delivery `weighed_at`) dibaca sebagai waktu lokal timezone bot user API, lalu dikonversi ke UTC sebelum disimpan oleh Odoo.
 - Product dan UoM pada input manual maupun API diprioritaskan dari mapping aktif `wt.product` berdasarkan company dan readonly pada UI.
 - Weighing Location final wajib bertipe `warehouse`.
 - Detail weighing tidak lagi divalidasi langsung dari form Weighing; validasi resmi dilakukan dari Production Receipt.
@@ -919,6 +924,8 @@ Aturan:
 - Field petugas mengunci nama dan barcode pada `hr.employee` langsung, bukan pada struktur assignment foreman/tapper yang bisa berubah.
 - Reverse tracking foreman: employee -> `wt.foreman` -> division.
 - Reverse tracking tapper: employee -> `wt.tapper` -> division dan foreman -> employee foreman.
+- Override toleransi susut dilakukan dari menu `Operations > Override Toleransi Susut` melalui model persistent `wt.shrinkage.tolerance.override`. Override dapat dilakukan walaupun data tidak sedang problem, selama status weighing bukan `receipt_validated`.
+- Saat override diterapkan, sistem menghitung ulang `shrinkage_tolerance_percentage`, `shrinkage_tolerance_weight`, `production_weight`, dan `net_weight`, lalu menjalankan recheck data problem melalui perubahan data timbang.
 
 Validasi backend untuk Production Receipt:
 
@@ -1010,6 +1017,64 @@ Flow:
 - Tombol `Cancel` membuka wizard alasan pembatalan. Setelah alasan dikonfirmasi, sistem membuat Inventory Reversal otomatis dengan lokasi terbalik, lot yang sama, dan quantity yang sama.
 - Cancel ditolak jika stock lot di receiving location original tidak mencukupi untuk dibalik.
 - Setelah reversal berhasil, Production Receipt menyimpan `cancel_reason`, menjadi `cancelled`, dan data timbang menjadi `receipt_cancelled`.
+
+## Override Toleransi Susut
+
+Menu:
+
+```text
+WeighTrack > Operations > Override Toleransi Susut
+```
+
+Model teknis:
+
+```text
+wt.shrinkage.tolerance.override
+wt.shrinkage.tolerance.override.line
+```
+
+Deskripsi:
+
+Override Toleransi Susut adalah dokumen transaksi untuk menyimpan histori override gelondongan. Setiap record menyimpan filter, persentase, alasan, status apply, user apply, waktu apply, dan line snapshot kandidat data timbang.
+
+Field header utama:
+
+| Field | Type | Keterangan |
+| --- | --- | --- |
+| `name` | `Char` | Nomor dari `ir.sequence` `wt.shrinkage.tolerance.override`, format `STO/YYYYMMDD/NNN`. |
+| `company_id`, `estate_id`, `division_id` | Scope wajib | Perusahaan, estate, dan divisi data timbang. |
+| `foreman_id`, `tapper_id` | Scope opsional | Filter mandor dan tapper. Jika kosong, semua dalam scope ikut dipilih. |
+| `production_date` | `Date` | Tanggal produksi. |
+| `shrinkage_tolerance_percentage` | `Float` | Persentase toleransi susut baru. |
+| `reason` | `Text` | Alasan kebijakan override. |
+| `line_ids` | `One2many(wt.shrinkage.tolerance.override.line)` | Snapshot data timbang yang dipilih untuk override. |
+| `total_count` | `Integer computed stored` | Jumlah data timbang yang dipilih. |
+| `state` | `Selection` | `draft` atau `applied`. |
+| `applied_at`, `applied_by_id` | Audit | Waktu dan user yang menjalankan apply. |
+
+Field line utama:
+
+| Field | Type | Keterangan |
+| --- | --- | --- |
+| `override_id` | `Many2one(wt.shrinkage.tolerance.override)` | Header override. |
+| `weighing_id` | `Many2one(wt.weighing)` | Data timbang kandidat. |
+| `production_receipt_id` | `Many2one(wt.production.receipt)` | Receipt saat preview/apply, jika ada. |
+| `weighing_state` | `Selection` | Status weighing saat preview. |
+| `foreman_id`, `tapper_id` | Relasi | Mandor dan tapper saat preview. |
+| `initial_weight`, `reject_weight`, `slab_weight` | `Float` | Berat dasar yang dipakai hitung ulang. |
+| `current_*` | `Float` | Nilai sebelum override saat preview. |
+| `new_*` | `Float` | Nilai hasil perhitungan override. |
+| `already_overridden` | `Boolean` | True jika weighing sudah pernah dioverride sebelumnya. |
+
+Aturan:
+
+- Kandidat hanya `wt.weighing` dengan `initial_weighing_date` terisi dan `initial_weight > 0`.
+- Kandidat hanya data dengan status weighing bukan `receipt_validated`.
+- Kandidat hanya data yang tidak memiliki data problem (`has_data_problem = False`).
+- User dapat menghapus baris pada tab `Data Timbangan` sebelum apply untuk menentukan final data yang dioverride.
+- Preview menghitung berat toleransi baru, berat produksi baru, dan berat net baru.
+- Data dengan hasil `production_weight <= 0` atau `net_weight <= 0` tidak dimasukkan ke line preview.
+- Apply menulis override ke masing-masing `wt.weighing` yang tersisa di line dan mempertahankan nilai original sebelum override pertama.
 
 Kode data problem:
 

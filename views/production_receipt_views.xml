@@ -42,7 +42,11 @@
                 <field name="data_problem_count"/>
                 <field name="total_bag" sum="Total"/>
                 <field name="total_stock_weight" sum="Total"/>
-                <field name="state"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'draft'"
+                       decoration-info="state == 'processed'"
+                       decoration-success="state == 'validated'"
+                       decoration-danger="state == 'cancelled'"/>
             </list>
         </field>
     </record>

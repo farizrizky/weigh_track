@@ -80,6 +80,7 @@ msgstr "Aktif"
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -114,6 +115,7 @@ msgstr "Konfigurasi"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__estate_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__estate_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__estate_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__estate_id
 msgid "Estate"
 msgstr "Estate"
 
@@ -185,6 +187,8 @@ msgstr "Nama Cuaca"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__division_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__division_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__division_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_division_form
 msgid "Division"
 msgstr "Divisi"
@@ -206,6 +210,8 @@ msgstr "Nama Divisi"
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role__role__clerk
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_device__role__clerk
 #: model:ir.model.fields,field_description:weightrack.field_wt_division__clerk_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__clerk_employee_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__clerk_employee_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
 msgid "Clerk"
 msgstr "Kerani"
@@ -446,14 +452,8 @@ msgstr "Jabatan"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_receipt_rule_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__product_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__product_id
-msgid "Product"
-msgstr "Produk"
-
-#. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_product__product
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__product
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__product_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__product_id
 msgid "Product"
 msgstr "Produk"
 
@@ -473,18 +473,20 @@ msgstr "Satuan"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_form
 #: model:ir.ui.menu,name:weightrack.menu_wt_shrinkage_tolerance
 msgid "Shrinkage Tolerance"
-msgstr "Toleransi Penyusutan"
+msgstr "Toleransi Susut"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_list
 #: model:ir.actions.act_window,name:weightrack.action_wt_shrinkage_tolerance
 msgid "Shrinkage Tolerances"
-msgstr "Toleransi Penyusutan"
+msgstr "Toleransi Susut"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance__shrinkage_tolerance_percentage
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__shrinkage_tolerance_percentage
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__shrinkage_tolerance_percentage
 msgid "Shrinkage Tolerance (%)"
-msgstr "Toleransi Penyusutan (%)"
+msgstr "Toleransi Susut (%)"
 
 #. module: weightrack
 #: model:ir.model.fields,help:weightrack.field_wt_shrinkage_tolerance__shrinkage_tolerance_percentage
@@ -537,6 +539,7 @@ msgstr "Lokasi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__operation_type_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__operation_type_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__picking_type_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__picking_type_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__picking_type_id
@@ -551,6 +554,8 @@ msgstr "Tipe Operasi"
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_weighing_location
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__weighing_location_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__weighing_location_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__weighing_location_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__weighing_location_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
@@ -571,6 +576,7 @@ msgstr "Nama Lokasi Timbang"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__warehouse_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__warehouse_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__warehouse_id
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_location__location_type__warehouse
 msgid "Warehouse"
@@ -578,6 +584,14 @@ msgstr "Gudang"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance__product__weighing
+#: model:ir.model,name:weightrack.model_wt_weighing
+#: model:ir.actions.act_window,name:weightrack.action_wt_weighing
+#: model:ir.ui.menu,name:weightrack.menu_wt_weighing
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_list
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__line_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__weighing_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Weighing"
 msgstr "Penimbangan"
 
@@ -622,6 +636,8 @@ msgstr "Produk yang Diizinkan"
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__foreman_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__foreman_employee_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__foreman_employee_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__foreman_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__foreman_id
 #: code:addons/weightrack/constants/roles.py:0
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
@@ -653,6 +669,8 @@ msgstr "Tanpa Mandor"
 #: model:ir.model,name:weightrack.model_wt_tapper
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_employee_role__role__tapper
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper__employee_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__tapper_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__tapper_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_form
 #: code:addons/weightrack/constants/roles.py:0
 msgid "Tapper"
@@ -719,9 +737,11 @@ msgstr "Penugasan"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__status
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__state
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__state
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__state
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__state
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__state
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Status"
 msgstr "Status"
@@ -775,6 +795,7 @@ msgstr "Aksi"
 #: model:ir.model.fields,field_description:weightrack.field_wt_device_state_reason_wizard__reason
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_state_reason_wizard_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__reason_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__reason
 msgid "Reason"
 msgstr "Alasan"
 
@@ -1241,33 +1262,21 @@ msgid "Inbound Weighing Product"
 msgstr "Produk Inbound Penimbangan"
 
 #. module: weightrack
-#: model:ir.model,name:weightrack.model_wt_weighing
-#: model:ir.actions.act_window,name:weightrack.action_wt_weighing
-#: model:ir.ui.menu,name:weightrack.menu_wt_weighing
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_list
-msgid "Weighing"
-msgstr "Penimbangan"
-
-#. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_api_push_inbound_weighing_service
 msgid "API Push Inbound Weighing Service"
 msgstr "Service API Push Inbound Penimbangan"
 
 #. module: weightrack
-#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__draft
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__draft
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__draft
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override__state__draft
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_search
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Draft"
 msgstr "Draft"
 
 #. module: weightrack
-#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__validated
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__validated
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_search
 msgid "Validated"
 msgstr "Tervalidasi"
@@ -1276,11 +1285,13 @@ msgstr "Tervalidasi"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__production_date
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__production_date
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__production_date
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__production_date
 msgid "Production Date"
 msgstr "Tanggal Produksi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__has_data_problem
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__has_data_problem
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
 msgid "Has Data Problem"
 msgstr "Ada Masalah Data"
@@ -1422,6 +1433,7 @@ msgstr "Stok Inbound"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__name
 msgid "Number"
 msgstr "Nomor"
 
@@ -1850,18 +1862,20 @@ msgstr "Diterima Pada"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__reject_weight
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__reject_weight
 msgid "Reject Weight"
 msgstr "Berat Reject"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__slab_weight
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__slab_weight
 msgid "Slab Weight"
 msgstr "Berat Slab"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__shrinkage_tolerance_weight
 msgid "Shrinkage Tolerance Weight"
-msgstr "Berat Toleransi Penyusutan"
+msgstr "Berat Toleransi Susut"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__is_manual_weighing
@@ -1903,6 +1917,7 @@ msgstr "Nomor Badge"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__initial_weight
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__initial_weight
 msgid "Initial Weight"
 msgstr "Berat Penimbangan Lapangan"
 
@@ -1960,6 +1975,7 @@ msgstr "Sequence Penerimaan Produksi belum dikonfigurasi."
 #: model:ir.model.fields,field_description:weightrack.field_stock_picking__production_receipt_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__production_receipt_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__receipt_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__production_receipt_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_list
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 #: model:ir.actions.act_window,name:weightrack.action_wt_production_receipt
@@ -1977,18 +1993,29 @@ msgid "Receipt Status"
 msgstr "Status Penerimaan"
 
 #. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__not_receipted
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__not_receipted
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
 msgid "Not Receipted"
 msgstr "Belum Diterima"
 
 #. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__in_production_receipt
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__in_production_receipt
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
 msgid "In Production Receipt"
 msgstr "Dalam Penerimaan Produksi"
 
 #. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__receipt_validated
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__receipt_validated
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
 msgid "Receipt Validated"
 msgstr "Penerimaan Tervalidasi"
 
 #. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__receipt_cancelled
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__receipt_cancelled
 msgid "Receipt Cancelled"
 msgstr "Penerimaan Dibatalkan"
 
@@ -2028,6 +2055,7 @@ msgid "Total Stock Weight"
 msgstr "Total Berat Stock"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__stock_weight
 msgid "Stock Weight"
 msgstr "Berat Stock"
 
@@ -2035,12 +2063,6 @@ msgstr "Berat Stock"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 msgid "Weighing Number"
 msgstr "Nomor Timbang"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__line_ids
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
-msgid "Weighing"
-msgstr "Penimbangan"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
@@ -2379,68 +2401,6 @@ msgstr "Item penimbangan kosong."
 #: code:addons/weightrack/services/weighing_service.py:0
 msgid "Each weighing item must be an object."
 msgstr "Setiap item penimbangan harus berupa object."
-# -----------------------------------------------------------------------------
-# Production Receipt field labels
-# -----------------------------------------------------------------------------
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__product_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__product_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__product_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__product_id
-msgid "Product"
-msgstr "Produk"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__clerk_employee_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__clerk_employee_id
-msgid "Clerk"
-msgstr "Kerani"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__operation_type_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__picking_type_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__picking_type_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__picking_type_id
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
-msgid "Operation Type"
-msgstr "Tipe Operasi"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__warehouse_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__warehouse_id
-msgid "Warehouse"
-msgstr "Gudang"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__weighing_location_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__weighing_location_id
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
-msgid "Weighing Location"
-msgstr "Lokasi Timbang"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__has_data_problem
-msgid "Has Data Problem"
-msgstr "Ada Masalah Data"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__stock_weight
-msgid "Stock Weight"
-msgstr "Berat Stock"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
-msgid "Weighing Number"
-msgstr "Nomor Timbang"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_line_handover_form
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
-msgid "Weight"
-msgstr "Berat"
-
 #. module: weightrack
 msgid "Allowed Warehouses"
 msgstr "Gudang yang Diizinkan"
@@ -2465,6 +2425,7 @@ msgstr "Waktu Timbang"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_weighing_status
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__weighing_state
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Weighing Status"
 msgstr "Status Timbang"
@@ -3535,3 +3496,248 @@ msgstr "Lokasi timbang Gudang harus berada pada estate yang sama."
 #. module: weightrack
 msgid "Field weighing location divisions must be allowed by the selected warehouse weighing location."
 msgstr "Divisi lokasi timbang Lapangan harus termasuk divisi yang diizinkan pada lokasi timbang Gudang yang dipilih."
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
+msgid "Override Shrinkage Tolerance"
+msgstr "Override Toleransi Susut"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_shrinkage_tolerance_override
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__shrinkage_tolerance_override
+msgid "Shrinkage Tolerance Override"
+msgstr "Override Toleransi Susut"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__shrinkage_tolerance_override_reason
+msgid "Shrinkage Tolerance Override Reason"
+msgstr "Alasan Override Toleransi Susut"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__shrinkage_tolerance_override_at
+msgid "Shrinkage Tolerance Override At"
+msgstr "Waktu Override Toleransi Susut"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__shrinkage_tolerance_override_by_id
+msgid "Shrinkage Tolerance Override By"
+msgstr "User Override Toleransi Susut"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__original_shrinkage_tolerance_percentage
+msgid "Original Shrinkage Tolerance (%)"
+msgstr "Toleransi Susut Awal (%)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__original_shrinkage_tolerance_weight
+msgid "Original Shrinkage Tolerance Weight"
+msgstr "Berat Toleransi Susut Awal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__original_production_weight
+msgid "Original Production Weight"
+msgstr "Berat Produksi Awal"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__original_net_weight
+msgid "Original Net Weight"
+msgstr "Berat Net Awal"
+
+#. module: weightrack
+msgid "Current"
+msgstr "Saat Ini"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
+msgid "Filter"
+msgstr "Filter"
+
+#. module: weightrack
+msgid "Preview"
+msgstr "Preview"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
+msgid "Muat Data Penimbangan"
+msgstr "Muat Data Penimbangan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
+msgid "Data Timbangan"
+msgstr "Data Timbangan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__override_id
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
+msgid "Override"
+msgstr "Override"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__current_shrinkage_tolerance_percentage
+msgid "Current Shrinkage Tolerance (%)"
+msgstr "Toleransi Susut Saat Ini (%)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__current_shrinkage_tolerance_weight
+msgid "Current Shrinkage Tolerance Weight"
+msgstr "Berat Toleransi Susut Saat Ini"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__current_production_weight
+msgid "Current Production Weight"
+msgstr "Berat Produksi Saat Ini"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__current_net_weight
+msgid "Current Net Weight"
+msgstr "Berat Net Saat Ini"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__new_shrinkage_tolerance_weight
+msgid "New Shrinkage Tolerance Weight"
+msgstr "Berat Toleransi Susut Baru"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__new_production_weight
+msgid "New Production Weight"
+msgstr "Berat Produksi Baru"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__new_net_weight
+msgid "New Net Weight"
+msgstr "Berat Net Baru"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
+msgid "Apply Override"
+msgstr "Terapkan Override"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__line_ids
+msgid "Lines"
+msgstr "Line"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__total_count
+msgid "Selected Weighing Count"
+msgstr "Jumlah Data Timbang Dipilih"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override__state__applied
+msgid "Applied"
+msgstr "Diterapkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__applied_at
+msgid "Applied At"
+msgstr "Waktu Diterapkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__applied_by_id
+msgid "Applied By"
+msgstr "User yang Menerapkan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__already_overridden
+msgid "Already Overridden"
+msgstr "Sudah Dioverride"
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "No weighing records selected for override."
+msgstr "Belum ada data timbang yang dipilih untuk override."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__shrinkage_tolerance_override_id
+msgid "Shrinkage Tolerance Override Reference"
+msgstr "Referensi Override Toleransi Susut"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_shrinkage_tolerance_override_line
+msgid "Shrinkage Tolerance Override Line"
+msgstr "Line Override Toleransi Susut"
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "Shrinkage Tolerance Override sequence is not configured."
+msgstr "Sequence Override Toleransi Susut belum dikonfigurasi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "Applied Shrinkage Tolerance Override cannot be changed."
+msgstr "Override Toleransi Susut yang sudah diterapkan tidak bisa diubah."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "Applied Shrinkage Tolerance Override cannot be deleted."
+msgstr "Override Toleransi Susut yang sudah diterapkan tidak bisa dihapus."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "Only Draft overrides can be applied."
+msgstr "Hanya override Draft yang bisa diterapkan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "Only Draft overrides can be previewed."
+msgstr "Hanya override Draft yang bisa dipreview."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Shrinkage tolerance override reason is required."
+msgstr "Alasan override toleransi susut wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Shrinkage tolerance override percentage must be between 0 and 100."
+msgstr "Persentase override toleransi susut harus antara 0 dan 100."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "New Shrinkage Tolerance (%) must be between 0 and 100."
+msgstr "Toleransi Susut Baru (%) harus antara 0 dan 100."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Production Weight after override must be greater than zero."
+msgstr "Berat Produksi setelah override harus lebih besar dari nol."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Net Weight after override must be greater than zero."
+msgstr "Berat Net setelah override harus lebih besar dari nol."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Shrinkage tolerance cannot be overridden after validation or cancellation."
+msgstr "Toleransi susut tidak bisa dioverride setelah validasi atau pembatalan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Shrinkage tolerance cannot be overridden for weighing with data problem."
+msgstr "Toleransi susut tidak bisa dioverride untuk data timbang yang masih memiliki masalah data."
+
+#. module: weightrack
+#: code:addons/weightrack/models/shrinkage_tolerance_override.py:0
+msgid "Only Draft override lines can be deleted."
+msgstr "Baris override hanya bisa dihapus saat status masih Draft."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Shrinkage tolerance can only be overridden before receipt validation."
+msgstr "Toleransi susut hanya bisa dioverride sebelum penerimaan divalidasi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Shrinkage tolerance cannot be overridden for Receipt Validated weighing."
+msgstr "Toleransi susut tidak bisa dioverride untuk data timbang yang sudah Receipt Validated."
+
+#. module: weightrack
+#: code:addons/weightrack/models/weighing.py:0
+msgid "Shrinkage tolerance override requires initial weighing data."
+msgstr "Override toleransi susut membutuhkan data penimbangan awal."

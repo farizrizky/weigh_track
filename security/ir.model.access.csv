@@ -67,3 +67,5 @@ access_wt_stock_out_report_admin,access.wt.stock.out.report.admin,model_wt_stock
 access_wt_stock_out_report_summary_line_admin,access.wt.stock.out.report.summary.line.admin,model_wt_stock_out_report_summary_line,group_admin,1,1,1,1
 access_wt_stock_out_report_detail_line_admin,access.wt.stock.out.report.detail.line.admin,model_wt_stock_out_report_detail_line,group_admin,1,1,1,1
 access_wt_stock_out_report_wizard_admin,access.wt.stock.out.report.wizard.admin,model_wt_stock_out_report_wizard,group_admin,1,1,1,1
+access_wt_shrinkage_tolerance_override_admin,access.wt.shrinkage.tolerance.override.admin,model_wt_shrinkage_tolerance_override,group_admin,1,1,1,1
+access_wt_shrinkage_tolerance_override_line_admin,access.wt.shrinkage.tolerance.override.line.admin,model_wt_shrinkage_tolerance_override_line,group_admin,1,1,1,1

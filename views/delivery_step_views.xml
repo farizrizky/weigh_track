@@ -81,7 +81,11 @@
                                 <field name="weighing_date"/>
                                 <field name="product_id"/>
                                 <field name="net_weight"/>
-                                <field name="state" widget="badge"/>
+                                <field name="state" widget="badge"
+                                       decoration-muted="state == 'not_receipted'"
+                                       decoration-info="state == 'in_production_receipt'"
+                                       decoration-success="state == 'receipt_validated'"
+                                       decoration-danger="state == 'receipt_cancelled'"/>
                             </list>
                         </field>
                     </group>
@@ -107,11 +111,7 @@
         <field name="name">wt.delivery.step.list</field>
         <field name="model">wt.delivery.step</field>
         <field name="arch" type="xml">
-            <list string="Warehouse Steps"
-                  decoration-success="state == 'done'"
-                  decoration-primary="state == 'weighing'"
-                  decoration-warning="state == 'weighing_done'"
-                  decoration-danger="state == 'cancelled'">
+            <list string="Warehouse Steps">
                 <field name="sequence" widget="handle"/>
                 <field name="warehouse_id"/>
                 <field name="source_location_ids" widget="many2many_tags"/>

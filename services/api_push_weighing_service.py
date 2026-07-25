@@ -46,8 +46,11 @@ class ApiPushWeighingService(models.AbstractModel):
             return item_validation
 
         now = fields.Datetime.now()
-        master_synced_at = self._to_datetime(payload.get("master_synced_at"))
-        sent_at = self._to_datetime(payload.get("sent_at"))
+        master_synced_at = handler._to_datetime(
+            payload.get("master_synced_at"),
+            bot_user,
+        )
+        sent_at = handler._to_datetime(payload.get("sent_at"), bot_user)
 
         item_results = handler.process_items(
             items,
@@ -133,9 +136,6 @@ class ApiPushWeighingService(models.AbstractModel):
                 }
             ),
         }
-
-    def _to_datetime(self, value):
-        return fields.Datetime.to_datetime(value) if value else False
 
     def _is_valid_datetime(self, value):
         try:

@@ -366,6 +366,57 @@ class Weighing(models.Model):
         string="Shrinkage Tolerance Weight",
         tracking=True,
     )
+    shrinkage_tolerance_override = fields.Boolean(
+        string="Shrinkage Tolerance Override",
+        default=False,
+        copy=False,
+        tracking=True,
+    )
+    shrinkage_tolerance_override_reason = fields.Text(
+        string="Shrinkage Tolerance Override Reason",
+        copy=False,
+        tracking=True,
+    )
+    shrinkage_tolerance_override_at = fields.Datetime(
+        string="Shrinkage Tolerance Override At",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    shrinkage_tolerance_override_by_id = fields.Many2one(
+        "res.users",
+        string="Shrinkage Tolerance Override By",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    shrinkage_tolerance_override_id = fields.Many2one(
+        "wt.shrinkage.tolerance.override",
+        string="Shrinkage Tolerance Override Reference",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    original_shrinkage_tolerance_percentage = fields.Float(
+        string="Original Shrinkage Tolerance (%)",
+        readonly=True,
+        copy=False,
+    )
+    original_shrinkage_tolerance_weight = fields.Float(
+        string="Original Shrinkage Tolerance Weight",
+        readonly=True,
+        copy=False,
+    )
+    original_production_weight = fields.Float(
+        string="Original Production Weight",
+        readonly=True,
+        copy=False,
+    )
+    original_net_weight = fields.Float(
+        string="Original Net Weight",
+        readonly=True,
+        copy=False,
+    )
     is_manual_weighing = fields.Boolean(
         string="Manual Weighing",
         tracking=True,
@@ -569,6 +620,75 @@ class Weighing(models.Model):
                 detail.data_problem_note = (
                     detail.data_problem_note_en or detail.data_problem_note_idn
                 )
+
+    def action_apply_shrinkage_tolerance_override(
+        self, percentage, reason, override_record=False
+    ):
+        percentage = float(percentage or 0.0)
+        reason = (reason or "").strip()
+        if not reason:
+            raise ValidationError(
+                _("Shrinkage tolerance override reason is required.")
+            )
+        if percentage < 0 or percentage > 100:
+            raise ValidationError(
+                _("Shrinkage tolerance override percentage must be between 0 and 100.")
+            )
+        for weighing in self:
+            weighing._check_can_override_shrinkage_tolerance()
+            tolerance_weight = weighing.initial_weight * percentage / 100.0
+            production_weight = weighing.initial_weight - tolerance_weight
+            net_weight = production_weight - weighing.reject_weight - weighing.slab_weight
+            if production_weight <= 0:
+                raise ValidationError(
+                    _("Production Weight after override must be greater than zero.")
+                )
+            if net_weight <= 0:
+                raise ValidationError(
+                    _("Net Weight after override must be greater than zero.")
+                )
+
+            vals = {
+                "shrinkage_tolerance_override": True,
+                "shrinkage_tolerance_override_reason": reason,
+                "shrinkage_tolerance_override_at": fields.Datetime.now(),
+                "shrinkage_tolerance_override_by_id": self.env.user.id,
+                "shrinkage_tolerance_percentage": percentage,
+                "shrinkage_tolerance_weight": tolerance_weight,
+                "production_weight": production_weight,
+                "net_weight": net_weight,
+            }
+            if override_record:
+                vals["shrinkage_tolerance_override_id"] = override_record.id
+            if not weighing.shrinkage_tolerance_override:
+                vals.update(
+                    {
+                        "original_shrinkage_tolerance_percentage": (
+                            weighing.shrinkage_tolerance_percentage
+                        ),
+                        "original_shrinkage_tolerance_weight": (
+                            weighing.shrinkage_tolerance_weight
+                        ),
+                        "original_production_weight": weighing.production_weight,
+                        "original_net_weight": weighing.net_weight,
+                    }
+                )
+            weighing.write(vals)
+
+    def _check_can_override_shrinkage_tolerance(self):
+        self.ensure_one()
+        if self.state == "receipt_validated":
+            raise ValidationError(
+                _("Shrinkage tolerance cannot be overridden for Receipt Validated weighing.")
+            )
+        if self.has_data_problem:
+            raise ValidationError(
+                _("Shrinkage tolerance cannot be overridden for weighing with data problem.")
+            )
+        if not self.initial_weighing_date or self.initial_weight <= 0:
+            raise ValidationError(
+                _("Shrinkage tolerance override requires initial weighing data.")
+            )
 
     def init(self):
         self.env.cr.execute(

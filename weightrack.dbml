@@ -398,6 +398,15 @@ Table wt_weighing {
   net_weight decimal
   shrinkage_tolerance_percentage decimal
   shrinkage_tolerance_weight decimal
+  shrinkage_tolerance_override boolean [default: false]
+  shrinkage_tolerance_override_reason text
+  shrinkage_tolerance_override_at timestamp
+  shrinkage_tolerance_override_by_id integer
+  shrinkage_tolerance_override_id integer
+  original_shrinkage_tolerance_percentage decimal
+  original_shrinkage_tolerance_weight decimal
+  original_production_weight decimal
+  original_net_weight decimal
   is_manual_weighing boolean
   manual_weighing_reason text
   note text
@@ -536,6 +545,73 @@ Table wt_production_receipt_line {
   }
 
   Note: "Odoo model: wt.production.receipt.line. Links one wt.weighing record into a Production Receipt. Active duplicates are blocked in ORM; cancelled receipts preserve audit history."
+}
+
+Table wt_shrinkage_tolerance_override {
+  id integer [pk, increment]
+  name varchar [note: "Stored number from ir.sequence wt.shrinkage.tolerance.override; default format STO/YYYYMMDD/NNN"]
+  company_id integer [not null]
+  estate_id integer [not null]
+  division_id integer [not null]
+  foreman_id integer
+  tapper_id integer
+  production_date date [not null]
+  shrinkage_tolerance_percentage decimal [not null]
+  reason text [not null]
+  total_count integer
+  state varchar [not null, default: "draft"]
+  applied_at timestamp
+  applied_by_id integer
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id
+    estate_id
+    division_id
+    foreman_id
+    tapper_id
+    production_date
+    state
+  }
+
+  Note: "Odoo model: wt.shrinkage.tolerance.override. Persistent batch document for shrinkage tolerance override history."
+}
+
+Table wt_shrinkage_tolerance_override_line {
+  id integer [pk, increment]
+  override_id integer [not null]
+  sequence integer
+  weighing_id integer
+  production_receipt_id integer
+  weighing_state varchar
+  foreman_id integer
+  tapper_id integer
+  initial_weight decimal
+  reject_weight decimal
+  slab_weight decimal
+  current_shrinkage_tolerance_percentage decimal
+  current_shrinkage_tolerance_weight decimal
+  current_production_weight decimal
+  current_net_weight decimal
+  new_shrinkage_tolerance_weight decimal
+  new_production_weight decimal
+  new_net_weight decimal
+  already_overridden boolean
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    override_id
+    weighing_id
+    production_receipt_id
+  }
+
+  Note: "Odoo model: wt.shrinkage.tolerance.override.line. Snapshot candidate/result rows for one override batch."
 }
 
 Table wt_api {
@@ -800,6 +876,8 @@ Ref: wt_weighing.receipt_rule_id > wt_receipt_rule.id [delete: restrict]
 Ref: wt_weighing.uom_id > uom_uom.id [delete: restrict]
 Ref: wt_weighing.initial_weighing_location_id > wt_weighing_location.id [delete: restrict]
 Ref: wt_weighing.initial_device_id > wt_device.id [delete: restrict]
+Ref: wt_weighing.shrinkage_tolerance_override_by_id > res_users.id [delete: set null]
+Ref: wt_weighing.shrinkage_tolerance_override_id > wt_shrinkage_tolerance_override.id [delete: set null]
 Ref: wt_weighing.operator_employee_id > hr_employee.id [delete: restrict]
 Ref: wt_weighing.clerk_employee_id > hr_employee.id [delete: restrict]
 Ref: wt_weighing.foreman_id > wt_foreman.id [delete: restrict]
@@ -835,6 +913,22 @@ Ref: wt_production_receipt_line.operator_employee_id > hr_employee.id [delete: r
 Ref: wt_production_receipt_line.clerk_employee_id > hr_employee.id [delete: restrict]
 Ref: wt_production_receipt_line.foreman_employee_id > hr_employee.id [delete: restrict]
 Ref: wt_production_receipt_line.tapper_employee_id > hr_employee.id [delete: restrict]
+
+Ref: wt_shrinkage_tolerance_override.company_id > res_company.id
+Ref: wt_shrinkage_tolerance_override.estate_id > wt_estate.id [delete: restrict]
+Ref: wt_shrinkage_tolerance_override.division_id > wt_division.id [delete: restrict]
+Ref: wt_shrinkage_tolerance_override.foreman_id > wt_foreman.id [delete: restrict]
+Ref: wt_shrinkage_tolerance_override.tapper_id > wt_tapper.id [delete: restrict]
+Ref: wt_shrinkage_tolerance_override.applied_by_id > res_users.id [delete: set null]
+Ref: wt_shrinkage_tolerance_override.create_uid > res_users.id
+Ref: wt_shrinkage_tolerance_override.write_uid > res_users.id
+Ref: wt_shrinkage_tolerance_override_line.override_id > wt_shrinkage_tolerance_override.id [delete: cascade]
+Ref: wt_shrinkage_tolerance_override_line.weighing_id > wt_weighing.id [delete: restrict]
+Ref: wt_shrinkage_tolerance_override_line.production_receipt_id > wt_production_receipt.id [delete: set null]
+Ref: wt_shrinkage_tolerance_override_line.foreman_id > wt_foreman.id [delete: restrict]
+Ref: wt_shrinkage_tolerance_override_line.tapper_id > wt_tapper.id [delete: restrict]
+Ref: wt_shrinkage_tolerance_override_line.create_uid > res_users.id
+Ref: wt_shrinkage_tolerance_override_line.write_uid > res_users.id
 
 Ref: wt_api.company_id > res_company.id
 Ref: wt_api.bot_user_id > res_users.id [delete: restrict]

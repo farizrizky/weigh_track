@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields, models, _
+from odoo import models, _
 from ..constants.roles import Role
 
 
@@ -10,6 +10,12 @@ class ApiStockOpnameService(models.AbstractModel):
 
     def _response(self):
         return self.env["wt.api.response.service"].sudo()
+
+    def _bot_model(self, model_name, bot_user):
+        return self.env[model_name].with_user(bot_user).sudo().with_context(
+            lang=bot_user.lang or self.env.lang,
+            tz=bot_user.tz or "UTC",
+        )
 
     def pull_stock_opname(self, payload):
         response = self._response()
@@ -28,9 +34,14 @@ class ApiStockOpnameService(models.AbstractModel):
         )
         if not pull_result["ok"]:
             return pull_result
+        bot_user_result = security.get_bot_user(device.company_id, device=device)
+        if not bot_user_result["ok"]:
+            return bot_user_result
+        bot_user = bot_user_result["bot_user"]
+        opname_model = self._bot_model("wt.stock.opname", bot_user)
 
         # Find active stock opnames assigned to this operator
-        opnames = self.env["wt.stock.opname"].sudo().search([
+        opnames = opname_model.search([
             ("company_id", "=", device.company_id.id),
             ("operator_employee_id", "=", device.employee_id.id),
             ("state", "in", ["assigned", "in_progress"]),
@@ -92,6 +103,12 @@ class ApiStockOpnameService(models.AbstractModel):
         )
         if not push_result["ok"]:
             return push_result
+        bot_user_result = security.get_bot_user(device.company_id, device=device)
+        if not bot_user_result["ok"]:
+            return bot_user_result
+        bot_user = bot_user_result["bot_user"]
+        opname_model = self._bot_model("wt.stock.opname", bot_user)
+        line_model = self._bot_model("wt.stock.opname.line", bot_user)
 
         opname_id = payload.get("opname_id")
         if not opname_id:
@@ -102,7 +119,7 @@ class ApiStockOpnameService(models.AbstractModel):
                 device=device,
             )
 
-        opname = self.env["wt.stock.opname"].sudo().search([
+        opname = opname_model.search([
             ("id", "=", opname_id),
             ("company_id", "=", device.company_id.id),
             ("operator_employee_id", "=", device.employee_id.id),
@@ -134,7 +151,7 @@ class ApiStockOpnameService(models.AbstractModel):
             if line_id is None or physical_qty is None:
                 continue
 
-            op_line = self.env["wt.stock.opname.line"].sudo().search([
+            op_line = line_model.search([
                 ("id", "=", line_id),
                 ("opname_id", "=", opname.id),
             ], limit=1)

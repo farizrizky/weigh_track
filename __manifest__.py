@@ -34,6 +34,7 @@
         "views/stock_out_report_views.xml",
         "views/production_slip_report.xml",
         "views/production_receipt_cancel_wizard_views.xml",
+        "views/shrinkage_tolerance_override_views.xml",
         "views/production_receipt_views.xml",
         "views/estate_views.xml",
         "views/weather_views.xml",

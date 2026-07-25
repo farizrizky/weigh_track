@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import _, fields, models
+from odoo import _, models
 
 from ..constants.roles import Role
 
@@ -11,6 +11,12 @@ class ApiDeliveryService(models.AbstractModel):
 
     def _response(self):
         return self.env["wt.api.response.service"].sudo()
+
+    def _bot_model(self, model_name, bot_user):
+        return self.env[model_name].with_user(bot_user).sudo().with_context(
+            lang=bot_user.lang or self.env.lang,
+            tz=bot_user.tz or "UTC",
+        )
 
     def pull_delivery(self, payload):
         """Kirimkan daftar tugas pengiriman aktif untuk operator device."""
@@ -29,8 +35,17 @@ class ApiDeliveryService(models.AbstractModel):
         )
         if not pull_result["ok"]:
             return pull_result
+        bot_user_result = self.env["wt.api.security.service"].sudo().get_bot_user(
+            device.company_id,
+            device=device,
+        )
+        if not bot_user_result["ok"]:
+            return bot_user_result
+        bot_user = bot_user_result["bot_user"]
+        lot_line_model = self._bot_model("wt.delivery.do.line.lot", bot_user)
+        route_line_model = self._bot_model("wt.delivery.route.line", bot_user)
 
-        lot_lines = self.env["wt.delivery.do.line.lot"].sudo().search([
+        lot_lines = lot_line_model.search([
             ("delivery_id.company_id", "=", device.company_id.id),
             ("delivery_id.state", "in", ["confirmed", "in_progress"]),
             ("operator_id", "=", device.employee_id.id),
@@ -38,7 +53,7 @@ class ApiDeliveryService(models.AbstractModel):
         deliveries = lot_lines.mapped("delivery_id")
 
         transit_loc_ids = set(
-            self.env["wt.delivery.route.line"].sudo().search([
+            route_line_model.search([
                 ("route_type", "=", "transit"),
                 ("location_dest_id", "!=", False),
                 ("company_id", "=", device.company_id.id),
@@ -88,7 +103,7 @@ class ApiDeliveryService(models.AbstractModel):
                 pulled_line_ids.append(line.id)
 
             if pulled_line_ids:
-                self.env["wt.delivery.do.line.lot"].sudo().browse(pulled_line_ids).write({
+                lot_line_model.browse(pulled_line_ids).write({
                     "wt_is_pulled": True,
                 })
 
@@ -124,6 +139,16 @@ class ApiDeliveryService(models.AbstractModel):
         )
         if not push_result["ok"]:
             return push_result
+        bot_user_result = self.env["wt.api.security.service"].sudo().get_bot_user(
+            device.company_id,
+            device=device,
+        )
+        if not bot_user_result["ok"]:
+            return bot_user_result
+        bot_user = bot_user_result["bot_user"]
+        datetime_service = self._bot_model("wt.weighing.service", bot_user)
+        delivery_model = self._bot_model("wt.delivery", bot_user)
+        lot_line_model = self._bot_model("wt.delivery.do.line.lot", bot_user)
 
         delivery_id = payload.get("delivery_id")
         if not delivery_id:
@@ -134,7 +159,7 @@ class ApiDeliveryService(models.AbstractModel):
                 device=device,
             )
 
-        delivery = self.env["wt.delivery"].sudo().search([
+        delivery = delivery_model.search([
             ("id", "=", delivery_id),
             ("company_id", "=", device.company_id.id),
             ("state", "in", ["confirmed", "in_progress"]),
@@ -169,7 +194,7 @@ class ApiDeliveryService(models.AbstractModel):
                 errors.append(_("delivery_lot_line_id wajib diisi."))
                 continue
 
-            line = self.env["wt.delivery.do.line.lot"].sudo().search([
+            line = lot_line_model.search([
                 ("id", "=", delivery_lot_line_id),
                 ("delivery_id", "=", delivery.id),
             ], limit=1)
@@ -213,7 +238,7 @@ class ApiDeliveryService(models.AbstractModel):
                 errors.append(_("weighed_at wajib diisi pada line %s.") % delivery_lot_line_id)
                 continue
             try:
-                weighed_dt = fields.Datetime.to_datetime(weighed_at)
+                weighed_dt = datetime_service._to_datetime(weighed_at, bot_user)
             except (ValueError, TypeError):
                 errors.append(_("Nilai weighed_at tidak valid pada line %s.") % delivery_lot_line_id)
                 continue

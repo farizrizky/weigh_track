@@ -58,7 +58,7 @@
                            readonly="wt_difference_qty == 0 or wt_adjustment_applied"
                            context="{'default_do_lot_line_id': id}"
                            nolabel="1">
-                        <list editable="bottom" decoration-danger="qty &lt;= 0">
+                        <list editable="bottom">
                             <field name="reason_id"/>
                             <field name="qty" string="Allocation Qty"/>
                             <field name="uom_id" readonly="1" string="Unit"/>

@@ -4,6 +4,7 @@ from . import api
 from . import api_request_log
 from . import product
 from . import shrinkage_tolerance
+from . import shrinkage_tolerance_override
 from . import stock_warehouse
 from . import stock_picking
 from . import stock_return_picking
