@@ -219,6 +219,10 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 - Data cuaca saat ini belum diekspos melalui custom API dan belum masuk payload pull master.
 - `Weighing Location` wajib terhubung ke `Estate`.
 - `company_id` pada `Division`, `Weighing Location`, `Foreman`, dan `Tapper` mengikuti parent operasional.
+- `Weighing Location` memiliki `location_type`:
+  - `warehouse`: lokasi timbang final/gudang, dipakai oleh `wt.weighing.weighing_location_id` dan Receipt Rule.
+  - `field`: lokasi timbang awal/lapangan, wajib memilih `warehouse_weighing_location_id` pada estate yang sama.
+- Allowed division pada lokasi `field` wajib subset dari allowed division parent `warehouse`.
 - Kode `Division` wajib unik per company untuk record aktif. Ini menjaga format lot `LOT/kode_divisi/YYYYMMDD/NNN` tidak bentrok antar estate dalam company yang sama.
 - Lot produksi dari Production Receipt memakai format `LOT/kode_divisi/YYYYMMDD/NNN`.
 - Lot transit dari rute pengiriman transit memakai format `TR/kode_gudang_tujuan/YYYYMMDD/NNN`.
@@ -245,7 +249,7 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 - `wt.receipt.rule` otomatis membawa Estate dari Weighing Location; pemilihan Warehouse dibatasi pada company dan estate yang sama.
 - Division pada `wt.receipt.rule` wajib termasuk `allowed_division_ids` pada Weighing Location.
 - Kombinasi aktif Weighing Location dan Division pada `wt.receipt.rule` tidak boleh berulang.
-- Pengaturan Warehouse tidak berada di Weighing Location; Warehouse, Location, dan Operation Type ditentukan pada Receipt Rule.
+- Pengaturan stock Warehouse tidak berada di Weighing Location; stock Warehouse, Location, dan Operation Type ditentukan pada Receipt Rule.
 - Receiving Location di Receipt Rule adalah `location_id` atau stock location internal, bukan warehouse. Warehouse dipakai sebagai konteks/filter operation type dan lokasi penerimaan wajib berada di bawah view location warehouse tersebut.
 - `stock.warehouse` di-extend dengan field Estate untuk memastikan warehouse tujuan stok berada pada estate yang benar.
 - Employee operasional memakai model Odoo bawaan `hr.employee`.
@@ -279,8 +283,6 @@ Informasi teknis device diisi saat activation API:
 Role device yang aktif:
 
 ```text
-clerk
-foreman
 operator
 ```
 
@@ -318,8 +320,8 @@ Alur assignment:
 
 1. Administrator membuat record `wt.device`.
 2. Administrator memilih `company_id`.
-3. Administrator memilih `role`.
-4. Domain `employee_id` mengikuti company dan role.
+3. Role device otomatis `operator`.
+4. Domain `employee_id` mengikuti company dan role `operator`.
 5. Administrator memilih `employee_id`.
 6. Administrator dapat mengisi `name` sebagai label device.
 7. Saat save, Odoo membuat `token` otomatis.
@@ -576,7 +578,7 @@ Prinsip pull master:
 - Request membawa `device_id` dan `token`.
 - Odoo memvalidasi kombinasi `device_id` dan `token` melalui `api_security_service.authenticate_device`.
 - Device harus berstatus `active`.
-- Role device yang boleh pull adalah `operator`, `clerk`, dan `foreman`.
+- Role device yang boleh pull adalah `operator`.
 - `wt.api.pull_enabled` harus aktif untuk company device.
 - Setelah valid, Odoo memakai company, employee, dan role dari assignment device.
 - Proses update metadata device diarahkan ke bot user dari `wt.api`.
@@ -595,7 +597,9 @@ Payload response pull master:
 - `masters.roles` hanya membawa role milik device yang sedang pull.
 - `masters.products` hanya membawa product Odoo yang berasal dari mapping aktif `wt.product` untuk company dalam scope.
 - `masters.shrinkage_tolerances` hanya membawa toleransi yang sesuai dengan division dalam scope device.
-- Pull master tidak mengirim warehouse, location, dan operation type; nilai tersebut tetap menjadi konfigurasi backend pada Receipt Rule.
+- Pull master mengirim `location_type` dan `warehouse_weighing_location_id` pada master Weighing Location.
+- Untuk device lokasi lapangan, pull master hanya mengirim record lokasi lapangan yang dipegang device. Parent lokasi gudang tidak ikut di `masters.weighing_locations`; `warehouse_weighing_location_id` hanya dikirim sebagai ID referensi.
+- Pull master tidak mengirim warehouse stock, stock location, dan operation type; nilai tersebut tetap menjadi konfigurasi backend pada Receipt Rule.
 - Product payload pada pull master membawa `id`, `name`, `company_id`, dan `uom_id`; `default_code` dan product type tidak dikirim.
 - `pull_type` tidak dipakai.
 - Company dan employees berada di `masters`, bukan root data.
@@ -604,9 +608,7 @@ Payload response pull master:
 
 Scope role pull:
 
-- `foreman`: foreman record milik employee device, division foreman, tapper di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait.
-- `clerk`: division yang dipegang clerk, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait.
-- `operator`: weighing location yang dipegang operator, allowed division dari location, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate.
+- `operator`: weighing location yang dipegang operator, allowed division dari lokasi tersebut, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate. Device lokasi lapangan hanya menerima lokasi lapangan yang dipegangnya; parent lokasi gudang tidak ikut payload.
 
 ## Push Weighing
 
@@ -647,6 +649,7 @@ Struktur runtime saat ini:
   - Nama dan badge number employee dikunci mengikuti `hr.employee`, bukan mengikuti struktur assignment lama.
   - Field `foreman_id` dan `tapper_id` tetap disimpan untuk kebutuhan validasi assignment, tetapi yang ditampilkan ke user adalah employee.
   - Initial weighing/penimbangan lapangan awal disimpan di detail weighing.
+  - `initial_weighing_location_id` adalah lokasi timbang awal/lapangan dan wajib bertipe `field` jika diisi.
   - `initial_device_id` adalah relasi ke `wt.device` dengan label UI `By Device`.
   - `initial_device_role`, `initial_device_employee_id`, dan `initial_device_employee_barcode` mengikuti `initial_device_id` dan readonly.
   - Memakai chatter dan activity (`mail.thread`, `mail.activity.mixin`).
@@ -680,10 +683,11 @@ Status dan data problem:
 Validasi form/backend:
 
 - Field wajib sebelum validate Production Receipt: production date, weighing date, company, estate, division, weighing location, product, UoM, receipt rule, operator, clerk, foreman, dan tapper pada setiap line timbang.
+- Weighing location final wajib bertipe `warehouse`.
 - `total_bag`, `production_weight`, dan `net_weight` wajib bernilai lebih dari 0 sebelum Production Receipt bisa validated.
 - `production_date` tidak boleh lebih besar dari tanggal pada `weighing_date`.
 - Jika `initial_weighing_date` terisi, maka `initial_weight` wajib terisi.
-- Untuk input manual, `initial_device_id` juga wajib. Untuk API, initial device yang kosong/tidak ditemukan menjadi `missing_master` dan tidak menggagalkan penerimaan push.
+- Untuk input manual, `initial_device_id` dan `initial_weighing_location_id` juga wajib. Untuk API, initial device/lokasi awal yang kosong atau tidak ditemukan menjadi `missing_master` dan tidak menggagalkan penerimaan push.
 - Jika `initial_is_manual_weighing` tercentang, maka `initial_manual_weighing_reason` wajib terisi.
 - Validasi di atas tetap berada pada `@api.constrains` dan juga dipanggil saat action validate.
 
@@ -695,7 +699,7 @@ Kode data problem aktif:
 | `company_mismatch` | Company payload berbeda dari company device, atau division bukan milik company penimbangan. |
 | `estate_mismatch` | Estate bukan milik company atau berbeda dari estate yang terikat pada weighing location. |
 | `operator_mismatch` | Operator payload berbeda dari operator device, atau operator weighing location berbeda dari operator device. |
-| `weighing_location_mismatch` | Weighing location tidak berada pada company penimbangan. |
+| `weighing_location_mismatch` | Weighing location tidak berada pada company penimbangan, lokasi final bukan Warehouse, atau lokasi awal bukan Field/berbeda company. |
 | `division_not_allowed` | Division tidak termasuk `allowed_division_ids` weighing location. |
 | `receipt_rule_mismatch` | Receipt rule tidak sesuai company, weighing location, atau division. |
 | `product_mapping_mismatch` | Product belum dikonfigurasi sebagai `weighing` melalui `wt.product` untuk company. |
@@ -706,8 +710,8 @@ Kode data problem aktif:
 | `initial_weighing_date_mismatch` | Tanggal initial weighing berbeda dari production date. Perbandingan memakai timezone context Odoo. |
 | `initial_weight_mismatch` | Untuk cross-day weighing, `production_weight` tidak sama dengan `initial_weight - shrinkage_tolerance_weight`. |
 | `shrinkage_tolerance_mismatch` | `shrinkage_tolerance_weight` tidak sama dengan `initial_weight * shrinkage_tolerance_percentage / 100`. |
-| `inactive_master` | Master payload masih ditemukan di Odoo, tetapi record tersebut sudah diarsipkan/nonaktif. Berlaku untuk estate, weighing location, division, product mapping, receipt rule, foreman, atau tapper. |
-| `missing_master` | Master payload tidak ditemukan. Berlaku untuk estate, weighing location, division, product, receipt rule, foreman, tapper, atau initial device. Juga dipakai jika initial weighing date diisi tetapi device awal tidak dikirim. |
+| `inactive_master` | Master payload masih ditemukan di Odoo, tetapi record tersebut sudah diarsipkan/nonaktif. Berlaku untuk estate, weighing location, initial weighing location, division, product mapping, receipt rule, foreman, atau tapper. |
+| `missing_master` | Master payload tidak ditemukan. Berlaku untuk estate, weighing location, initial weighing location, division, product, receipt rule, foreman, tapper, atau initial device. Juga dipakai jika initial weighing date diisi tetapi device/lokasi awal tidak dikirim. |
 | `multiple_problem` | Lebih dari satu jenis problem ditemukan. Rincian lengkap tersimpan pada `data_problem_note`. |
 
 Catatan aturan:
@@ -724,6 +728,8 @@ Prinsip mapping push:
 - Odoo mengambil `company_id` resmi dari assignment device.
 - `operator` resmi untuk push adalah `device.employee_id`; payload operator tetap dicek sebagai data problem bila berbeda.
 - Odoo memvalidasi bahwa `weighing_location_id` memang dipegang oleh operator device.
+- Odoo memvalidasi bahwa `weighing_location_id` final bertipe `warehouse`.
+- Odoo memvalidasi bahwa `initial_weighing_location_id` bertipe `field` dan berada pada company penimbangan jika dikirim.
 - Odoo memvalidasi bahwa `estate_id` sesuai company dan sesuai estate pada weighing location.
 - Odoo memvalidasi bahwa `division_id` termasuk `allowed_division_ids` pada weighing location.
 - Odoo memvalidasi receipt rule sesuai kombinasi company, weighing location, dan division.
@@ -732,6 +738,7 @@ Prinsip mapping push:
 - Receipt Rule dari payload lama tetap dibaca dengan `active_test=False` untuk audit dan tetap dapat menandai `missing_master`, `inactive_master`, atau `receipt_rule_mismatch`.
 - Odoo tetap mencari referensi master dengan `active_test=False` saat push, sehingga payload lama yang menunjuk record archived tidak dianggap hilang, tetapi ditandai `inactive_master`.
 - Initial weighing device memakai `initial_weighing.device_id` untuk mencari `wt.device`; role, device owner, dan badge number mengikuti record device di Odoo, bukan payload bebas.
+- Initial weighing location memakai `initial_weighing.weighing_location_id` atau `initial_weighing.weighing_location.id` untuk mencari `wt.weighing.location`.
 
 Payload push v1 aktif:
 
@@ -815,6 +822,7 @@ Payload push v1 aktif:
       "note": null,
       "initial_weighing": {
         "weighing_date": "2026-06-14 16:00:00",
+        "weighing_location_id": 2,
         "device_id": "FIELD-SCALE-002",
         "weight": 1000.0,
         "is_manual_weighing": false,

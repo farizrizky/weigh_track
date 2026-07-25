@@ -367,7 +367,7 @@ Field:
 | `name` | `Char` | Otomatis | Tidak | Computed name dari weighing location dan division. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `weighing_location_id.company_id`, `store=True`, readonly. |
 | `estate_id` | `Many2one(wt.estate)` | Otomatis | Tidak | Related dari `weighing_location_id.estate_id`, `store=True`, readonly. |
-| `weighing_location_id` | `Many2one(wt.weighing.location)` | Ya | Ya | Lokasi timbang tempat aturan berlaku. `ondelete="restrict"`. |
+| `weighing_location_id` | `Many2one(wt.weighing.location)` | Ya | Ya | Lokasi timbang warehouse tempat aturan berlaku. `ondelete="restrict"`. Domain dibatasi ke `location_type = warehouse`. |
 | `allowed_division_ids` | `Many2many(wt.division)` | Otomatis | Tidak | Computed helper dari `weighing_location_id.allowed_division_ids` untuk domain Division. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division yang boleh menimbang produk di lokasi tersebut. Wajib termasuk allowed division pada Weighing Location. |
 | `warehouse_id` | `Many2one(stock.warehouse)` | Ya | Ya | Warehouse tujuan stok. |
@@ -395,6 +395,7 @@ Validasi:
 
 - Kombinasi `company_id`, `weighing_location_id`, dan `division_id` wajib unik untuk record aktif. Secara database uniqueness dijaga oleh kombinasi weighing location dan division yang masih aktif; company mengikuti weighing location.
 - Weighing Location, Division, Warehouse, Receiving Location, dan Operation Type harus konsisten dengan company.
+- Weighing Location pada Receipt Rule wajib bertipe `warehouse`.
 - Estate Receipt Rule otomatis mengikuti estate Weighing Location.
 - Warehouse harus berasal dari company dan estate yang sama dengan Receipt Rule.
 - Division harus termasuk `allowed_division_ids` pada Weighing Location.
@@ -412,6 +413,7 @@ Pesan validasi:
 ```text
 Receipt Rule already exists for company '%(company)s', weighing location '%(location)s', and division '%(division)s'. Please use the existing rule or change one of those values.
 Weighing location must belong to the same company.
+Receipt Rule can only use Warehouse weighing locations.
 Division must belong to the same company.
 Division must be allowed in the selected weighing location.
 Warehouse must belong to the same company.
@@ -487,7 +489,7 @@ wt.weighing.location
 
 Deskripsi:
 
-Weighing Location adalah master lokasi timbang. Lokasi timbang menentukan divisi mana saja yang diizinkan menimbang di lokasi tersebut.
+Weighing Location adalah master lokasi timbang. Lokasi timbang menentukan divisi mana saja yang diizinkan menimbang di lokasi tersebut. Lokasi bertipe `warehouse` dipakai sebagai lokasi timbang final/gudang dan menjadi scope Receipt Rule. Lokasi bertipe `field` dipakai sebagai lokasi timbang awal di lapangan dan wajib mengarah ke satu lokasi warehouse pada estate yang sama.
 
 Field:
 
@@ -495,11 +497,14 @@ Field:
 | --- | --- | --- | --- | --- |
 | `code` | `Char` | Ya | Ya | Kode lokasi timbang. Diindeks untuk pencarian. |
 | `name` | `Char` | Ya | Ya | Nama lokasi timbang. |
+| `location_type` | `Selection` | Ya | Ya | Tipe lokasi: `warehouse` atau `field`. Default `warehouse`. |
 | `estate_id` | `Many2one(wt.estate)` | Ya | Ya | Estate lokasi timbang. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `estate_id.company_id`, `store=True`, readonly. |
+| `warehouse_weighing_location_id` | `Many2one(wt.weighing.location)` | Tidak/bersyarat | Ya | Parent lokasi timbang warehouse untuk lokasi bertipe `field`. Wajib jika `location_type = field`, kosong jika `warehouse`. |
 | `operator_id` | `Many2one(hr.employee)` | Tidak | Ya | Employee operator lokasi timbang. Domain berdasarkan employee role `operator`. |
 | `allowed_operator_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Operator. |
-| `allowed_division_ids` | `Many2many(wt.division)` | Tidak | Ya | Daftar divisi yang diizinkan menimbang di lokasi ini. |
+| `selectable_division_ids` | `Many2many(wt.division)` | Otomatis | Tidak | Computed helper domain division. Untuk field location mengikuti division yang diizinkan pada parent warehouse. |
+| `allowed_division_ids` | `Many2many(wt.division)` | Tidak | Ya | Daftar divisi yang diizinkan menimbang di lokasi ini. Untuk `field`, pilihannya harus subset dari parent warehouse. |
 | `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Weighing location archived tidak dikirim pada pull master. |
 
 Urutan data:
@@ -512,6 +517,9 @@ Validasi:
 
 - `code` wajib unik per `estate_id` untuk record aktif.
 - Semua `allowed_division_ids` harus berasal dari estate yang sama dengan `estate_id`.
+- Jika `location_type = warehouse`, `warehouse_weighing_location_id` wajib kosong.
+- Jika `location_type = field`, `warehouse_weighing_location_id` wajib diisi, harus bertipe `warehouse`, tidak boleh record yang sama, dan harus berada pada estate yang sama.
+- Allowed division pada field location wajib subset dari allowed division pada parent warehouse.
 - Operator harus valid menurut employee role `operator` pada company lokasi timbang.
 
 Constraint database:
@@ -525,6 +533,12 @@ Pesan validasi:
 ```text
 Weighing location code must be unique per estate.
 Allowed divisions must belong to the same estate as the weighing location.
+Warehouse weighing location must not have a parent warehouse weighing location.
+Field weighing location must select a warehouse weighing location.
+Field weighing location cannot reference itself as warehouse weighing location.
+Warehouse weighing location must use Warehouse type.
+Warehouse weighing location must belong to the same estate.
+Field weighing location divisions must be allowed by the selected warehouse weighing location.
 %s employee must belong to the same company.
 %s employee role has not been configured for this company.
 %s employee must use an allowed job position for this company.
@@ -533,7 +547,8 @@ Allowed divisions must belong to the same estate as the weighing location.
 Domain UI:
 
 ```text
-allowed_division_ids: [('estate_id', '=', estate_id)]
+warehouse_weighing_location_id: [('location_type', '=', 'warehouse'), ('estate_id', '=', estate_id)]
+allowed_division_ids: [('id', 'in', selectable_division_ids)]
 ```
 
 Relasi Many2many:
@@ -548,6 +563,8 @@ Aturan bisnis:
 
 - Lokasi timbang bisa memiliki banyak divisi yang diizinkan.
 - Satu divisi bisa diizinkan pada lebih dari satu lokasi timbang.
+- Lokasi warehouse menjadi lokasi final penimbangan yang dipakai `wt.weighing.weighing_location_id` dan Receipt Rule.
+- Lokasi field menjadi lokasi awal/lapangan yang dipakai `wt.weighing.initial_weighing_location_id`.
 - Pengaturan hanya dilakukan dari form Weighing Location, bukan dari form Division.
 
 ## Foreman
@@ -681,8 +698,8 @@ Field:
 | `name` | `Char` | Tidak | Ya | Nama device. Dapat diedit oleh admin Odoo, termasuk setelah device aktif. |
 | `device_id` | `Char` | Tidak | Ya | ID device dari aplikasi lokal. Terisi saat activation API berhasil. Unik. |
 | `company_id` | `Many2one(res.company)` | Ya | Ya | Company assignment device. Default mengikuti company user aktif. |
-| `role` | `Selection` | Ya | Ya | Role device: `clerk`, `foreman`, `operator`. Dipilih sebelum employee agar domain employee mengikuti role. |
-| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee penanggung jawab device. Domain berdasarkan `company_id` dan `role`. |
+| `role` | `Selection` | Ya | Ya | Role device. Saat ini selalu `operator`, otomatis diisi saat create, disembunyikan pada form, dan tidak boleh diubah menjadi role lain. |
+| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee penanggung jawab device. Domain berdasarkan `company_id` dan role `operator`. |
 | `allowed_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk domain employee. |
 | `status` | `Selection` | Ya | Ya | State device: `inactive`, `active`, `blocked`, `revoked`. Ditampilkan sebagai statusbar. |
 | `token` | `Char` | Otomatis | Tidak | Token enrollment. Dibuat otomatis saat create jika belum diisi. Unik. |
@@ -704,7 +721,7 @@ Field:
 Selection:
 
 ```text
-role: clerk, foreman, operator
+role: operator
 status: inactive, active, blocked, revoked
 device_type: mobile, desktop
 ```
@@ -725,8 +742,10 @@ unique(token)
 Validasi dan aturan create/write:
 
 - Saat create, `status` default menjadi `inactive`.
+- Saat create, `role` dipaksa menjadi `operator`.
 - Saat create, `token` otomatis dibuat dengan `secrets.token_urlsafe(32)` jika belum ada token.
 - Token dicek unik maksimal 10 kali percobaan.
+- Write role selain `operator` ditolak.
 - Saat device berstatus `active`, `blocked`, atau `revoked`, hanya field `name` yang boleh diedit langsung dari UI.
 - Perubahan state dan log state boleh menembus lock hanya jika context berisi:
 
@@ -742,6 +761,7 @@ Pesan validasi utama:
 Device ID must be unique.
 Device token must be unique.
 Unable to generate a unique device token.
+Device role is always Operator.
 Only device name can be changed after the device has been activated.
 Only active devices can be blocked.
 Only blocked devices can be reactivated.
@@ -858,7 +878,7 @@ Field utama:
 | `data_problem_note` | `Text` computed | Catatan display sesuai preferensi bahasa user; `id_ID` memakai `data_problem_note_idn`, bahasa lain memakai `data_problem_note_en`. |
 | `device_snapshot_json` | `Text` | Snapshot item payload dari aplikasi. |
 | `odoo_snapshot_json` | `Text` | Snapshot master Odoo saat pengecekan problem. |
-| `estate_id`, `weighing_location_id`, `division_id` | Relasi scope | Scope estate, lokasi timbang, dan division. |
+| `estate_id`, `weighing_location_id`, `division_id` | Relasi scope | Scope estate, lokasi timbang final/gudang, dan division. `weighing_location_id` wajib bertipe `warehouse`. |
 | `product_id`, `uom_id`, `receipt_rule_id` | Relasi product | Produk dan satuan otomatis dari mapping aktif `wt.product` pada company; receipt rule menentukan alur penerimaan. |
 | `operator_employee_id`, `operator_name`, `operator_barcode` | Employee | Operator. Nama dan barcode related dari employee. |
 | `clerk_employee_id`, `clerk_name`, `clerk_barcode` | Employee | Clerk/Kerani. Nama dan barcode related dari employee. |
@@ -872,6 +892,7 @@ Field utama:
 | `net_weight` | `Float` | Berat net. |
 | `shrinkage_tolerance_percentage`, `shrinkage_tolerance_weight` | `Float` | Persentase dan berat toleransi penyusutan. |
 | `initial_weighing_date`, `initial_weight` | Initial weighing | Waktu dan berat penimbangan awal. |
+| `initial_weighing_location_id` | `Many2one(wt.weighing.location)` | Lokasi timbang awal/lapangan. Wajib bertipe `field` jika diisi. |
 | `initial_device_id` | `Many2one(wt.device)` | Device penimbangan awal (`By Device`). |
 | `initial_device_role`, `initial_device_employee_id`, `initial_device_employee_barcode` | Related | Mengikuti initial device dan readonly. |
 | `initial_is_manual_weighing`, `initial_manual_weighing_reason`, `initial_note` | Mixed | Informasi manual dan catatan penimbangan awal. |
@@ -890,6 +911,7 @@ Aturan:
 - Data manual baru menyimpan `local_id`, `device_id`, `device_record_id`, dan `batch_local_id` sebagai null.
 - Data API mewajibkan `local_id`, `device_id`, dan `device_record_id`.
 - Product dan UoM pada input manual maupun API diprioritaskan dari mapping aktif `wt.product` berdasarkan company dan readonly pada UI.
+- Weighing Location final wajib bertipe `warehouse`.
 - Detail weighing tidak lagi divalidasi langsung dari form Weighing; validasi resmi dilakukan dari Production Receipt.
 - Save record draft manual maupun API menjalankan recheck jika field pemicu berubah.
 - Push menghitung problem dari payload sebelum create; Production Receipt Validate menjalankan recheck lagi.
@@ -904,8 +926,9 @@ Validasi backend untuk Production Receipt:
 - Sebelum Production Receipt bisa validated, production date, weighing date, company, estate, division, weighing location, product, UoM, receipt rule, serta seluruh employee wajib terisi pada setiap weighing line.
 - `total_bag`, `production_weight`, dan `net_weight` wajib lebih dari 0 sebelum Production Receipt bisa validated.
 - Jika initial weighing date terisi, initial weight wajib lebih dari 0.
-- Untuk data manual, initial device wajib jika initial weighing date terisi.
-- Untuk API, initial device yang tidak ditemukan menjadi `missing_master` dan tidak menggagalkan create.
+- Jika initial weighing location diisi, lokasinya wajib bertipe `field` dan berada pada company yang sama.
+- Untuk data manual, initial device dan initial weighing location wajib jika initial weighing date terisi.
+- Untuk API, initial device atau initial weighing location yang kosong/tidak ditemukan menjadi `missing_master` dan tidak menggagalkan create.
 - Jika initial manual weighing aktif, manual weighing reason wajib terisi.
 
 ## Production Receipt
@@ -996,7 +1019,7 @@ Kode data problem:
 | `company_mismatch` | The payload company does not match the device company, or the division does not belong to the weighing company. | Company payload tidak sesuai company device, atau division bukan milik company penimbangan. |
 | `estate_mismatch` | The estate does not belong to the weighing company, or it does not match the estate assigned to the weighing location. | Estate bukan milik company penimbangan, atau berbeda dari estate yang terikat pada weighing location. |
 | `operator_mismatch` | The payload operator or weighing-location operator does not match the device operator. | Operator payload atau operator weighing location berbeda dari operator device. |
-| `weighing_location_mismatch` | The weighing location does not belong to the weighing company. | Weighing location bukan milik company penimbangan. |
+| `weighing_location_mismatch` | The weighing location does not belong to the weighing company, the final weighing location is not Warehouse, or the initial weighing location is not Field / belongs to another company. | Lokasi timbang tidak sesuai company penimbangan, lokasi final bukan Warehouse, atau lokasi awal bukan Field / berbeda company. |
 | `division_not_allowed` | The division is not included in the weighing location's allowed divisions. | Division tidak termasuk division yang diizinkan pada weighing location. |
 | `receipt_rule_mismatch` | The receipt rule does not match the company, weighing location, or division. | Receipt rule tidak sesuai company, weighing location, atau division. |
 | `product_mapping_mismatch` | The product is not configured as `weighing` for the weighing company. | Product tidak dipetakan sebagai `weighing` untuk company penimbangan. |
@@ -1007,8 +1030,8 @@ Kode data problem:
 | `initial_weighing_date_mismatch` | The initial weighing date does not match the production date. | Tanggal initial weighing berbeda dari production date. |
 | `initial_weight_mismatch` | For cross-day weighing, production weight does not equal initial weight minus shrinkage tolerance weight. | Untuk penimbangan lintas hari, production weight tidak sama dengan initial weight dikurangi shrinkage tolerance weight. |
 | `shrinkage_tolerance_mismatch` | Shrinkage tolerance weight does not equal initial weight multiplied by the shrinkage percentage. | Shrinkage tolerance weight tidak sama dengan initial weight dikali persentase penyusutan. |
-| `inactive_master` | A referenced master record still exists but has been archived/inactivated. | Master yang direferensikan masih ada, tetapi sudah diarsipkan/nonaktif. |
-| `missing_master` | A referenced master record or initial device was not found, or the required initial device was not provided. | Master yang direferensikan atau initial device tidak ditemukan, atau initial device yang wajib tidak dikirim. |
+| `inactive_master` | A referenced master record still exists but has been archived/inactivated. | Master yang direferensikan masih ada, tetapi sudah diarsipkan/nonaktif. Termasuk initial weighing location. |
+| `missing_master` | A referenced master record, initial device, or initial weighing location was not found, or the required initial device/location was not provided. | Master yang direferensikan, initial device, atau initial weighing location tidak ditemukan, atau initial device/lokasi awal yang wajib tidak dikirim. |
 | `multiple_problem` | More than one data problem type was found; details are stored in the problem note. | Lebih dari satu jenis masalah data ditemukan; rinciannya tersimpan pada catatan masalah. |
 
 ## API
@@ -1116,7 +1139,7 @@ Selection:
 
 ```text
 status: success, failed
-role: clerk, foreman, operator
+role: operator
 ```
 
 Aturan akses:
@@ -1315,7 +1338,7 @@ Tanggung jawab:
 
 - Memproses pull master untuk aplikasi offline penimbangan.
 - Mengautentikasi device melalui `wt.api.security.service`.
-- Memastikan role device termasuk `operator`, `clerk`, atau `foreman`.
+- Memastikan role device adalah `operator`.
 - Memastikan pull dibuka melalui `wt.api.pull_enabled`.
 - Mengambil bot user dari `wt.api.security.service`.
 - Menghitung scope data berdasarkan company, employee, dan role device.
@@ -1412,13 +1435,13 @@ Catatan payload:
 - Payload employee dipusatkan di `data.masters.employees`.
 - Payload role aplikasi berada di `data.masters.roles` dan hanya membawa role device yang sedang pull.
 - Master/config yang memiliki field `active` hanya dikirim jika masih aktif. Record archived dikeluarkan dari `scope` dan `masters`.
-- Weighing Location tidak lagi membawa payload warehouse.
-- Payload Receipt Rule hanya membawa rule scope company, weighing location, dan division.
+- Weighing Location membawa `location_type` dan `warehouse_weighing_location_id`. Field `warehouse_weighing_location_id` dipakai untuk menghubungkan lokasi field ke lokasi warehouse.
+- Payload Receipt Rule hanya membawa rule scope company, warehouse weighing location, dan division.
 - Payload Product membawa `id`, `name`, `company_id`, dan `uom_id`; `default_code` dan product type tidak dikirim.
 - Payload UoM berada di `data.masters.uoms`.
 - Payload Product berada di `data.masters.products` dan hanya membawa product Odoo yang berasal dari mapping aktif `wt.product` untuk company dalam scope.
 - Payload Shrinkage Tolerance berada di `data.masters.shrinkage_tolerances` dan hanya membawa toleransi yang sesuai dengan division dalam scope.
-- Warehouse, stock location, dan operation type tetap tersimpan di model Receipt Rule, tetapi tidak dikirim pada response pull master.
+- Warehouse stock, stock location, dan operation type tetap tersimpan di model Receipt Rule, tetapi tidak dikirim pada response pull master.
 - Setiap data master minimal membawa `id` dan `name`.
 - Master yang memiliki `code`, seperti Estate, Division, dan Weighing Location, ikut membawa `code`.
 - Employee barcode dibawa di master terpusat `employees`; payload foreman dan tapper hanya membawa relasi seperti `employee_id`, `company_id`, dan division terkait.

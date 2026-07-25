@@ -36,6 +36,7 @@ class ReceiptRule(models.Model):
         string="Weighing Location",
         required=True,
         ondelete="restrict",
+        domain="[('location_type', '=', 'warehouse')]",
         index=True,
         tracking=True,
     )
@@ -206,6 +207,14 @@ class ReceiptRule(models.Model):
             ):
                 raise ValidationError(
                     _("Weighing location must belong to the same company.")
+                )
+
+            if (
+                mapping.weighing_location_id
+                and mapping.weighing_location_id.location_type != "warehouse"
+            ):
+                raise ValidationError(
+                    _("Receipt Rule can only use Warehouse weighing locations.")
                 )
 
             if mapping.division_id and mapping.division_id.company_id != mapping.company_id:

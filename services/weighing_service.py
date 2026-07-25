@@ -15,6 +15,7 @@ class WeighingService(models.AbstractModel):
     DATA_PROBLEM_LABEL_IDN = {
         "Estate": "Estate",
         "Weighing location": "Lokasi timbang",
+        "Initial weighing location": "Lokasi timbang awal",
         "Division": "Divisi",
         "Product": "Produk",
         "Receipt rule": "Aturan penerimaan",
@@ -36,6 +37,18 @@ class WeighingService(models.AbstractModel):
         ),
         "Initial weighing device was not found in Odoo.": (
             "Device penimbangan lapangan tidak ditemukan di master data."
+        ),
+        "Initial weighing location is required.": (
+            "Lokasi timbang awal wajib diisi."
+        ),
+        "Initial weighing location was not found in Odoo.": (
+            "Lokasi timbang awal tidak ditemukan di master data."
+        ),
+        "Initial weighing location must use Field type.": (
+            "Lokasi timbang awal harus bertipe Lapangan."
+        ),
+        "Initial weighing location does not belong to the weighing company.": (
+            "Lokasi timbang awal tidak sesuai dengan perusahaan penimbangan."
         ),
         "Estate does not belong to weighing company.": (
             "Estate pada record penimbangan tidak sesuai dengan estate perusahaan."
@@ -139,6 +152,14 @@ class WeighingService(models.AbstractModel):
                 return response.error(
                     "invalid_weighing_date",
                     _("Weighing date is invalid."),
+                    400,
+                )
+            location_id = self._nested_id(item, "weighing_location")
+            location = self._browse("wt.weighing.location", location_id)
+            if location and location.location_type != "warehouse":
+                return response.error(
+                    "invalid_weighing_location_type",
+                    _("Only Warehouse weighing locations can push final weighing."),
                     400,
                 )
         return {"ok": True}
@@ -264,6 +285,7 @@ class WeighingService(models.AbstractModel):
         product = item.get("product") or {}
         uom = product.get("uom") or {}
         initial_device = self._initial_device(initial, device.company_id)
+        initial_location = records["initial_weighing_location"]
         weighing_product = records["product"]
         uom_id = (
             weighing_product.uom_id.id
@@ -325,6 +347,7 @@ class WeighingService(models.AbstractModel):
             "manual_weighing_reason": item.get("manual_weighing_reason"),
             "note": item.get("note"),
             "initial_weighing_date": self._to_datetime(initial.get("weighing_date")),
+            "initial_weighing_location_id": initial_location.id or False,
             "initial_device_id": initial_device.id or False,
             "initial_weight": initial.get("weight") or 0.0,
             "initial_is_manual_weighing": bool(initial.get("is_manual_weighing")),
@@ -360,6 +383,7 @@ class WeighingService(models.AbstractModel):
             "shrinkage_tolerance_weight": detail.shrinkage_tolerance_weight,
             "initial_weighing": {
                 "weighing_date": detail.initial_weighing_date,
+                "weighing_location_id": detail.initial_weighing_location_id.id,
                 "weight": detail.initial_weight,
                 "device_id": detail.initial_device_id.device_id,
             },
@@ -377,6 +401,12 @@ class WeighingService(models.AbstractModel):
         location = self._browse(
             "wt.weighing.location",
             self._nested_id(item, "weighing_location"),
+        )
+        initial = item.get("initial_weighing") or {}
+        initial = initial if isinstance(initial, dict) else {}
+        initial_location = self._browse(
+            "wt.weighing.location",
+            self._initial_weighing_location_id(initial),
         )
         division = self._browse("wt.division", self._nested_id(item, "division"))
         foreman = self._foreman_from_employee_division(
@@ -413,6 +443,7 @@ class WeighingService(models.AbstractModel):
             "company": company,
             "estate": self._browse("wt.estate", self._nested_id(item, "estate")),
             "weighing_location": location,
+            "initial_weighing_location": initial_location,
             "division": division,
             "product": product_mapping.product_id,
             "payload_product": self._browse(
@@ -501,6 +532,8 @@ class WeighingService(models.AbstractModel):
         initial = item.get("initial_weighing") or {}
         initial = initial if isinstance(initial, dict) else {}
         initial_device_id = initial.get("device_id")
+        initial_location_id = self._initial_weighing_location_id(initial)
+        initial_location = records["initial_weighing_location"]
         if initial.get("weighing_date") and not initial_device_id:
             add("missing_master", "Initial weighing device is required.")
         if initial_device_id and not self._initial_device(initial, company):
@@ -508,6 +541,31 @@ class WeighingService(models.AbstractModel):
                 "missing_master",
                 "Initial weighing device was not found in Odoo.",
             )
+        if initial.get("weighing_date") and not initial_location_id:
+            add("missing_master", "Initial weighing location is required.")
+        if initial_location_id and not initial_location:
+            add(
+                "missing_master",
+                "Initial weighing location was not found in Odoo.",
+            )
+        elif self._is_archived(initial_location):
+            add(
+                "inactive_master",
+                self.INACTIVE_MASTER_MESSAGE_EN % "Initial weighing location",
+                self.INACTIVE_MASTER_MESSAGE_IDN
+                % self.DATA_PROBLEM_LABEL_IDN["Initial weighing location"],
+            )
+        elif initial_location:
+            if company and initial_location.company_id != company:
+                add(
+                    "weighing_location_mismatch",
+                    "Initial weighing location does not belong to the weighing company.",
+                )
+            if initial_location.location_type != "field":
+                add(
+                    "weighing_location_mismatch",
+                    "Initial weighing location must use Field type.",
+                )
 
         estate = records["estate"]
         location = records["weighing_location"]
@@ -790,7 +848,13 @@ class WeighingService(models.AbstractModel):
             return False
         return any(
             initial.get(field_name) not in (None, False, "")
-            for field_name in ("weighing_date", "weight", "device_id")
+            for field_name in (
+                "weighing_date",
+                "weight",
+                "device_id",
+                "weighing_location_id",
+                "weighing_location",
+            )
         )
 
     def _is_after_production_date(self, production_date, weighing_date):
@@ -856,7 +920,19 @@ class WeighingService(models.AbstractModel):
             ),
             "weighing_location": self._record_snapshot(
                 location,
-                ["code", "name", "active", "company_id", "operator_id"],
+                ["code", "name", "active", "company_id", "operator_id", "location_type"],
+            ),
+            "initial_weighing_location": self._record_snapshot(
+                records.get("initial_weighing_location"),
+                [
+                    "code",
+                    "name",
+                    "active",
+                    "company_id",
+                    "operator_id",
+                    "location_type",
+                    "warehouse_weighing_location_id",
+                ],
             ),
             "division": self._record_snapshot(
                 division,
@@ -994,6 +1070,13 @@ class WeighingService(models.AbstractModel):
         if company:
             domain.append(("company_id", "=", company.id))
         return self.env["wt.device"].sudo().search(domain, limit=1)
+
+    def _initial_weighing_location_id(self, initial):
+        if not isinstance(initial, dict):
+            return False
+        return initial.get("weighing_location_id") or self._payload_id(
+            initial.get("weighing_location") or {}
+        )
 
     def _to_date(self, value):
         return fields.Date.to_date(value) if value else False

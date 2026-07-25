@@ -8,6 +8,7 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="estate_id"/>
+                <field name="location_type"/>
                 <field name="operator_id"/>
                 <field name="allowed_division_ids"/>
             </search>
@@ -22,6 +23,8 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="estate_id"/>
+                <field name="location_type"/>
+                <field name="warehouse_weighing_location_id" optional="show"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="operator_id"/>
                 <field name="allowed_division_ids" widget="many2many_tags" optional="show"/>
@@ -46,15 +49,21 @@
                             <field name="code"/>
                             <field name="estate_id"/>
                             <field name="company_id"/>
+                            <field name="location_type"/>
+                            <field name="warehouse_weighing_location_id"
+                                   invisible="location_type != 'field'"
+                                   required="location_type == 'field'"
+                                   domain="[('location_type', '=', 'warehouse'), ('estate_id', '=', estate_id)]"/>
                         </group>
                         <group>
                             <field name="allowed_operator_employee_ids" invisible="1"/>
+                            <field name="selectable_division_ids" invisible="1"/>
                             <field name="operator_id" domain="[('id', 'in', allowed_operator_employee_ids)]"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Allowed Divisions">
-                            <field name="allowed_division_ids" domain="[('estate_id', '=', estate_id)]">
+                            <field name="allowed_division_ids" domain="[('id', 'in', selectable_division_ids)]">
                                 <list editable="bottom">
                                     <field name="code"/>
                                     <field name="name"/>

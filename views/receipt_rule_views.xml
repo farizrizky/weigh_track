@@ -7,7 +7,7 @@
             <search>
                 <field name="company_id"/>
                 <field name="estate_id"/>
-                <field name="weighing_location_id"/>
+                <field name="weighing_location_id" domain="[('location_type', '=', 'warehouse')]"/>
                 <field name="division_id"/>
                 <field name="warehouse_id"/>
                 <field name="location_id"/>
@@ -23,7 +23,7 @@
             <list string="Receipt Rule">
                 <field name="company_id"/>
                 <field name="estate_id"/>
-                <field name="weighing_location_id"/>
+                <field name="weighing_location_id" domain="[('location_type', '=', 'warehouse')]"/>
                 <field name="division_id"/>
                 <field name="warehouse_id"/>
                 <field name="location_id"/>
@@ -41,7 +41,7 @@
                     <div class="oe_title">
                         <label for="weighing_location_id"/>
                         <h1>
-                            <field name="weighing_location_id"/>
+                            <field name="weighing_location_id" domain="[('location_type', '=', 'warehouse')]"/>
                         </h1>
                     </div>
                     <group>

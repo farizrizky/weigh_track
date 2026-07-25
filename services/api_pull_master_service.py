@@ -142,14 +142,17 @@ class ApiPullMasterService(models.AbstractModel):
         )
 
     def _operator_scope(self, device):
-        locations = self.env["wt.weighing.location"].sudo().search(
+        assigned_locations = self.env["wt.weighing.location"].sudo().search(
             [
                 ("company_id", "=", device.company_id.id),
                 ("operator_id", "=", device.employee_id.id),
                 ("active", "=", True),
             ]
         )
-        divisions = self._active_records(locations.mapped("allowed_division_ids"))
+        locations = assigned_locations
+        divisions = self._active_records(
+            assigned_locations.mapped("allowed_division_ids")
+        )
         foremen = self.env["wt.foreman"].sudo().search(
             [
                 ("company_id", "=", device.company_id.id),
@@ -343,6 +346,10 @@ class ApiPullMasterService(models.AbstractModel):
             "name": location.name,
             "company_id": location.company_id.id,
             "estate_id": location.estate_id.id,
+            "location_type": location.location_type,
+            "warehouse_weighing_location_id": (
+                location.warehouse_weighing_location_id.id or False
+            ),
             "operator_employee_id": location.operator_id.id or False,
             "allowed_division_ids": self._active_records(
                 location.allowed_division_ids

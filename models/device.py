@@ -50,6 +50,7 @@ class Device(models.Model):
         ROLE_SELECTION,
         string="Role",
         required=True,
+        default=Role.OPERATOR,
         index=True,
         tracking=True,
     )
@@ -156,15 +157,27 @@ class Device(models.Model):
         ),
     ]
 
+    def init(self):
+        self.env.cr.execute(
+            """
+            UPDATE wt_device
+            SET role = 'operator'
+            WHERE role IS NULL OR role != 'operator'
+            """
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            vals["role"] = Role.OPERATOR
             vals.setdefault("status", "inactive")
             if not vals.get("token"):
                 vals["token"] = self._generate_unique_token()
         return super().create(vals_list)
 
     def write(self, vals):
+        if vals.get("role") and vals["role"] != Role.OPERATOR:
+            raise ValidationError(_("Device role is always Operator."))
         if vals and not self.env.context.get("allow_device_state_update"):
             forbidden_fields = set(vals) - self.LOCKED_STATUS_EDITABLE_FIELDS
             if forbidden_fields and any(device.status in self.LOCKED_STATUS for device in self):
@@ -256,24 +269,25 @@ class Device(models.Model):
     def _compute_allowed_employee_ids(self):
         mapping_model = self.env["wt.employee.role"]
         for device in self:
-            if not device.company_id or not device.role:
+            if not device.company_id:
                 device.allowed_employee_ids = False
                 continue
             device.allowed_employee_ids = mapping_model.get_allowed_employees(
                 device.company_id,
-                device.role,
+                Role.OPERATOR,
             )
 
     @api.onchange("company_id", "role")
     def _onchange_role(self):
+        self.role = Role.OPERATOR
         if self.employee_id and self.employee_id not in self.allowed_employee_ids:
             self.employee_id = False
 
         employee_domain = [("id", "=", False)]
-        if self.company_id and self.role:
+        if self.company_id:
             employee_domain = self.env["wt.employee.role"].get_employee_domain(
                 self.company_id,
-                self.role,
+                Role.OPERATOR,
             )
 
         return {
@@ -284,11 +298,12 @@ class Device(models.Model):
 
     @api.constrains("company_id", "role", "employee_id")
     def _check_employee_allowed(self):
-        role_labels = dict(self.ROLE_SELECTION)
         for device in self:
+            if device.role != Role.OPERATOR:
+                raise ValidationError(_("Device role is always Operator."))
             self.env["wt.employee.role"].check_employee_allowed(
                 device.employee_id,
                 device.company_id,
-                device.role,
-                _(role_labels.get(device.role, "Employee")),
+                Role.OPERATOR,
+                _("Operator"),
             )

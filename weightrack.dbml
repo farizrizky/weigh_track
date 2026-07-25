@@ -20,9 +20,12 @@ Enum wt_employee_role {
 }
 
 Enum wt_device_role {
-  clerk
-  foreman
   operator
+}
+
+Enum wt_weighing_location_type {
+  warehouse
+  field
 }
 
 Enum wt_device_status {
@@ -399,7 +402,8 @@ Table wt_weighing {
   manual_weighing_reason text
   note text
   initial_weighing_date timestamp
-  initial_device_id varchar
+  initial_weighing_location_id integer
+  initial_device_id integer
   initial_device_role varchar
   initial_device_employee_id integer
   initial_device_employee_name varchar
@@ -430,6 +434,7 @@ Table wt_weighing {
     division_id
     product_id
     receipt_rule_id
+    initial_weighing_location_id
     operator_employee_id
     clerk_employee_id
     foreman_id
@@ -439,7 +444,7 @@ Table wt_weighing {
     (device_id, local_id) [unique, name: "wt_weighing_device_local_api_uniq"]
   }
 
-  Note: "Odoo model: wt.weighing. Draft weighing data created manually or by push API. API idempotency uses device_id + local_id for data_source = api. Product and UoM are prioritized from the active wt.product mapping for the company."
+  Note: "Odoo model: wt.weighing. Draft weighing data created manually or by push API. API idempotency uses device_id + local_id for data_source = api. Product and UoM are prioritized from the active wt.product mapping for the company. Final weighing_location_id must be Warehouse; initial_weighing_location_id must be Field when filled."
 }
 
 Table wt_production_receipt {
@@ -620,8 +625,10 @@ Table wt_weighing_location {
   id integer [pk, increment]
   code varchar [not null, note: "Indexed in Odoo"]
   name varchar [not null]
+  location_type wt_weighing_location_type [not null, default: "warehouse"]
   estate_id integer [not null]
   company_id integer [note: "Stored related field from estate_id.company_id"]
+  warehouse_weighing_location_id integer
   operator_id integer
   active boolean [not null, default: true]
   create_uid integer
@@ -633,12 +640,14 @@ Table wt_weighing_location {
     code
     estate_id
     company_id
+    location_type
+    warehouse_weighing_location_id
     operator_id
     // Partial unique index in PostgreSQL: WHERE active
     (code, estate_id) [unique, name: "wt_weighing_location_code_estate_active_uniq"]
   }
 
-  Note: "Odoo model: wt.weighing.location. Operator must be allowed by wt_employee_role role operator. Archive supported through active. Business key is unique only for active records."
+  Note: "Odoo model: wt.weighing.location. Operator must be allowed by wt_employee_role role operator. Archive supported through active. Business key is unique only for active records. Warehouse locations are final weighing locations and Receipt Rule scope. Field locations must reference a Warehouse location in the same estate and are used as initial weighing locations."
 }
 
 Table wt_weighing_location_division_rel {
@@ -789,6 +798,8 @@ Ref: wt_weighing.division_id > wt_division.id [delete: restrict]
 Ref: wt_weighing.product_id > product_product.id [delete: restrict]
 Ref: wt_weighing.receipt_rule_id > wt_receipt_rule.id [delete: restrict]
 Ref: wt_weighing.uom_id > uom_uom.id [delete: restrict]
+Ref: wt_weighing.initial_weighing_location_id > wt_weighing_location.id [delete: restrict]
+Ref: wt_weighing.initial_device_id > wt_device.id [delete: restrict]
 Ref: wt_weighing.operator_employee_id > hr_employee.id [delete: restrict]
 Ref: wt_weighing.clerk_employee_id > hr_employee.id [delete: restrict]
 Ref: wt_weighing.foreman_id > wt_foreman.id [delete: restrict]
@@ -838,6 +849,7 @@ Ref: wt_division.clerk_id > hr_employee.id [delete: restrict]
 
 Ref: wt_weighing_location.estate_id > wt_estate.id [delete: restrict]
 Ref: wt_weighing_location.company_id > res_company.id
+Ref: wt_weighing_location.warehouse_weighing_location_id > wt_weighing_location.id [delete: restrict]
 Ref: wt_weighing_location.operator_id > hr_employee.id [delete: restrict]
 
 Ref: wt_weighing_location_division_rel.weighing_location_id > wt_weighing_location.id

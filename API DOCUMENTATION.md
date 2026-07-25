@@ -236,7 +236,7 @@ Setelah device pernah aktif atau status bukan `inactive`, assignment dan informa
 | `data.employee.barcode` | Barcode employee dari `hr.employee.barcode`. |
 | `data.employee.name` | Nama employee. |
 | `data.employee.job_position` | Nama jabatan dari `hr.employee.job_id.name`. |
-| `data.role` | Role operasional device: `clerk`, `foreman`, atau `operator`. |
+| `data.role` | Role operasional device. Saat ini device selalu memakai role `operator`. |
 
 ## Pull Master
 
@@ -273,7 +273,7 @@ Content-Type: application/json
 - `token` wajib ada.
 - Kombinasi `device_id` dan `token` harus cocok dengan record `wt.device`.
 - Device harus berstatus `active`.
-- Role device harus `operator`, `clerk`, atau `foreman`.
+- Role device harus `operator`.
 - Company device harus memiliki konfigurasi bot user di `wt.api`.
 - Bot user harus user internal aktif, bukan portal/public user.
 - `wt.api.pull_enabled` harus aktif untuk company device.
@@ -282,7 +282,7 @@ Content-Type: application/json
 
 Jika pull master berhasil, Odoo akan:
 
-- menghitung scope data berdasarkan company, employee, dan role pada assignment device;
+- menghitung scope data berdasarkan company dan employee operator pada assignment device;
 - mengirim data master yang dibutuhkan aplikasi offline;
 - memperbarui `wt.device.last_pull`;
 - memperbarui `wt.device.last_seen`;
@@ -293,9 +293,7 @@ Jika pull master berhasil, Odoo akan:
 
 | Role | Scope Pull |
 | --- | --- |
-| `foreman` | Foreman record milik employee device, division foreman, tapper yang berada di bawah foreman tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait. |
-| `clerk` | Division yang `clerk_id`-nya employee device, foreman di division tersebut, tapper di division tersebut, estate, weighing location terkait division, receipt rule, product, UoM, shrinkage tolerance, dan employee terkait. |
-| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate. |
+| `operator` | Weighing location yang `operator_id`-nya employee device, allowed division dari weighing location tersebut, receipt rule, product, UoM, shrinkage tolerance, clerk division, foreman, tapper, dan estate. Device lokasi lapangan hanya menerima lokasi lapangan yang dipegangnya; parent lokasi gudang tidak ikut payload. |
 
 ### Success Response
 
@@ -326,9 +324,9 @@ Jika pull master berhasil, Odoo akan:
       "role": "operator",
       "company_id": 1,
       "estate_ids": [1],
-      "division_ids": [1, 2],
-      "weighing_location_ids": [1],
-      "receipt_rule_ids": [1],
+      "division_ids": [1],
+      "weighing_location_ids": [2],
+      "receipt_rule_ids": [],
       "product_ids": [10],
       "uom_ids": [1],
       "shrinkage_tolerance_ids": [1],
@@ -381,24 +379,18 @@ Jika pull master berhasil, Odoo akan:
       ],
       "weighing_locations": [
         {
-          "id": 1,
-          "code": "WL01",
-          "name": "Gudang Induk",
+          "id": 2,
+          "code": "FLD01",
+          "name": "Timbang Lapangan 01",
           "company_id": 1,
           "estate_id": 1,
+          "location_type": "field",
+          "warehouse_weighing_location_id": 1,
           "operator_employee_id": 10,
-          "allowed_division_ids": [1, 2]
+          "allowed_division_ids": [1]
         }
       ],
-      "receipt_rules": [
-        {
-          "id": 1,
-          "name": "Gudang Induk - Division 01",
-          "company_id": 1,
-          "weighing_location_id": 1,
-          "division_id": 1
-        }
-      ],
+      "receipt_rules": [],
       "products": [
         {
           "id": 10,
@@ -464,8 +456,8 @@ Jika pull master berhasil, Odoo akan:
 | `data.masters.employees` | Master employee terpusat untuk employee device, clerk, operator, foreman employee, dan tapper employee dalam scope. |
 | `data.masters.estates` | Daftar estate dalam scope. Minimal membawa `id`, `code`, dan `name`. |
 | `data.masters.divisions` | Daftar division dalam scope. Minimal membawa `id`, `code`, dan `name`. |
-| `data.masters.weighing_locations` | Daftar weighing location dalam scope. Tidak membawa warehouse. |
-| `data.masters.receipt_rules` | Daftar aturan receipt yang menentukan kombinasi weighing location dan division yang boleh ditimbang. Warehouse, receiving location, dan operation type tetap menjadi konfigurasi backend dan tidak dikirim ke aplikasi. |
+| `data.masters.weighing_locations` | Daftar weighing location dalam scope. Membawa `location_type` (`warehouse` atau `field`) dan `warehouse_weighing_location_id`. Untuk device lokasi lapangan, payload hanya membawa record lokasi lapangan; `warehouse_weighing_location_id` hanya ID referensi parent dan tidak membuat lokasi gudang ikut masuk masters. |
+| `data.masters.receipt_rules` | Daftar aturan receipt untuk kombinasi weighing location dan division yang boleh ditimbang. Receipt Rule hanya berlaku untuk weighing location bertipe `warehouse`; warehouse stock, receiving location, dan operation type tetap konfigurasi backend dan tidak dikirim ke aplikasi. |
 | `data.masters.products` | Daftar product Odoo dari mapping aktif `wt.product` dalam scope. Payload membawa `id`, `name`, `company_id`, dan `uom_id`. |
 | `data.masters.uoms` | Master UoM dari product dalam scope. |
 | `data.masters.shrinkage_tolerances` | Daftar batas toleransi penyusutan produksi sesuai division dalam scope device. |
@@ -539,6 +531,7 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
       "note": "Penimbangan gudang dilakukan H+1",
       "initial_weighing": {
         "weighing_date": "2026-06-14 16:00:00",
+        "weighing_location_id": 2,
         "device_id": "FIELD-SCALE-002",
         "weight": 1000.0,
         "is_manual_weighing": false,
@@ -560,8 +553,11 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
 - `master_synced_at` dan `sent_at`, jika dikirim, harus berupa datetime valid.
 - Setiap item weighing wajib memiliki `local_id`, `production_date`, dan `weighing_date`.
 - `production_date` harus berupa date valid dan `weighing_date` harus berupa datetime valid.
+- `weighing_location` pada item final harus bertipe `warehouse`.
 - `production_date` tidak boleh lebih besar dari tanggal lokal `weighing_date`.
 - Jika initial weighing date terisi dan initial device ditemukan, initial weight wajib lebih dari 0.
+- Jika initial weighing date terisi, `initial_weighing.weighing_location_id` atau `initial_weighing.weighing_location.id` wajib dikirim. Untuk API, lokasi awal yang kosong/tidak ditemukan menjadi data problem `missing_master`.
+- Initial weighing location harus bertipe `field` dan berada pada company penimbangan.
 - Jika initial manual weighing aktif dan initial device ditemukan, manual weighing reason wajib diisi.
 - Initial device yang kosong/tidak ditemukan tidak menolak push; item diterima dengan problem `missing_master`.
 - Master payload yang masih ada tetapi sudah archived tidak menolak push; item diterima dengan problem `inactive_master`.
@@ -582,7 +578,7 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
 | `company_mismatch` | Company pada payload tidak sama dengan company device, atau division yang dipilih bukan milik company penimbangan. |
 | `estate_mismatch` | Estate bukan milik company penimbangan, atau estate payload berbeda dari estate yang terikat pada weighing location. |
 | `operator_mismatch` | Employee operator payload berbeda dari employee pemilik device, atau operator pada weighing location berbeda dari operator device. |
-| `weighing_location_mismatch` | Weighing location tidak berada pada company penimbangan. |
+| `weighing_location_mismatch` | Weighing location tidak berada pada company penimbangan, lokasi final bukan tipe `warehouse`, atau initial weighing location bukan tipe `field`/berbeda company. |
 | `division_not_allowed` | Division tidak termasuk `allowed_division_ids` pada weighing location. |
 | `receipt_rule_mismatch` | Receipt rule tidak cocok dengan company, weighing location, atau division pada item, dan tidak ada fallback rule aktif yang valid. |
 | `product_mapping_mismatch` | Product aktif belum dipetakan melalui `wt.product` untuk company penimbangan, atau snapshot product payload tidak cocok dengan mapping aktif. |
@@ -593,14 +589,15 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
 | `initial_weighing_date_mismatch` | Tanggal pada `initial_weighing.weighing_date` tidak sama dengan `production_date`. Perbandingan tanggal menggunakan timezone context Odoo. |
 | `initial_weight_mismatch` | Untuk penimbangan lintas hari, `production_weight` tidak sama dengan `initial_weight - shrinkage_tolerance_weight`. |
 | `shrinkage_tolerance_mismatch` | `shrinkage_tolerance_weight` tidak sama dengan `initial_weight * shrinkage_tolerance_percentage / 100`. |
-| `inactive_master` | ID master payload masih ditemukan di Odoo, tetapi record tersebut sudah diarsipkan/nonaktif. Berlaku untuk estate, weighing location, division, product mapping, receipt rule, foreman, atau tapper. |
-| `missing_master` | ID master payload tidak ditemukan di Odoo. Berlaku untuk estate, weighing location, division, product snapshot, receipt rule, foreman, tapper, atau initial weighing device. Kode ini juga dipakai jika initial weighing date diisi tetapi device awal tidak dikirim. |
+| `inactive_master` | ID master payload masih ditemukan di Odoo, tetapi record tersebut sudah diarsipkan/nonaktif. Berlaku untuk estate, weighing location, initial weighing location, division, product mapping, receipt rule, foreman, atau tapper. |
+| `missing_master` | ID master payload tidak ditemukan di Odoo. Berlaku untuk estate, weighing location, initial weighing location, division, product snapshot, receipt rule, foreman, tapper, atau initial weighing device. Kode ini juga dipakai jika initial weighing date diisi tetapi device/lokasi awal tidak dikirim. |
 | `multiple_problem` | Lebih dari satu jenis problem ditemukan pada item yang sama. Rincian masing-masing masalah terdapat pada `data_problem_note`. |
 
 Catatan:
 
 - Rule lama `production_weight = initial_weight` untuk penimbangan pada tanggal produksi yang sama sudah tidak digunakan.
 - Jika initial weighing device tidak ditemukan, push tetap diterima sebagai draft dengan `missing_master`; API tidak gagal hanya karena field `By Device` kosong.
+- Jika initial weighing location tidak ditemukan, push tetap diterima sebagai draft dengan `missing_master`; lokasi awal perlu diperbaiki sebelum data bisa masuk Production Receipt valid.
 - `data_problem_note_en` menyimpan catatan masalah versi Inggris untuk audit/debug.
 - `data_problem_note_idn` menyimpan catatan masalah versi Indonesia.
 - `data_problem_note` adalah field display sesuai preferensi bahasa user; `id_ID` menampilkan versi Indonesia, bahasa lain menampilkan versi Inggris.
@@ -1042,6 +1039,7 @@ Push delivery tidak membuat atau memvalidasi `stock.picking`. Pembuatan picking,
 | 400 | `missing_weighing_date` | Item weighing tidak membawa `weighing_date`. |
 | 400 | `invalid_production_date` | Format `production_date` tidak valid. |
 | 400 | `invalid_weighing_date` | Format `weighing_date` tidak valid. |
+| 400 | `invalid_weighing_location_type` | Lokasi timbang final yang dikirim pada item push weighing bukan tipe `warehouse`. |
 | 400 | `invalid_master_synced_at` | Format `master_synced_at` tidak valid. |
 | 400 | `invalid_sent_at` | Format `sent_at` tidak valid. |
 | 400 | `missing_delivery_id` | Field `delivery_id` tidak dikirim pada push delivery. |

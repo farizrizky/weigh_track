@@ -20,8 +20,6 @@ class Role:
     ]
 
     DEVICE_SELECTION = [
-        (CLERK, CLERK_LABEL),
-        (FOREMAN, FOREMAN_LABEL),
         (OPERATOR, OPERATOR_LABEL),
     ]
 

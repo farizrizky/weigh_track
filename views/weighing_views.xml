@@ -92,7 +92,7 @@
                             <field name="company_id" readonly="state == 'receipt_validated'" required="1"/>
                             <field name="allowed_division_ids" invisible="1"/>
                             <field name="estate_id" readonly="state == 'receipt_validated'" required="1"/>
-                            <field name="weighing_location_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id), ('estate_id', '=', estate_id)]"/>
+                            <field name="weighing_location_id" readonly="state == 'receipt_validated'" required="1" domain="[('company_id', '=', company_id), ('estate_id', '=', estate_id), ('location_type', '=', 'warehouse')]"/>
                             <field name="division_id" readonly="state == 'receipt_validated'" required="1" domain="[('id', 'in', allowed_division_ids)]"/>
                             <field name="product_id" readonly="1" required="1" force_save="1"/>
                             <field name="uom_id" readonly="1" required="1" force_save="1"/>
@@ -149,6 +149,7 @@
                             <group>
                                 <group>
                                     <field name="initial_weighing_date" readonly="state == 'receipt_validated'"/>
+                                    <field name="initial_weighing_location_id" readonly="state == 'receipt_validated'" required="initial_weighing_date" domain="[('company_id', '=', company_id), ('location_type', '=', 'field')]"/>
                                     <field name="initial_device_id" readonly="state == 'receipt_validated'" required="initial_weighing_date" domain="[('company_id', '=', company_id)]"/>
                                     <field name="initial_device_role" readonly="1"/>
                                     <field name="initial_device_employee_id" readonly="1"/>

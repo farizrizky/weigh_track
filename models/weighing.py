@@ -66,6 +66,7 @@ class Weighing(models.Model):
         "shrinkage_tolerance_weight",
         "initial_weighing_date",
         "initial_device_id",
+        "initial_weighing_location_id",
         "initial_weight",
     }
 
@@ -380,6 +381,13 @@ class Weighing(models.Model):
 
     initial_weighing_date = fields.Datetime(
         string="Initial Weighing Date",
+        tracking=True,
+    )
+    initial_weighing_location_id = fields.Many2one(
+        "wt.weighing.location",
+        string="Initial Weighing Location",
+        ondelete="restrict",
+        domain="[('company_id', '=', company_id), ('location_type', '=', 'field')]",
         tracking=True,
     )
     initial_device_id = fields.Many2one(
@@ -730,6 +738,12 @@ class Weighing(models.Model):
             and self.initial_device_id.company_id != self.company_id
         ):
             self.initial_device_id = False
+        if (
+            self.initial_weighing_location_id
+            and self.company_id
+            and self.initial_weighing_location_id.company_id != self.company_id
+        ):
+            self.initial_weighing_location_id = False
         product = self._configured_product_for_company(self.company_id)
         self.product_id = product
         self.uom_id = product.uom_id if product else False
@@ -760,6 +774,34 @@ class Weighing(models.Model):
                     _("Weighing location must belong to the selected estate.")
                 )
 
+    @api.constrains("weighing_location_id")
+    def _check_weighing_location_type(self):
+        for detail in self:
+            if (
+                detail.weighing_location_id
+                and detail.weighing_location_id.location_type != "warehouse"
+            ):
+                raise ValidationError(
+                    _("Weighing Location must use Warehouse type.")
+                )
+
+    @api.constrains("company_id", "initial_weighing_location_id")
+    def _check_initial_weighing_location(self):
+        for detail in self:
+            if not detail.initial_weighing_location_id:
+                continue
+            if detail.initial_weighing_location_id.location_type != "field":
+                raise ValidationError(
+                    _("Initial Weighing Location must use Field type.")
+                )
+            if (
+                detail.company_id
+                and detail.initial_weighing_location_id.company_id != detail.company_id
+            ):
+                raise ValidationError(
+                    _("Initial Weighing Location must belong to the selected company.")
+                )
+
     @api.constrains("production_date", "weighing_date")
     def _check_production_date_not_after_weighing_date(self):
         for detail in self:
@@ -773,6 +815,7 @@ class Weighing(models.Model):
     @api.constrains(
         "initial_weighing_date",
         "initial_device_id",
+        "initial_weighing_location_id",
         "initial_weight",
         "initial_is_manual_weighing",
         "initial_manual_weighing_reason",
@@ -907,6 +950,12 @@ class Weighing(models.Model):
                 return
             raise ValidationError(
                 _("By Device is required when Initial Weighing Date is filled.")
+            )
+        if not self.initial_weighing_location_id:
+            if self.data_source == "api":
+                return
+            raise ValidationError(
+                _("Initial Weighing Location is required when Initial Weighing Date is filled.")
             )
         if self.initial_weight <= 0:
             raise ValidationError(

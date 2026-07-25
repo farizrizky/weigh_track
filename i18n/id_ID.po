@@ -572,6 +572,7 @@ msgstr "Nama Lokasi Timbang"
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__warehouse_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__warehouse_id
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_location__location_type__warehouse
 msgid "Warehouse"
 msgstr "Gudang"
 
@@ -3457,3 +3458,80 @@ msgstr "Penerima"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 msgid "Stock Information"
 msgstr "Informasi Stok"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__location_type
+msgid "Location Type"
+msgstr "Tipe Lokasi"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_location__location_type__field
+msgid "Field"
+msgstr "Lapangan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__warehouse_weighing_location_id
+msgid "Warehouse Weighing Location"
+msgstr "Lokasi Timbang Gudang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing_location__selectable_division_ids
+msgid "Selectable Divisions"
+msgstr "Divisi yang Dapat Dipilih"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_weighing__initial_weighing_location_id
+msgid "Initial Weighing Location"
+msgstr "Lokasi Timbang Awal"
+
+#. module: weightrack
+msgid "Device role is always Operator."
+msgstr "Role device selalu Operator."
+
+#. module: weightrack
+msgid "Only Warehouse weighing locations can push final weighing."
+msgstr "Hanya lokasi timbang bertipe Gudang yang dapat mengirim penimbangan final."
+
+#. module: weightrack
+msgid "Receipt Rule can only use Warehouse weighing locations."
+msgstr "Receipt Rule hanya boleh memakai lokasi timbang bertipe Gudang."
+
+#. module: weightrack
+msgid "Weighing Location must use Warehouse type."
+msgstr "Lokasi Timbang harus bertipe Gudang."
+
+#. module: weightrack
+msgid "Initial Weighing Location must use Field type."
+msgstr "Lokasi Timbang Awal harus bertipe Lapangan."
+
+#. module: weightrack
+msgid "Initial Weighing Location must belong to the selected company."
+msgstr "Lokasi Timbang Awal harus berada pada company yang dipilih."
+
+#. module: weightrack
+msgid "Initial Weighing Location is required when Initial Weighing Date is filled."
+msgstr "Lokasi Timbang Awal wajib diisi jika Tanggal Timbang Awal terisi."
+
+#. module: weightrack
+msgid "Warehouse weighing location must not have a parent warehouse weighing location."
+msgstr "Lokasi timbang Gudang tidak boleh memiliki parent lokasi timbang gudang."
+
+#. module: weightrack
+msgid "Field weighing location must select a warehouse weighing location."
+msgstr "Lokasi timbang Lapangan wajib memilih lokasi timbang Gudang."
+
+#. module: weightrack
+msgid "Field weighing location cannot reference itself as warehouse weighing location."
+msgstr "Lokasi timbang Lapangan tidak boleh mereferensikan dirinya sendiri sebagai lokasi timbang Gudang."
+
+#. module: weightrack
+msgid "Warehouse weighing location must use Warehouse type."
+msgstr "Lokasi timbang Gudang harus bertipe Gudang."
+
+#. module: weightrack
+msgid "Warehouse weighing location must belong to the same estate."
+msgstr "Lokasi timbang Gudang harus berada pada estate yang sama."
+
+#. module: weightrack
+msgid "Field weighing location divisions must be allowed by the selected warehouse weighing location."
+msgstr "Divisi lokasi timbang Lapangan harus termasuk divisi yang diizinkan pada lokasi timbang Gudang yang dipilih."

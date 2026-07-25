@@ -59,7 +59,7 @@
                     <group>
                         <group string="Assignment">
                             <field name="company_id" readonly="status != 'inactive'"/>
-                            <field name="role" readonly="status != 'inactive'"/>
+                            <field name="role" invisible="1" readonly="1" force_save="1"/>
                             <field name="employee_id" domain="[('id', 'in', allowed_employee_ids)]" readonly="status != 'inactive'"/>
                             <field name="token" readonly="1"/>
                         </group>
