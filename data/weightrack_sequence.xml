@@ -31,5 +31,25 @@
             <field name="implementation">standard</field>
             <field name="company_id" eval="False"/>
         </record>
+        <record id="seq_wt_stock_opname" model="ir.sequence">
+            <field name="name">Stock Opname Sequence</field>
+            <field name="code">wt.stock.opname</field>
+            <field name="prefix">SO/%(year)s%(month)s%(day)s/</field>
+            <field name="padding">3</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="sequence_wt_delivery" model="ir.sequence">
+            <field name="name">Tugas Pengiriman WeighTrack</field>
+            <field name="code">wt.delivery</field>
+            <field name="prefix">DO/%(year)s%(month)s%(day)s/</field>
+            <field name="padding">4</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

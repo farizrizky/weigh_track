@@ -447,6 +447,75 @@ class Delivery(models.Model):
             raise ValidationError(_("Tidak ada baris Rencana DO yang dapat dicetak sebagai Surat Jalan."))
         return self.env.ref("weightrack.action_report_surat_jalan_line").report_action(line)
 
+    def wt_get_report_customer_do_lines(self):
+        """Customer-facing delivery lines used by the delivery order report."""
+        self.ensure_one()
+        return self.do_line_ids.filtered(
+            lambda line: line.picking_type_id.code == "outgoing"
+            or line.location_dest_id.usage == "customer"
+        )
+
+    def wt_get_report_customer_do_line(self):
+        """Route line that carries customer document information for the report."""
+        self.ensure_one()
+        customer_lines = self.wt_get_report_customer_do_lines()
+        return customer_lines[-1:] if customer_lines else self.env["wt.delivery.do.line"]
+
+    def wt_get_report_customer_partner(self):
+        """Customer contact displayed in the delivery order report."""
+        self.ensure_one()
+        customer_line = self.wt_get_report_customer_do_line()
+        return customer_line.partner_id or self.partner_id
+
+    def wt_get_report_delivery_address(self):
+        """Delivery address displayed in the delivery order report."""
+        self.ensure_one()
+        customer_line = self.wt_get_report_customer_do_line()
+        customer_partner = customer_line.partner_id or self.partner_id
+        return (
+            customer_line.receiver_address
+            or customer_partner.contact_address
+            or customer_line.location_dest_id.complete_name
+            or "-"
+        )
+
+    def wt_get_report_used_lot_lines(self):
+        """Used lot lines shown in the delivery order report totals."""
+        self.ensure_one()
+        return self.do_lot_line_ids.filtered(lambda lot_line: lot_line.qty > 0.0)
+
+    def wt_get_report_total_demand_qty(self):
+        """Planned quantity for the delivery order report header."""
+        self.ensure_one()
+        customer_lines = self.wt_get_report_customer_do_lines()
+        if customer_lines:
+            return sum(line.wt_get_report_plan_qty() for line in customer_lines)
+        if self.total_demand_qty:
+            return self.total_demand_qty
+        return sum(self.do_line_ids.mapped("demand_qty"))
+
+    def wt_get_report_total_physical_qty(self):
+        """Delivered quantity for the delivery order report header."""
+        self.ensure_one()
+        if self.total_physical_qty:
+            return self.total_physical_qty
+
+        customer_lines = self.wt_get_report_customer_do_lines()
+        report_lots = (
+            customer_lines.mapped("lot_line_ids").filtered(lambda lot_line: lot_line.qty > 0.0)
+            if customer_lines
+            else self.wt_get_report_used_lot_lines()
+        )
+        return sum(
+            lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
+            for lot_line in report_lots
+        )
+
+    def wt_get_report_delivered_goods_lines(self):
+        """Product summary rows for the delivery order report."""
+        self.ensure_one()
+        return self._get_surat_jalan_lines()
+
     def _get_surat_jalan_lines(self):
         """Return aggregated delivery note lines; prefer outgoing/final delivery rows."""
         self.ensure_one()

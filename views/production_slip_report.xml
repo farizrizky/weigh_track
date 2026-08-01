@@ -19,12 +19,12 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">36</field>
-        <field name="margin_bottom">18</field>
-        <field name="margin_left">10</field>
-        <field name="margin_right">10</field>
+        <field name="margin_top">14</field>
+        <field name="margin_bottom">16</field>
+        <field name="margin_left">12</field>
+        <field name="margin_right">12</field>
         <field name="header_line" eval="False"/>
-        <field name="header_spacing">28</field>
+        <field name="header_spacing">0</field>
         <field name="dpi">90</field>
     </record>
 
@@ -57,8 +57,8 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="page wt-production-slip">
                     <style>
-                        .wt-production-slip {
-                            font-family: Arial, Helvetica, sans-serif;
+.wt-production-slip {
+                            font-family: "Lato", sans-serif;
                             color: #111;
                             font-size: 12px;
                         }
@@ -468,134 +468,200 @@
         </t>
     </template>
 
+    <template id="external_layout_weightrack_production_receipt">
+        <t t-if="not o" t-set="o" t-value="doc"/>
+        <t t-set="company" t-value="o.company_id.sudo() if o and o.company_id else res_company"/>
+        <div
+            t-attf-class="article o_report_layout_standard o_company_#{company.id}_layout"
+            t-att-data-oe-model="o and o._name"
+            t-att-data-oe-id="o and o.id"
+            t-att-data-oe-lang="o and o.env.context.get('lang')">
+            <t t-out="0"/>
+        </div>
+        <div t-attf-class="footer o_standard_footer o_company_#{company.id}_layout"/>
+    </template>
+
     <template id="report_production_receipt_slip_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-set="o" t-value="doc"/>
-                <t t-call="web.external_layout">
-                    <t t-set="uom_name" t-value="doc.product_id.uom_id.name or ''"/>
+                <t t-set="uom_name" t-value="doc.product_id.uom_id.name or ''"/>
+                <t t-set="lot_lines" t-value="doc.wt_get_report_lot_lines()"/>
+                <t t-set="report_company" t-value="doc.company_id.sudo() if doc.company_id else res_company"/>
+                <t t-call="weightrack.external_layout_weightrack_production_receipt">
                     <div class="page wt-production-receipt-slip">
                         <style>
                             .wt-production-receipt-slip {
-                                color: #111827;
-                                font-size: 11px;
-                                line-height: 1.35;
+                                color: inherit;
+                                font-family: inherit;
+                                font-size: 10px;
+                                line-height: 1.45;
                             }
-                            .wt-production-receipt-slip .header-grid {
-                                width: 100%;
+                            .wt-production-receipt-slip .label-en {
+                                display: block;
+                                font-weight: 700;
+                                line-height: 1.25;
+                            }
+                            .wt-production-receipt-slip .label-id {
+                                color: #6b7280;
+                                display: block;
+                                font-size: 8px;
+                                font-weight: 400;
+                                line-height: 1.25;
+                                margin-top: 1px;
+                            }
+                            .wt-production-receipt-slip .wt-borderless,
+                            .wt-production-receipt-slip .wt-borderless > tbody,
+                            .wt-production-receipt-slip .wt-borderless > tbody > tr,
+                            .wt-production-receipt-slip .wt-borderless > tbody > tr > td {
+                                border: 0 !important;
+                                box-shadow: none !important;
+                                outline: 0 !important;
+                            }
+                            .wt-production-receipt-slip .wt-framed-table,
+                            .wt-production-receipt-slip .wt-framed-table > thead,
+                            .wt-production-receipt-slip .wt-framed-table > tbody,
+                            .wt-production-receipt-slip .wt-framed-table > thead > tr,
+                            .wt-production-receipt-slip .wt-framed-table > tbody > tr {
+                                border: 0 !important;
+                                box-shadow: none !important;
+                                outline: 0 !important;
+                            }
+                            .wt-production-receipt-slip .brand-table {
                                 border-collapse: collapse;
-                                margin-bottom: 20px;
+                                table-layout: fixed;
+                                width: 100%;
                             }
-                            .wt-production-receipt-slip .header-grid td {
+                            .wt-production-receipt-slip .brand-table > tbody > tr > td {
+                                background: transparent !important;
+                                padding: 0 !important;
+                                vertical-align: middle;
+                                width: 50%;
+                            }
+                            .wt-production-receipt-slip .brand-logo {
+                                display: block;
+                                max-height: 54px;
+                                max-width: 210px;
+                            }
+                            .wt-production-receipt-slip .brand-company-name {
+                                color: inherit;
+                                font-size: 20px;
+                                font-weight: 700;
+                                line-height: 1.2;
+                                text-align: right;
+                            }
+                            .wt-production-receipt-slip .brand-content-gap {
+                                height: 30px;
+                            }
+                            .wt-production-receipt-slip .document-meta-table {
+                                border-collapse: collapse;
+                                margin: 0 0 14px;
+                                table-layout: fixed;
+                                width: 100%;
+                            }
+                            .wt-production-receipt-slip .document-meta-table > tbody > tr > td {
+                                background: transparent !important;
+                                padding: 0 !important;
                                 vertical-align: top;
                             }
                             .wt-production-receipt-slip .document-title {
-                                font-size: 22px;
+                                color: inherit;
+                                font-size: 18px;
                                 font-weight: 700;
-                                letter-spacing: .5px;
+                                letter-spacing: 0;
+                                line-height: 1.2;
                                 margin: 0 0 8px;
-                                text-transform: uppercase;
-                                text-align: right;
+                                text-align: left;
+                                text-transform: none;
                             }
-                            .wt-production-receipt-slip .company-logo {
-                                max-height: 96px;
-                                max-width: 340px;
-                            }
-                            .wt-production-receipt-slip .document-number {
-                                padding: 0;
-                                text-align: right;
-                            }
-                            .wt-production-receipt-slip .document-number .label {
-                                color: #4b5563;
-                                font-size: 10px;
-                                text-transform: uppercase;
-                            }
-                            .wt-production-receipt-slip .document-number .value {
-                                font-size: 17px;
-                                font-weight: 700;
-                            }
-                            .wt-production-receipt-slip .section-title {
-                                background: #111827;
-                                color: #fff;
-                                font-size: 11px;
-                                font-weight: 700;
-                                letter-spacing: .3px;
-                                margin-top: 12px;
-                                padding: 8px 12px;
-                                text-transform: uppercase;
-                            }
-                            .wt-production-receipt-slip .info-table {
-                                width: 100%;
+                            .wt-production-receipt-slip .document-number-table {
                                 border-collapse: collapse;
-                                border: 1px solid #d1d5db;
+                                table-layout: fixed;
+                                width: 100%;
                             }
-                            .wt-production-receipt-slip .info-table td {
-                                border: 1px solid #d1d5db;
-                                line-height: 1.55;
-                                padding: 10px 16px !important;
+                            .wt-production-receipt-slip .document-number-table td {
+                                background: transparent !important;
+                                padding: 2px 0 !important;
                                 vertical-align: top;
                             }
-                            .wt-production-receipt-slip .info-label {
-                                background: #f3f4f6;
-                                color: #374151;
-                                font-weight: 700;
-                                width: 16%;
-                            }
-                            .wt-production-receipt-slip .info-value {
+                            .wt-production-receipt-slip .document-label {
                                 width: 34%;
                             }
-                            .wt-production-receipt-slip .summary-grid {
+                            .wt-production-receipt-slip .document-value {
+                                text-align: left;
+                                width: 66%;
+                                word-wrap: break-word;
+                            }
+                            .wt-production-receipt-slip .scope-table {
+                                border-collapse: collapse;
+                                margin-bottom: 16px;
+                                table-layout: fixed;
                                 width: 100%;
-                                border-collapse: separate;
-                                border-spacing: 0 8px;
-                                margin-top: 4px;
                             }
-                            .wt-production-receipt-slip .summary-card {
-                                border: 1px solid #d1d5db;
-                                line-height: 1.45;
-                                padding: 12px 16px !important;
-                                width: 20%;
+                            .wt-production-receipt-slip .scope-table td {
+                                background: #fff !important;
+                                border: 1px solid #cbd5e1 !important;
+                                box-shadow: none !important;
+                                font-size: 10px;
+                                outline: 0 !important;
+                                padding: 7px 8px !important;
+                                vertical-align: middle;
                             }
-                            .wt-production-receipt-slip .summary-label {
-                                color: #6b7280;
-                                font-size: 9px;
-                                padding-left: 2px;
-                                padding-right: 2px;
-                                text-transform: uppercase;
-                            }
-                            .wt-production-receipt-slip .summary-value {
-                                font-size: 16px;
+                            .wt-production-receipt-slip .scope-label {
+                                background: #f3f4f6 !important;
                                 font-weight: 700;
-                                margin-top: 2px;
-                                padding-left: 2px;
-                                padding-right: 2px;
+                                width: 17%;
+                            }
+                            .wt-production-receipt-slip .scope-table td.scope-value {
+                                width: 33%;
+                                word-break: break-word;
+                                word-wrap: break-word;
+                            }
+                            .wt-production-receipt-slip .section-title {
+                                background: transparent;
+                                border-bottom: 1px solid #cbd5e1;
+                                color: inherit;
+                                font-size: 11px;
+                                font-weight: 700;
+                                letter-spacing: 0;
+                                line-height: 1.4;
+                                margin-top: 14px;
+                                padding: 0 0 5px;
+                                text-transform: none;
                             }
                             .wt-production-receipt-slip .control-table {
-                                width: 100%;
                                 border-collapse: collapse;
                                 margin-top: 0;
                                 table-layout: fixed;
+                                width: 100%;
                             }
                             .wt-production-receipt-slip .control-table th {
                                 background: #f3f4f6;
-                                border: 1px solid #9ca3af;
+                                border: 1px solid #cbd5e1 !important;
+                                color: inherit;
                                 font-size: 10px;
                                 font-weight: 700;
-                                line-height: 1.35;
+                                line-height: 1.4;
                                 padding: 9px 10px !important;
                                 text-align: center;
                                 vertical-align: middle;
                             }
                             .wt-production-receipt-slip .control-table td {
-                                border: 1px solid #d1d5db;
-                                line-height: 1.45;
-                                padding: 9px 11px !important;
+                                border: 1px solid #cbd5e1 !important;
+                                font-size: 10px;
+                                line-height: 1.6;
+                                overflow-wrap: anywhere;
+                                padding: 10px 12px !important;
                                 vertical-align: top;
+                                word-break: break-word;
+                                word-wrap: break-word;
                             }
                             .wt-production-receipt-slip .control-table td.text-right {
                                 padding-left: 10px !important;
                                 padding-right: 16px !important;
                                 white-space: nowrap;
+                                word-break: normal;
+                                word-wrap: normal;
                             }
                             .wt-production-receipt-slip .total-row td {
                                 background: #f9fafb;
@@ -609,19 +675,29 @@
                             }
                             .wt-production-receipt-slip .muted {
                                 color: #6b7280;
+                                line-height: 1.45;
                             }
                             .wt-production-receipt-slip .audit-note {
                                 border: 1px solid #d1d5db;
                                 min-height: 64px;
                                 padding: 10px;
                             }
+                            .wt-production-receipt-slip .signature-table,
+                            .wt-production-receipt-slip .signature-table tbody,
+                            .wt-production-receipt-slip .signature-table tr,
+                            .wt-production-receipt-slip .signature-table td {
+                                border: 0 !important;
+                                box-shadow: none !important;
+                                outline: 0 !important;
+                            }
                             .wt-production-receipt-slip .signature-table {
-                                width: 100%;
-                                margin-top: 18px;
                                 border-collapse: collapse;
+                                margin-top: 18px;
                                 table-layout: fixed;
+                                width: 100%;
                             }
                             .wt-production-receipt-slip .signature-table td {
+                                padding: 0 !important;
                                 text-align: center;
                                 vertical-align: bottom;
                             }
@@ -629,166 +705,142 @@
                                 height: 48px;
                             }
                             .wt-production-receipt-slip .signature-name {
+                                border-bottom: 1px dotted #333;
                                 display: inline-block;
                                 min-width: 100px;
-                                border-bottom: 1px dotted #333;
                             }
                         </style>
 
-                        <table class="header-grid">
-                            <tr>
-                                <td style="width: 45%;">
-                                    <t t-if="doc.company_id.logo">
-                                        <img class="company-logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
-                                    </t>
-                                    <t t-else="">
-                                        <strong t-esc="doc.company_id.name"/>
-                                    </t>
-                                </td>
-                                <td style="width: 55%;">
-                                    <h2 class="document-title">Production Receipt Slip</h2>
-                                    <div class="document-number">
-                                        <div class="label">Nomor Dokumen</div>
-                                        <div class="value" t-esc="doc.name"/>
-                                        <div style="margin-top: 5px;">
-                                            <span class="label">Tanggal Cetak</span>
-                                            <strong t-esc="time.strftime('%d/%m/%Y')"/>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        </table>
-
-                        <div class="section-title">Scope Penerimaan</div>
-                        <table class="info-table">
-                            <tr>
-                                <td class="info-label">Perusahaan</td>
-                                <td class="info-value"><span t-esc="doc.company_id.name"/></td>
-                                <td class="info-label">Produk</td>
-                                <td class="info-value"><span t-esc="doc.product_id.display_name"/></td>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Estate</td>
-                                <td class="info-value"><span t-esc="doc.division_id.estate_id.name"/></td>
-                                <td class="info-label">Tanggal Produksi</td>
-                                <td class="info-value"><span t-field="doc.production_date"/></td>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Divisi</td>
-                                <td class="info-value"><span t-esc="doc.division_id.name"/></td>
-                                <td class="info-label">Tanggal Penerimaan</td>
-                                <td class="info-value"><span t-field="doc.received_date"/></td>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Kerani</td>
-                                <td class="info-value"><span t-esc="doc.clerk_employee_id.name"/></td>
-                                <td class="info-label">Gudang</td>
-                                <td class="info-value"><span t-esc="doc.warehouse_id.display_name"/></td>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Filter Operation Type</td>
-                                <td class="info-value">
-                                    <span t-if="doc.operation_type_id" t-esc="doc.operation_type_id.display_name"/>
-                                    <span t-else="" class="muted">Semua operation type di gudang</span>
-                                </td>
-                                <td class="info-label">Filter Lokasi</td>
-                                <td class="info-value">
-                                    <span t-if="doc.location_id" t-esc="doc.location_id.display_name"/>
-                                    <span t-else="" class="muted">Semua lokasi penerimaan di gudang</span>
-                                </td>
-                            </tr>
-                        </table>
-
-                        <div class="section-title">Ringkasan Penerimaan Produksi</div>
-                        <table class="summary-grid">
-                            <tr>
-                                <td class="summary-card">
-                                    <div class="summary-label">Total Penimbangan</div>
-                                    <div class="summary-value" t-esc="doc.total_weighing"/>
-                                </td>
-                                <td class="summary-card">
-                                    <div class="summary-label">Total Karung</div>
-                                    <div class="summary-value" t-esc="doc.total_bag"/>
-                                </td>
-                                <td class="summary-card">
-                                    <div class="summary-label">Total Berat</div>
-                                    <div class="summary-value">
-                                        <span t-esc="'%.2f' % (doc.total_stock_weight or 0.0)"/>
-                                        <span t-esc="uom_name"/>
-                                    </div>
-                                </td>
-                                <td class="summary-card">
-                                    <div class="summary-label">Inventory Receipt</div>
-                                    <div class="summary-value" t-esc="doc.stock_picking_count"/>
-                                </td>
-                                <td class="summary-card">
-                                    <div class="summary-label">Lot</div>
-                                    <div class="summary-value" t-esc="doc.lot_count"/>
-                                </td>
-                            </tr>
-                        </table>
-
-                        <div class="section-title">Inventory Receipt &amp; Lot</div>
-                        <table class="control-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 5%;">No</th>
-                                    <th style="width: 22%;">Inventory Receipt</th>
-                                    <th style="width: 20%;">Operation Type</th>
-                                    <th style="width: 23%;">Lokasi Penerimaan</th>
-                                    <th style="width: 18%;">Lot</th>
-                                    <th style="width: 12%;">Berat</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-if="doc.stock_picking_ids">
-                                    <t t-foreach="doc.stock_picking_ids" t-as="picking">
-                                        <tr>
-                                            <td class="text-center" t-esc="picking_index + 1"/>
-                                            <td>
-                                                <span t-esc="picking.name"/>
-                                                <div class="muted" t-if="picking.date_done">
-                                                    Done: <span t-field="picking.date_done"/>
-                                                </div>
-                                            </td>
-                                            <td><span t-esc="picking.picking_type_id.display_name"/></td>
-                                            <td><span t-esc="picking.location_dest_id.display_name"/></td>
-                                            <td>
-                                                <span t-esc="', '.join(picking.move_line_ids.mapped('lot_id.name'))"/>
-                                            </td>
-                                            <td class="text-right">
-                                                <span t-esc="'%.2f' % sum(picking.move_ids.mapped('product_uom_qty'))"/>
-                                                <span t-esc="uom_name"/>
-                                            </td>
-                                        </tr>
-                                    </t>
-                                </t>
-                                <tr t-if="doc.stock_picking_ids" class="total-row">
-                                    <td colspan="5" class="text-right">Total</td>
-                                    <td class="text-right">
-                                        <span t-esc="'%.2f' % sum(doc.stock_picking_ids.mapped('move_ids.product_uom_qty'))"/>
-                                        <span t-esc="uom_name"/>
+                        <table class="brand-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td style="border: 0 !important; outline: 0 !important;">
+                                        <t t-if="report_company.logo">
+                                            <img class="brand-logo" t-att-src="image_data_uri(report_company.logo)" alt="Logo"/>
+                                        </t>
+                                    </td>
+                                    <td style="border: 0 !important; outline: 0 !important;">
+                                        <div class="brand-company-name" t-esc="report_company.name"/>
                                     </td>
                                 </tr>
-                                <tr t-if="not doc.stock_picking_ids">
-                                    <td colspan="6" class="text-center muted">Belum ada Inventory Receipt.</td>
+                            </tbody>
+                        </table>
+                        <div class="brand-content-gap"/>
+
+                        <table class="document-meta-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td style="border: 0 !important; outline: 0 !important; width: 48%;">
+                                        <div class="document-title">
+                                            <span class="label-en">PRODUCTION RECEIPT SLIP</span>
+                                            <span class="label-id">Penerimaan Produksi</span>
+                                        </div>
+                                        <table class="document-number-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="document-label" style="border: 0 !important; outline: 0 !important;">
+                                                        <span class="label-en">RECEIPT NO.</span>
+                                                        <span class="label-id">Nomor Penerimaan</span>
+                                                    </td>
+                                                    <td class="document-value" style="border: 0 !important; outline: 0 !important; padding-left: 8px !important;" t-esc="doc.name"/>
+                                                </tr>
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="document-label" style="border: 0 !important; outline: 0 !important;">
+                                                        <span class="label-en">DATE</span>
+                                                        <span class="label-id">Tanggal</span>
+                                                    </td>
+                                                    <td class="document-value" style="border: 0 !important; outline: 0 !important; padding-left: 8px !important;"><span t-field="doc.received_date"/></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                    <td style="border: 0 !important; outline: 0 !important; width: 52%;"></td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <div class="section-title">Detail Penimbangan</div>
-                        <table class="control-table">
+                        <table class="scope-table" cellspacing="0" cellpadding="0">
+                            <tbody>
+                                <tr>
+                                    <td class="scope-label">Estate</td>
+                                    <td class="scope-value" t-esc="doc.division_id.estate_id.name or '-'"/>
+                                    <td class="scope-label">Tanggal Produksi</td>
+                                    <td class="scope-value"><span t-field="doc.production_date"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="scope-label">Divisi</td>
+                                    <td class="scope-value" t-esc="doc.division_id.name or '-'"/>
+                                    <td class="scope-label">Total Penimbangan</td>
+                                    <td class="scope-value" t-esc="doc.total_weighing"/>
+                                </tr>
+                                <tr>
+                                    <td class="scope-label">Gudang</td>
+                                    <td class="scope-value" t-esc="doc.warehouse_id.display_name or '-'"/>
+                                    <td class="scope-label">Total Karung</td>
+                                    <td class="scope-value" t-esc="doc.total_bag"/>
+                                </tr>
+                                <tr>
+                                    <td class="scope-label">Lokasi</td>
+                                    <td class="scope-value">
+                                        <span t-if="doc.location_id" t-esc="doc.location_id.display_name"/>
+                                        <span t-else="">Semua</span>
+                                    </td>
+                                    <td class="scope-label">Total Berat</td>
+                                    <td class="scope-value">
+                                        <span t-esc="'%.2f' % (doc.total_stock_weight or 0.0)"/>
+                                        <span t-esc="uom_name"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="section-title">LOT</div>
+                        <table class="control-table wt-framed-table" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
                             <thead>
                                 <tr>
-                                    <th style="width: 4%;">No</th>
-                                    <th style="width: 13%;">Nomor Timbang</th>
-                                    <th style="width: 13%;">Lokasi Timbang</th>
-                                    <th style="width: 12%;">Mandor</th>
-                                    <th style="width: 12%;">Tapper</th>
-                                    <th style="width: 14%;">Inventory Receipt</th>
-                                    <th style="width: 12%;">Lot</th>
-                                    <th style="width: 8%;">Karung</th>
-                                    <th style="width: 12%;">Berat</th>
+                                    <th style="width: 40%;">Lot</th>
+                                    <th style="width: 40%;">Lokasi</th>
+                                    <th style="width: 20%;">Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="lot_lines">
+                                    <t t-foreach="lot_lines" t-as="lot_line">
+                                        <tr>
+                                            <td t-esc="lot_line.get('lot_name') or '-'"/>
+                                            <td t-esc="lot_line.get('location_name') or '-'"/>
+                                            <td class="text-right">
+                                                <span t-esc="'%.2f' % (lot_line.get('qty') or 0.0)"/>
+                                                <span t-esc="lot_line.get('uom_name') or uom_name"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </t>
+                                <tr t-if="lot_lines" class="total-row">
+                                    <td colspan="2" class="text-right">Total</td>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % (doc.total_stock_weight or 0.0)"/>
+                                        <span t-esc="uom_name"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="not lot_lines">
+                                    <td colspan="3" class="text-center muted">Belum ada Lot.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="section-title">DETAIL PENIMBANGAN</div>
+                        <table class="control-table wt-framed-table" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">No</th>
+                                    <th style="width: 16%;">Nomor Timbang</th>
+                                    <th style="width: 16%;">Lokasi Timbang</th>
+                                    <th style="width: 13%;">Mandor</th>
+                                    <th style="width: 13%;">Tapper</th>
+                                    <th style="width: 15%;">Lot</th>
+                                    <th style="width: 9%;">Karung</th>
+                                    <th style="width: 13%;">Berat</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -800,7 +852,6 @@
                                             <td><span t-esc="line.weighing_location_id.display_name"/></td>
                                             <td><span t-esc="line.foreman_employee_id.name"/></td>
                                             <td><span t-esc="line.tapper_employee_id.name"/></td>
-                                            <td><span t-esc="line.stock_picking_id.name"/></td>
                                             <td><span t-esc="line.lot_id.name"/></td>
                                             <td class="text-right"><span t-esc="line.total_bag"/></td>
                                             <td class="text-right">
@@ -811,7 +862,7 @@
                                     </t>
                                 </t>
                                 <tr t-if="doc.line_ids" class="total-row">
-                                    <td colspan="7" class="text-right">Total</td>
+                                    <td colspan="6" class="text-right">Total</td>
                                     <td class="text-right"><span t-esc="doc.total_bag"/></td>
                                     <td class="text-right">
                                         <span t-esc="'%.2f' % (doc.total_stock_weight or 0.0)"/>
@@ -819,12 +870,12 @@
                                     </td>
                                 </tr>
                                 <tr t-if="not doc.line_ids">
-                                    <td colspan="9" class="text-center muted">Belum ada data penimbangan.</td>
+                                    <td colspan="8" class="text-center muted">Belum ada data penimbangan.</td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <div class="section-title">Catatan Penerimaan Produksi</div>
+                        <div class="section-title">CATATAN PENERIMAAN PRODUKSI</div>
                         <div class="audit-note">
                             <span t-if="doc.note" t-esc="doc.note"/>
                             <span t-else=""></span>

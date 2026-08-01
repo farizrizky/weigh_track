@@ -26,69 +26,137 @@
         <field name="print_report_name">'Laporan Stock Opname - %s' % (object.name)</field>
     </record>
 
+    <template id="external_layout_weightrack_stock_opname">
+        <t t-if="not o" t-set="o" t-value="doc"/>
+        <t t-set="company" t-value="o.company_id.sudo() if o and o.company_id else res_company"/>
+        <div
+            t-attf-class="article o_report_layout_standard o_company_#{company.id}_layout"
+            t-att-data-oe-model="o and o._name"
+            t-att-data-oe-id="o and o.id"
+            t-att-data-oe-lang="o and o.env.context.get('lang')">
+            <t t-out="0"/>
+        </div>
+        <div t-attf-class="footer o_standard_footer o_company_#{company.id}_layout"/>
+    </template>
+
     <template id="report_stock_opname_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-set="o" t-value="doc"/>
-                <t t-set="state_label" t-value="dict(doc.STATE_SELECTION).get(doc.state, doc.state)"/>
-                <t t-set="weighed_lines" t-value="doc.line_ids.filtered(lambda line: line.count_status == 'weighed')"/>
-                <t t-set="unweighed_lines" t-value="doc.line_ids.filtered(lambda line: line.count_status == 'unweighed')"/>
-                <t t-set="difference_lines" t-value="doc.line_ids.filtered(lambda line: abs(line.difference_qty) &gt; 0.001)"/>
+                <t t-set="report_company" t-value="doc.company_id.sudo() if doc.company_id else res_company"/>
                 <t t-set="allocations" t-value="doc.line_ids.mapped('allocation_ids')"/>
                 <t t-set="susut_allocations" t-value="allocations.filtered(lambda alloc: alloc.reason_id.difference_type == 'susut')"/>
                 <t t-set="hilang_allocations" t-value="allocations.filtered(lambda alloc: alloc.reason_id.difference_type == 'hilang')"/>
                 <t t-set="salah_allocations" t-value="allocations.filtered(lambda alloc: alloc.reason_id.difference_type == 'salah')"/>
                 <t t-set="lainnya_allocations" t-value="allocations.filtered(lambda alloc: alloc.reason_id.difference_type == 'lainnya')"/>
 
-                <t t-call="web.external_layout">
-                <div class="page wt-stock-opname-document" style="font-family: Arial, sans-serif; color: #111827; font-size: 11px;">
+                <t t-call="weightrack.external_layout_weightrack_stock_opname">
+                    <div class="page wt-stock-opname-document">
                     <style>
                         .wt-stock-opname-document {
-                            color: #111827;
-                            font-size: 11px;
-                            line-height: 1.35;
+                            color: inherit;
+                            font-family: inherit;
+                            font-size: 10px;
+                            line-height: 1.45;
                         }
-                        .wt-stock-opname-document .header-grid {
-                            width: 100%;
+                        .wt-stock-opname-document .label-en {
+                            display: block;
+                            font-weight: 700;
+                            line-height: 1.25;
+                        }
+                        .wt-stock-opname-document .label-id {
+                            color: #6b7280;
+                            display: block;
+                            font-size: 8px;
+                            font-weight: 400;
+                            line-height: 1.25;
+                            margin-top: 1px;
+                        }
+                        .wt-stock-opname-document .wt-borderless,
+                        .wt-stock-opname-document .wt-borderless > tbody,
+                        .wt-stock-opname-document .wt-borderless > tbody > tr,
+                        .wt-stock-opname-document .wt-borderless > tbody > tr > td {
+                            border: 0 !important;
+                            box-shadow: none !important;
+                            outline: 0 !important;
+                        }
+                        .wt-stock-opname-document .brand-table {
                             border-collapse: collapse;
-                            margin-bottom: 20px;
+                            table-layout: fixed;
+                            width: 100%;
                         }
-                        .wt-stock-opname-document .header-grid td {
+                        .wt-stock-opname-document .brand-table > tbody > tr > td {
+                            background: transparent !important;
+                            padding: 0 !important;
+                            vertical-align: middle;
+                            width: 50%;
+                        }
+                        .wt-stock-opname-document .brand-logo {
+                            display: block;
+                            max-height: 54px;
+                            max-width: 210px;
+                        }
+                        .wt-stock-opname-document .brand-company-name {
+                            color: inherit;
+                            font-size: 20px;
+                            font-weight: 700;
+                            line-height: 1.2;
+                            text-align: right;
+                        }
+                        .wt-stock-opname-document .brand-content-gap {
+                            height: 30px;
+                        }
+                        .wt-stock-opname-document .document-meta-table {
+                            border-collapse: collapse;
+                            margin: 0 0 14px;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-stock-opname-document .document-meta-table > tbody > tr > td {
+                            background: transparent !important;
+                            padding: 0 !important;
                             vertical-align: top;
                         }
                         .wt-stock-opname-document .document-title {
-                            font-size: 22px;
+                            color: inherit;
+                            font-size: 18px;
                             font-weight: 700;
-                            letter-spacing: .5px;
+                            letter-spacing: 0;
+                            line-height: 1.2;
                             margin: 0 0 8px;
-                            text-transform: uppercase;
-                            text-align: right;
+                            text-align: left;
+                            text-transform: none;
                         }
-                        .wt-stock-opname-document .company-logo {
-                            max-height: 96px;
-                            max-width: 340px;
+                        .wt-stock-opname-document .document-number-table {
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
                         }
-                        .wt-stock-opname-document .document-number {
-                            padding: 0;
-                            text-align: right;
+                        .wt-stock-opname-document .document-number-table td {
+                            background: transparent !important;
+                            padding: 2px 0 !important;
+                            vertical-align: top;
                         }
-                        .wt-stock-opname-document .document-number .label {
-                            color: #4b5563;
-                            font-size: 10px;
-                            text-transform: uppercase;
+                        .wt-stock-opname-document .document-label {
+                            width: 34%;
                         }
-                        .wt-stock-opname-document .document-number .value {
-                            font-size: 17px;
-                            font-weight: 700;
+                        .wt-stock-opname-document .document-value {
+                            padding-left: 8px !important;
+                            text-align: left;
+                            width: 66%;
+                            word-wrap: break-word;
                         }
                         .wt-section-title {
-                            background: #111827;
-                            color: #ffffff;
+                            background: transparent;
+                            border-bottom: 1px solid #cbd5e1;
+                            color: inherit;
                             font-size: 11px;
                             font-weight: 700;
-                            letter-spacing: .2px;
-                            padding: 8px 12px;
-                            text-transform: uppercase;
+                            letter-spacing: 0;
+                            line-height: 1.4;
+                            margin-top: 14px;
+                            padding: 0 0 5px;
+                            text-transform: none;
                         }
                         .wt-table {
                             width: 100%;
@@ -101,31 +169,48 @@
                             color: #111827;
                             font-size: 10px;
                             font-weight: 700;
+                            line-height: 1.4;
                             padding: 9px 10px !important;
                             vertical-align: middle;
                         }
                         .wt-table td {
                             border: 1px solid #cbd5e1;
                             font-size: 10px;
-                            line-height: 1.45;
-                            padding: 9px 11px !important;
+                            line-height: 1.6;
+                            overflow-wrap: anywhere;
+                            padding: 10px 12px !important;
                             vertical-align: top;
+                            word-break: break-word;
+                            word-wrap: break-word;
+                        }
+                        .wt-meta {
+                            border-collapse: collapse;
+                            margin-bottom: 16px;
+                            table-layout: fixed;
+                            width: 100%;
                         }
                         .wt-meta td {
-                            border: 1px solid #cbd5e1;
+                            background: #fff !important;
+                            border: 1px solid #cbd5e1 !important;
                             font-size: 10px;
-                            line-height: 1.55;
-                            padding: 10px 16px !important;
+                            line-height: 1.45;
+                            padding: 7px 8px !important;
+                            vertical-align: middle;
                         }
                         .wt-label {
-                            background: #f8fafc;
-                            color: #374151;
+                            background: #f3f4f6 !important;
+                            color: inherit;
                             font-weight: 700;
-                            width: 18%;
+                            width: 17%;
+                        }
+                        .wt-meta .wt-value {
+                            width: 33%;
                         }
                         .wt-number {
                             text-align: right;
                             white-space: nowrap;
+                            word-break: normal;
+                            word-wrap: normal;
                         }
                         .wt-no-col {
                             min-width: 32px;
@@ -141,6 +226,7 @@
                         .wt-muted {
                             color: #6b7280;
                             font-size: 9px;
+                            line-height: 1.45;
                         }
                         .wt-box {
                             border: 1px solid #cbd5e1;
@@ -149,111 +235,115 @@
                         }
                     </style>
 
-                    <table class="header-grid">
-                        <tr>
-                            <td style="width: 45%;">
-                                <t t-if="doc.company_id.logo">
-                                    <img class="company-logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
-                                </t>
-                                <t t-else="">
-                                    <strong t-esc="doc.company_id.name"/>
-                                </t>
-                            </td>
-                            <td style="width: 55%;">
-                                <h2 class="document-title">Laporan Stock Opname</h2>
-                                <div class="document-number">
-                                    <div class="label">Nomor Dokumen</div>
-                                    <div class="value" t-esc="doc.name"/>
-                                    <div style="margin-top: 5px;">
-                                        <span class="label">Tanggal Cetak</span>
-                                        <strong t-esc="time.strftime('%d/%m/%Y')"/>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <div class="wt-section-title">Informasi Stock Opname</div>
-                    <table class="wt-table wt-meta" style="margin-bottom: 12px;">
-                        <tr>
-                            <td class="wt-label">Perusahaan</td>
-                            <td><span t-out="doc.company_id.name or ''"/></td>
-                            <td class="wt-label">Tanggal</td>
-                            <td><span t-field="doc.date" t-options='{"widget": "date"}'/></td>
-                        </tr>
-                        <tr>
-                            <td class="wt-label">Status</td>
-                            <td><span t-out="state_label"/></td>
-                            <td class="wt-label">Gudang</td>
-                            <td><span t-out="doc.warehouse_id.display_name or ''"/></td>
-                        </tr>
-                        <tr>
-                            <td class="wt-label">Estate</td>
-                            <td><span t-out="doc.warehouse_id.estate_id.display_name or '-'"/></td>
-                            <td class="wt-label">Lokasi Stock</td>
-                            <td><span t-out="doc.location_id.complete_name or doc.location_id.display_name or ''"/></td>
-                        </tr>
-                        <tr>
-                            <td class="wt-label">Divisi</td>
-                            <td><span t-out="doc.division_id.display_name or ''"/></td>
-                            <td class="wt-label">Operator/Petugas</td>
-                            <td><span t-out="doc.operator_employee_id.name or ''"/></td>
-                        </tr>
-                    </table>
-
-                    <div class="wt-section-title">Ringkasan Opname</div>
-                    <table class="wt-table" style="margin-bottom: 12px;">
-                        <thead>
-                            <tr>
-                                <th>Total Lot</th>
-                                <th>Sudah Ditimbang</th>
-                                <th>Belum Ditimbang</th>
-                                <th>Lot Berselisih</th>
-                                <th>Total Qty Teori</th>
-                                <th>Total Qty Fisik</th>
-                                <th>Total Selisih</th>
+                    <table class="brand-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                        <tbody style="border: 0 !important; outline: 0 !important;">
+                            <tr style="border: 0 !important; outline: 0 !important;">
+                                <td style="border: 0 !important; outline: 0 !important;">
+                                    <t t-if="report_company.logo">
+                                        <img class="brand-logo" t-att-src="image_data_uri(report_company.logo)" alt="Logo"/>
+                                    </t>
+                                    <t t-else="">
+                                        <strong t-esc="report_company.name"/>
+                                    </t>
+                                </td>
+                                <td class="brand-company-name" style="border: 0 !important; outline: 0 !important;">
+                                    <span t-esc="report_company.name"/>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="wt-number"><span t-out="doc.total_lot_count"/></td>
-                                <td class="wt-number"><span t-out="len(weighed_lines)"/></td>
-                                <td class="wt-number"><span t-out="len(unweighed_lines)"/></td>
-                                <td class="wt-number"><span t-out="len(difference_lines)"/></td>
-                                <td class="wt-number"><span t-out="('{:,.2f}'.format(doc.total_theoretical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
-                                <td class="wt-number"><span t-out="('{:,.2f}'.format(doc.total_physical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
-                                <td class="wt-number"><span t-out="('{:,.2f}'.format(doc.total_difference_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
+                        </tbody>
+                    </table>
+                    <div class="brand-content-gap"></div>
+
+                    <table class="document-meta-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                        <tbody style="border: 0 !important; outline: 0 !important;">
+                            <tr style="border: 0 !important; outline: 0 !important;">
+                                <td style="border: 0 !important; outline: 0 !important; width: 48%;">
+                                    <div class="document-title">
+                                        <span class="label-en">STOCK OPNAME REPORT</span>
+                                        <span class="label-id">Laporan Stock Opname</span>
+                                    </div>
+                                    <table class="document-number-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                                        <tbody style="border: 0 !important; outline: 0 !important;">
+                                            <tr style="border: 0 !important; outline: 0 !important;">
+                                                <td class="document-label" style="border: 0 !important; outline: 0 !important;">
+                                                    <span class="label-en">DOCUMENT NO.</span>
+                                                    <span class="label-id">Nomor Dokumen</span>
+                                                </td>
+                                                <td class="document-value" style="border: 0 !important; outline: 0 !important;" t-esc="doc.name"/>
+                                            </tr>
+                                            <tr style="border: 0 !important; outline: 0 !important;">
+                                                <td class="document-label" style="border: 0 !important; outline: 0 !important;">
+                                                    <span class="label-en">DATE</span>
+                                                    <span class="label-id">Tanggal</span>
+                                                </td>
+                                                <td class="document-value" style="border: 0 !important; outline: 0 !important;">
+                                                    <span t-field="doc.date" t-options='{"widget": "date"}'/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </td>
+                                <td style="border: 0 !important; outline: 0 !important; width: 52%;"></td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div class="wt-section-title">Hasil Stock Opname</div>
+                    <table class="wt-table wt-meta">
+                        <tbody>
+                            <tr>
+                                <td class="wt-label">Estate</td>
+                                <td class="wt-value"><span t-out="doc.warehouse_id.estate_id.display_name or '-'"/></td>
+                                <td class="wt-label">Total Lot</td>
+                                <td class="wt-value wt-number"><span t-out="doc.total_lot_count"/></td>
+                            </tr>
+                            <tr>
+                                <td class="wt-label">Divisi</td>
+                                <td class="wt-value"><span t-out="doc.division_id.display_name or ''"/></td>
+                                <td class="wt-label">Total Qty Teori</td>
+                                <td class="wt-value wt-number"><span t-out="('{:,.2f}'.format(doc.total_theoretical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
+                            </tr>
+                            <tr>
+                                <td class="wt-label">Gudang</td>
+                                <td class="wt-value"><span t-out="doc.warehouse_id.display_name or ''"/></td>
+                                <td class="wt-label">Total Qty Fisik</td>
+                                <td class="wt-value wt-number"><span t-out="('{:,.2f}'.format(doc.total_physical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
+                            </tr>
+                            <tr>
+                                <td class="wt-label">Lokasi Stock</td>
+                                <td class="wt-value"><span t-out="doc.location_id.complete_name or doc.location_id.display_name or ''"/></td>
+                                <td class="wt-label">Total Selisih</td>
+                                <td class="wt-value wt-number"><span t-out="('{:,.2f}'.format(doc.total_difference_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
+                            </tr>
+                            <tr>
+                                <td class="wt-label">Operator/Petugas</td>
+                                <td class="wt-value" colspan="3"><span t-out="doc.operator_employee_id.name or ''"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="wt-section-title">HASIL STOCK OPNAME</div>
                     <table class="wt-table" style="margin-bottom: 12px;">
                         <thead>
                             <tr>
                                 <th class="wt-no-col">No</th>
-                                <th style="width: 14%;">Produk</th>
-                                <th style="width: 16%;">Lot</th>
-                                <th style="width: 10%;">Status</th>
-                                <th style="width: 10%;">Qty Teori</th>
-                                <th style="width: 10%;">Qty Fisik</th>
-                                <th style="width: 10%;">Selisih</th>
-                                <th style="width: 8%;">Satuan</th>
-                                <th style="width: 16%;">Alokasi</th>
+                                <th style="width: 19%;">Lot</th>
+                                <th style="width: 12%;">Qty Teori</th>
+                                <th style="width: 12%;">Qty Fisik</th>
+                                <th style="width: 12%;">Selisih</th>
+                                <th style="width: 10%;">Satuan</th>
+                                <th style="width: 29%;">Alokasi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <t t-if="not doc.line_ids">
                                 <tr>
-                                    <td colspan="9" style="text-align: center; color: #6b7280;">Belum ada data stok.</td>
+                                    <td colspan="7" style="text-align: center; color: #6b7280;">Belum ada data stok.</td>
                                 </tr>
                             </t>
                             <t t-foreach="doc.line_ids" t-as="line">
                                 <tr>
                                     <td class="wt-no-col"><span t-out="line_index + 1"/></td>
-                                    <td><span t-out="line.product_id.display_name or ''"/></td>
                                     <td><span t-out="line.lot_id.name or ''"/></td>
-                                    <td><span t-out="dict(line.COUNT_STATUS_SELECTION).get(line.count_status, line.count_status)"/></td>
                                     <td class="wt-number"><span t-out="('{:,.2f}'.format(line.theoretical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
                                     <td class="wt-number"><span t-out="('{:,.2f}'.format(line.physical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
                                     <td class="wt-number"><span t-out="('{:,.2f}'.format(line.difference_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
@@ -274,7 +364,7 @@
                                 </tr>
                             </t>
                             <tr>
-                                <td colspan="4" style="font-weight: 700; text-align: right;">TOTAL</td>
+                                <td colspan="2" style="font-weight: 700; text-align: right;">TOTAL</td>
                                 <td class="wt-number" style="font-weight: 700;"><span t-out="('{:,.2f}'.format(doc.total_theoretical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
                                 <td class="wt-number" style="font-weight: 700;"><span t-out="('{:,.2f}'.format(doc.total_physical_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
                                 <td class="wt-number" style="font-weight: 700;"><span t-out="('{:,.2f}'.format(doc.total_difference_qty or 0.0)).replace(',', 'X').replace('.', ',').replace('X', '.')"/></td>
@@ -283,7 +373,7 @@
                         </tbody>
                     </table>
 
-                    <div class="wt-section-title">Ringkasan Alokasi Selisih</div>
+                    <div class="wt-section-title">RINGKASAN ALOKASI SELISIH</div>
                     <table class="wt-table" style="margin-bottom: 12px;">
                         <thead>
                             <tr>
@@ -305,7 +395,7 @@
                         </tbody>
                     </table>
 
-                    <div class="wt-section-title">Detail Alokasi Selisih</div>
+                    <div class="wt-section-title">DETAIL ALOKASI SELISIH</div>
                     <table class="wt-table" style="margin-bottom: 18px;">
                         <thead>
                             <tr>
@@ -338,7 +428,7 @@
                         </tbody>
                     </table>
 
-                    <div class="wt-section-title">Catatan Pemeriksaan</div>
+                    <div class="wt-section-title">CATATAN PEMERIKSAAN</div>
                     <div style="border: 1px solid #cbd5e1; min-height: 56px; margin-bottom: 20px; padding: 10px 12px;">
                         <span t-out="doc.note or ''"/>
                     </div>
@@ -362,7 +452,7 @@
                             </td>
                         </tr>
                     </table>
-                </div>
+                    </div>
                 </t>
             </t>
         </t>

@@ -29,21 +29,17 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="page wt-storage-shrinkage-report">
                     <style>
-                            .wt-storage-shrinkage-report { color: #111827; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.35; }
-                            .wt-storage-shrinkage-report .header-table { border-collapse: collapse; margin-bottom: 14px; width: 100%; }
+.wt-storage-shrinkage-report { color: #111827; font-family: "Lato", sans-serif; font-size: 10px; line-height: 1.35; }
+                            .wt-storage-shrinkage-report .header-table { border-collapse: collapse; margin-bottom: 24px; width: 100%; }
                             .wt-storage-shrinkage-report .header-table td { vertical-align: top; }
                             .wt-storage-shrinkage-report .logo { max-height: 72px; max-width: 250px; }
                             .wt-storage-shrinkage-report .title { color: #111827; font-size: 18px; font-weight: 700; margin: 0 0 5px; text-align: right; text-transform: uppercase; }
                             .wt-storage-shrinkage-report .meta { color: #374151; text-align: right; }
-                            .wt-storage-shrinkage-report .section-title { background: #111827; color: #fff; font-size: 10px; font-weight: 700; margin-top: 10px; padding: 7px 10px; text-transform: uppercase; }
+                            .wt-storage-shrinkage-report .section-title { background: transparent; border-bottom: 1px solid #cbd5e1; color: inherit; font-size: 10px; font-weight: 700; margin-top: 14px; padding: 0 0 5px; text-transform: uppercase; }
                             .wt-storage-shrinkage-report .info-table { border: 1px solid #cbd5e1; border-collapse: collapse; margin-bottom: 12px; width: 100%; }
                             .wt-storage-shrinkage-report .info-table td { border: 1px solid #cbd5e1; font-size: 10px; padding: 8px 10px !important; vertical-align: top; }
                             .wt-storage-shrinkage-report .info-label { background: #f3f4f6; font-weight: 700; width: 18%; }
                             .wt-storage-shrinkage-report .info-value { width: 32%; }
-                            .wt-storage-shrinkage-report .summary-grid { border-collapse: collapse; width: 100%; }
-                            .wt-storage-shrinkage-report .summary-grid td { border: 1px solid #cbd5e1; padding: 9px 12px !important; width: 50%; }
-                            .wt-storage-shrinkage-report .summary-label { color: #6b7280; font-size: 8px; text-transform: uppercase; }
-                            .wt-storage-shrinkage-report .summary-value { font-size: 14px; font-weight: 700; margin-top: 2px; }
                             .wt-storage-shrinkage-report .data-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
                             .wt-storage-shrinkage-report .data-table th { background: #f3f4f6; border: 1px solid #9ca3af; font-size: 10px; font-weight: 700; line-height: 1.35; padding: 8px 10px !important; text-align: center; vertical-align: middle; }
                             .wt-storage-shrinkage-report .data-table td { border: 1px solid #cbd5e1; font-size: 10px; line-height: 1.35; padding: 8px 10px !important; vertical-align: middle; word-break: break-word; }
@@ -91,14 +87,6 @@
                             </tr>
                         </table>
 
-                        <div class="section-title">Total Susut</div>
-                        <table class="summary-grid">
-                            <tr>
-                                <td><div class="summary-label">Stock Opname</div><div class="summary-value"><span t-esc="'%.2f' % (doc.total_stock_opname_qty or 0.0)"/> kg</div></td>
-                                <td><div class="summary-label">Total Susut</div><div class="summary-value"><span t-esc="'%.2f' % (doc.total_shrinkage_qty or 0.0)"/> kg</div></td>
-                            </tr>
-                        </table>
-
                         <div class="section-title">Ringkasan Per Gudang Dan Divisi</div>
                         <table class="data-table">
                             <thead>
@@ -106,8 +94,7 @@
                                     <th style="width: 7%;">No</th>
                                     <th style="width: 31%;">Gudang</th>
                                     <th style="width: 31%;">Divisi</th>
-                                    <th style="width: 15%;">Stock Opname</th>
-                                    <th style="width: 16%;">Total Susut</th>
+                                    <th style="width: 31%;">Total Susut</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -117,18 +104,16 @@
                                             <td class="text-center" t-esc="line.sequence"/>
                                             <td t-esc="line.warehouse_name"/>
                                             <td t-esc="line.division_name"/>
-                                            <td class="text-right"><span t-esc="'%.2f' % (line.stock_opname_qty or 0.0)"/> kg</td>
                                             <td class="text-right"><span t-esc="'%.2f' % (line.total_qty or 0.0)"/> kg</td>
                                         </tr>
                                     </t>
                                     <tr class="total-row">
                                         <td colspan="3" class="text-right">Total</td>
-                                        <td class="text-right"><span t-esc="'%.2f' % (doc.total_stock_opname_qty or 0.0)"/> kg</td>
                                         <td class="text-right"><span t-esc="'%.2f' % (doc.total_shrinkage_qty or 0.0)"/> kg</td>
                                     </tr>
                                 </t>
                                 <tr t-if="not doc.summary_line_ids">
-                                    <td colspan="5" class="text-center muted">Tidak ada data susut pada filter ini.</td>
+                                    <td colspan="4" class="text-center muted">Tidak ada data susut pada filter ini.</td>
                                 </tr>
                             </tbody>
                         </table>

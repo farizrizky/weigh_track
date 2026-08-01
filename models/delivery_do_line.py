@@ -787,6 +787,41 @@ class DeliveryDoLine(models.Model):
             })
         return values
 
+    def wt_get_report_plan_lot_lines(self):
+        """Lots shown as planned stock-out source in the delivery order report."""
+        self.ensure_one()
+        direct_non_transit_lots = self.lot_line_ids.filtered(
+            lambda lot_line: lot_line.qty > 0.0
+            and lot_line.lot_id.wt_lot_type != "transit"
+        )
+        is_customer_line = (
+            self.picking_type_id.code == "outgoing"
+            or self.location_dest_id.usage == "customer"
+        )
+        if not is_customer_line:
+            return direct_non_transit_lots
+
+        source_non_transit_lots = self._get_expected_transit_source_lines().mapped(
+            "lot_line_ids"
+        ).filtered(
+            lambda lot_line: lot_line.qty > 0.0
+            and lot_line.lot_id.wt_lot_type != "transit"
+        )
+        return source_non_transit_lots or direct_non_transit_lots
+
+    def wt_get_report_plan_qty(self):
+        """Quantity for the Rencana column in the delivery order report."""
+        self.ensure_one()
+        is_customer_line = (
+            self.picking_type_id.code == "outgoing"
+            or self.location_dest_id.usage == "customer"
+        )
+        if not is_customer_line:
+            return self.demand_qty
+
+        report_lots = self.wt_get_report_plan_lot_lines()
+        return sum(report_lots.mapped("qty")) if report_lots else self.demand_qty
+
     def _is_transit_route(self):
         self.ensure_one()
         return self.route_type == "transit" or self.route_line_id.route_type == "transit"

@@ -29,8 +29,8 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="page wt-stock-out-report">
                     <style>
-                        .wt-stock-out-report { color: #111827; font-family: Arial, sans-serif; font-size: 10px; line-height: 1.35; }
-                        .wt-stock-out-report .header-table { border-collapse: collapse; margin-bottom: 14px; width: 100%; }
+.wt-stock-out-report { color: #111827; font-family: "Lato", sans-serif; font-size: 10px; line-height: 1.35; }
+                        .wt-stock-out-report .header-table { border-collapse: collapse; margin-bottom: 24px; width: 100%; }
                         .wt-stock-out-report .header-table td { vertical-align: top; }
                         .wt-stock-out-report .logo { max-height: 72px; max-width: 250px; }
                         .wt-stock-out-report .title { color: #111827; font-size: 18px; font-weight: 700; margin: 0 0 5px; text-align: right; text-transform: uppercase; }

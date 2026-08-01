@@ -10,8 +10,7 @@
     "data": [
         "security/access_groups.xml",
         "security/ir.model.access.csv",
-        "data/delivery_sequence.xml",
-        "data/weighing_sequence.xml",
+        "data/weightrack_sequence.xml",
         "data/stock_opname_difference_reason_data.xml",
         "views/api_views.xml",
         "views/api_request_log_views.xml",

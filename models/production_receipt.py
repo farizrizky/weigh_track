@@ -473,6 +473,26 @@ class ProductionReceipt(models.Model):
             receipt.lot_ids = receipt.line_ids.mapped("lot_id") | receipt.lot_id
             receipt.lot_count = len(receipt.lot_ids)
 
+    def wt_get_report_lot_lines(self):
+        self.ensure_one()
+        grouped_lines = {}
+        for line in self.line_ids.filtered(
+            lambda receipt_line: receipt_line.lot_id and receipt_line.location_id
+        ):
+            uom = line.uom_id or line.product_id.uom_id
+            key = (line.lot_id.id, line.location_id.id, uom.id)
+            grouped_line = grouped_lines.setdefault(
+                key,
+                {
+                    "lot_name": line.lot_id.name or "-",
+                    "location_name": line.location_id.display_name or "-",
+                    "qty": 0.0,
+                    "uom_name": uom.name or "",
+                },
+            )
+            grouped_line["qty"] += line.stock_weight or 0.0
+        return list(grouped_lines.values())
+
     def write(self, vals):
         if vals.get("division_id"):
             vals = dict(vals)

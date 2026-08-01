@@ -5,10 +5,10 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Portrait</field>
-        <field name="margin_top">20</field>
-        <field name="margin_bottom">20</field>
-        <field name="margin_left">15</field>
-        <field name="margin_right">15</field>
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">16</field>
+        <field name="margin_left">12</field>
+        <field name="margin_right">12</field>
         <field name="header_line" eval="False"/>
         <field name="header_spacing">0</field>
         <field name="dpi">90</field>
@@ -26,150 +26,252 @@
         <field name="print_report_name">'Dokumen Delivery Order - %s' % (object.name)</field>
     </record>
 
+    <template id="external_layout_weightrack_delivery">
+        <t t-if="not o" t-set="o" t-value="doc"/>
+        <t t-set="company" t-value="o.company_id.sudo() if o and o.company_id else res_company"/>
+        <div
+            t-attf-class="article o_report_layout_standard o_company_#{company.id}_layout"
+            t-att-data-oe-model="o and o._name"
+            t-att-data-oe-id="o and o.id"
+            t-att-data-oe-lang="o and o.env.context.get('lang')">
+            <t t-out="0"/>
+        </div>
+        <div t-attf-class="footer o_standard_footer o_company_#{company.id}_layout"/>
+    </template>
+
     <template id="report_delivery_slip_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-set="o" t-value="doc"/>
-                <t t-call="web.external_layout">
-                    <t t-set="uom_name" t-value="doc.product_id.uom_id.name or 'kg'"/>
+                <t t-set="uom_name" t-value="doc.product_id.uom_id.name or 'kg'"/>
+                <t t-set="display_total_physical_qty" t-value="doc.wt_get_report_total_physical_qty()"/>
+                <t t-set="customer_partner" t-value="doc.wt_get_report_customer_partner()"/>
+                <t t-set="delivery_address" t-value="doc.wt_get_report_delivery_address()"/>
+                <t t-set="goods_lines" t-value="doc.wt_get_report_delivered_goods_lines()"/>
+                <t t-set="report_company" t-value="doc.company_id.sudo() if doc.company_id else res_company"/>
+                <t t-call="weightrack.external_layout_weightrack_delivery">
                     <div class="page wt-delivery-order-document">
                         <style>
-                            .wt-delivery-order-document { color: #111827; font-size: 11px; line-height: 1.35; }
-                            .wt-delivery-order-document .header-grid { border-collapse: collapse; margin-bottom: 20px; width: 100%; }
-                            .wt-delivery-order-document .header-grid td { vertical-align: top; }
-                            .wt-delivery-order-document .company-logo { max-height: 96px; max-width: 340px; }
-                            .wt-delivery-order-document .document-title { font-size: 22px; font-weight: 700; letter-spacing: .5px; margin: 0 0 8px; text-align: right; text-transform: uppercase; }
-                            .wt-delivery-order-document .document-number { padding: 0; text-align: right; }
-                            .wt-delivery-order-document .document-number .label { color: #4b5563; font-size: 10px; text-transform: uppercase; }
-                            .wt-delivery-order-document .document-number .value { font-size: 17px; font-weight: 700; }
-                            .wt-delivery-order-document .section-title { background: #111827; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .3px; margin-top: 12px; padding: 8px 12px; text-transform: uppercase; }
-                            .wt-delivery-order-document .info-table { border: 1px solid #d1d5db; border-collapse: collapse; width: 100%; }
-                            .wt-delivery-order-document .info-table td { border: 1px solid #d1d5db; line-height: 1.55; padding: 10px 16px !important; vertical-align: top; }
-                            .wt-delivery-order-document .info-label { background: #f3f4f6; color: #374151; font-weight: 700; width: 16%; }
-                            .wt-delivery-order-document .info-value { width: 34%; }
-                            .wt-delivery-order-document .summary-grid { border-collapse: separate; border-spacing: 0 8px; margin-top: 4px; width: 100%; }
-                            .wt-delivery-order-document .summary-card { border: 1px solid #d1d5db; line-height: 1.45; padding: 12px 16px !important; width: 25%; }
-                            .wt-delivery-order-document .summary-label { color: #6b7280; font-size: 9px; padding: 0 2px; text-transform: uppercase; }
-                            .wt-delivery-order-document .summary-value { font-size: 16px; font-weight: 700; margin-top: 2px; padding: 0 2px; }
-                            .wt-delivery-order-document .control-table { border-collapse: collapse; margin-top: 0; table-layout: fixed; width: 100%; }
-                            .wt-delivery-order-document .control-table th { background: #f3f4f6; border: 1px solid #9ca3af; font-size: 10px; font-weight: 700; line-height: 1.35; padding: 9px 10px !important; text-align: center; vertical-align: middle; }
-                            .wt-delivery-order-document .control-table td { border: 1px solid #d1d5db; line-height: 1.45; padding: 9px 11px !important; vertical-align: top; }
-                            .wt-delivery-order-document .control-table td.text-right { padding-left: 10px !important; padding-right: 16px !important; white-space: nowrap; }
-                            .wt-delivery-order-document .total-row td { background: #f9fafb; font-weight: 700; }
+                            .wt-delivery-order-document { color: inherit; font-family: inherit; font-size: 10px; line-height: 1.45; }
+                            .wt-delivery-order-document .label-en { display: block; font-weight: 700; line-height: 1.25; }
+                            .wt-delivery-order-document .label-id { color: #6b7280; display: block; font-size: 8px; font-weight: 400; line-height: 1.25; margin-top: 1px; }
+                            .wt-delivery-order-document .wt-borderless,
+                            .wt-delivery-order-document .wt-borderless > tbody,
+                            .wt-delivery-order-document .wt-borderless > tbody > tr,
+                            .wt-delivery-order-document .wt-borderless > tbody > tr > td { border: 0 !important; box-shadow: none !important; outline: 0 !important; }
+                            .wt-delivery-order-document .wt-framed-table,
+                            .wt-delivery-order-document .wt-framed-table > thead,
+                            .wt-delivery-order-document .wt-framed-table > tbody,
+                            .wt-delivery-order-document .wt-framed-table > thead > tr,
+                            .wt-delivery-order-document .wt-framed-table > tbody > tr { border: 0 !important; box-shadow: none !important; outline: 0 !important; }
+                            .wt-delivery-order-document .brand-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .brand-table > tbody > tr > td { background: transparent !important; padding: 0 !important; vertical-align: middle; width: 50%; }
+                            .wt-delivery-order-document .brand-logo { display: block; max-height: 54px; max-width: 210px; }
+                            .wt-delivery-order-document .brand-company-name { color: inherit; font-size: 20px; font-weight: 700; line-height: 1.2; text-align: right; }
+                            .wt-delivery-order-document .brand-content-gap { height: 30px; }
+                            .wt-delivery-order-document .do-meta-table { border-collapse: collapse; margin: 0 0 16px; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .do-meta-table > tbody > tr > td { background: transparent !important; padding: 0 !important; vertical-align: top; }
+                            .wt-delivery-order-document .document-title { color: inherit; font-size: 18px; font-weight: 700; letter-spacing: 0; line-height: 1.2; margin: 0 0 8px; text-align: left; text-transform: none; }
+                            .wt-delivery-order-document .meta-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .meta-table td { background: transparent !important; padding: 2px 0 !important; vertical-align: top; }
+                            .wt-delivery-order-document .meta-label-cell { width: 34%; }
+                            .wt-delivery-order-document .meta-value-cell { text-align: left; width: 66%; word-wrap: break-word; }
+                            .wt-delivery-order-document .info-table { border-collapse: collapse; margin-bottom: 16px; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .info-table .info-cell { border: 1px solid #cbd5e1 !important; height: 72px; padding: 9px 12px !important; vertical-align: top; width: 50%; }
+                            .wt-delivery-order-document .info-table .delivery-address-cell { border-left: 0 !important; }
+                            .wt-delivery-order-document .box-title { font-size: 9px; font-weight: 700; line-height: 1.4; margin-bottom: 8px; }
+                            .wt-delivery-order-document .contact-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .contact-table td { background: transparent !important; padding: 1px 0 !important; vertical-align: top; }
+                            .wt-delivery-order-document .contact-label { width: 34%; }
+                            .wt-delivery-order-document .contact-separator { text-align: center; width: 4%; }
+                            .wt-delivery-order-document .contact-value { width: 62%; word-break: break-word; word-wrap: break-word; }
+                            .wt-delivery-order-document .section-caption { font-size: 11px; font-weight: 700; margin: 12px 0 5px; }
+                            .wt-delivery-order-document .items-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .items-table th { background: #f3f4f6; border: 1px solid #cbd5e1 !important; color: inherit; font-size: 9px; font-weight: 700; line-height: 1.35; padding: 7px 8px !important; text-align: center; vertical-align: middle; }
+                            .wt-delivery-order-document .items-table td { border: 1px solid #cbd5e1 !important; font-size: 9px; line-height: 1.45; overflow-wrap: anywhere; padding: 7px 8px !important; vertical-align: top; word-break: break-word; word-wrap: break-word; }
+                            .wt-delivery-order-document .items-table td.text-right { white-space: nowrap; word-break: normal; word-wrap: normal; }
+                            .wt-delivery-order-document .total-position-table { border-collapse: collapse; margin-top: 10px; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .total-position-table > tbody > tr > td { background: transparent !important; padding: 0 !important; vertical-align: top; }
+                            .wt-delivery-order-document .total-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .total-table td { border: 1px solid #cbd5e1 !important; padding: 7px 9px !important; vertical-align: top; }
+                            .wt-delivery-order-document .total-label { font-weight: 700; text-align: right; width: 60%; }
+                            .wt-delivery-order-document .total-value { text-align: right; white-space: nowrap; width: 40%; }
+                            .wt-delivery-order-document .comment-table { border-collapse: collapse; margin-top: 14px; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .comment-table td { border: 1px solid #cbd5e1 !important; height: 42px; padding: 8px 10px !important; vertical-align: top; }
+                            .wt-delivery-order-document .signature-table { border-collapse: collapse; margin-top: 26px; page-break-inside: avoid; table-layout: fixed; width: 100%; }
+                            .wt-delivery-order-document .signature-table td { background: transparent !important; padding: 0 !important; text-align: center; vertical-align: top; width: 50%; }
+                            .wt-delivery-order-document .signature-space { height: 58px; }
+                            .wt-delivery-order-document .signature-name { border-bottom: 1px dotted #333; display: inline-block; min-width: 104px; }
                             .wt-delivery-order-document .text-center { text-align: center; }
                             .wt-delivery-order-document .text-right { text-align: right; }
-                            .wt-delivery-order-document .muted { color: #6b7280; }
-                            .wt-delivery-order-document .note-area { border: 1px solid #d1d5db; min-height: 64px; padding: 10px 16px; }
-                            .wt-delivery-order-document .signature-table { border-collapse: collapse; margin-top: 18px; table-layout: fixed; width: 100%; }
-                            .wt-delivery-order-document .signature-table td { text-align: center; vertical-align: bottom; }
-                            .wt-delivery-order-document .signature-space { height: 48px; }
-                            .wt-delivery-order-document .signature-name { border-bottom: 1px dotted #333; display: inline-block; min-width: 100px; }
+                            .wt-delivery-order-document .muted { color: #6b7280; line-height: 1.45; }
                         </style>
 
-                        <table class="header-grid">
-                            <tr>
-                                <td style="width: 45%;">
-                                    <t t-if="doc.company_id.logo">
-                                        <img class="company-logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
-                                    </t>
-                                    <t t-else=""><strong t-esc="doc.company_id.name"/></t>
-                                </td>
-                                <td style="width: 55%;">
-                                    <h2 class="document-title">Dokumen Delivery Order</h2>
-                                    <div class="document-number">
-                                        <div class="label">Nomor Dokumen</div>
-                                        <div class="value" t-esc="doc.name"/>
-                                        <div style="margin-top: 5px;"><span class="label">Tanggal Cetak</span> <strong t-esc="time.strftime('%d/%m/%Y')"/></div>
-                                    </div>
-                                </td>
-                            </tr>
+                        <table class="brand-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td style="border: 0 !important; outline: 0 !important;">
+                                        <t t-if="report_company.logo">
+                                            <img class="brand-logo" t-att-src="image_data_uri(report_company.logo)" alt="Logo"/>
+                                        </t>
+                                    </td>
+                                    <td style="border: 0 !important; outline: 0 !important;">
+                                        <div class="brand-company-name" t-esc="report_company.name"/>
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
+                        <div class="brand-content-gap"/>
 
-                        <div class="section-title">Informasi Pengiriman</div>
-                        <table class="info-table">
-                            <tr>
-                                <td class="info-label">Perusahaan</td>
-                                <td class="info-value" t-esc="doc.company_id.name"/>
-                                <td class="info-label">Customer</td>
-                                <td class="info-value" t-esc="doc.partner_id.display_name or '-'"/>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Tanggal Pengiriman</td>
-                                <td class="info-value"><span t-field="doc.date" t-options='{"widget": "date"}'/></td>
-                                <td class="info-label">Status</td>
-                                <td class="info-value"><span t-field="doc.state"/></td>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Produk</td>
-                                <td class="info-value" t-esc="doc.product_id.display_name or '-'"/>
-                                <td class="info-label">Jumlah Dokumen DO</td>
-                                <td class="info-value" t-esc="doc.picking_count"/>
-                            </tr>
-                        </table>
-
-                        <div class="section-title">Ringkasan Pengiriman</div>
-                        <table class="summary-grid">
-                            <tr>
-                                <td class="summary-card"><div class="summary-label">Total Rencana</div><div class="summary-value"><span t-esc="'%.2f' % (doc.total_demand_qty or 0.0)"/> <span t-esc="uom_name"/></div></td>
-                                <td class="summary-card"><div class="summary-label">Total Terkirim</div><div class="summary-value"><span t-esc="'%.2f' % (doc.total_physical_qty or 0.0)"/> <span t-esc="uom_name"/></div></td>
-                                <td class="summary-card"><div class="summary-label">Rencana DO</div><div class="summary-value" t-esc="len(doc.do_line_ids)"/></td>
-                                <td class="summary-card"><div class="summary-label">Lot Pengiriman</div><div class="summary-value" t-esc="len(doc.do_lot_line_ids)"/></td>
-                            </tr>
-                        </table>
-
-                        <div class="section-title">Rincian Dokumen Delivery Order</div>
-                        <table class="control-table">
-                            <thead><tr><th style="width: 5%;">No</th><th style="width: 16%;">Nomor DO</th><th style="width: 18%;">Tipe Operasi</th><th style="width: 20%;">Lokasi Sumber</th><th style="width: 20%;">Lokasi Tujuan</th><th style="width: 12%;">Produk</th><th style="width: 9%;">Rencana</th></tr></thead>
-                            <tbody>
-                                <t t-if="doc.do_line_ids">
-                                    <t t-set="line_no" t-value="0"/>
-                                    <t t-foreach="doc.do_line_ids" t-as="line">
-                                        <t t-set="line_no" t-value="line_no + 1"/>
-                                        <tr>
-                                            <td class="text-center" t-esc="line_no"/>
-                                            <td t-esc="line.picking_id.name or '-'"/>
-                                            <td t-esc="line.picking_type_id.display_name or '-'"/>
-                                            <td t-esc="line.location_id.complete_name or '-'"/>
-                                            <td t-esc="line.location_dest_id.complete_name or line.partner_id.display_name or doc.partner_id.display_name or '-'"/>
-                                            <td t-esc="line.product_id.display_name or doc.product_id.display_name or '-'"/>
-                                            <td class="text-right"><span t-esc="'%.2f' % (line.demand_qty or 0.0)"/> <span t-esc="line.product_id.uom_id.name or uom_name"/></td>
-                                        </tr>
-                                    </t>
-                                </t>
-                                <tr t-if="not doc.do_line_ids"><td colspan="7" class="text-center muted">Belum ada rencana Delivery Order.</td></tr>
+                        <table class="do-meta-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td style="border: 0 !important; outline: 0 !important; width: 40%;">
+                                        <div class="document-title">
+                                            <span class="label-en">DELIVERY ORDER</span>
+                                            <span class="label-id">Dokumen Pengiriman</span>
+                                        </div>
+                                        <table class="meta-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="meta-label-cell" style="border: 0 !important; outline: 0 !important;">
+                                                        <span class="label-en">ORDER NO.</span>
+                                                        <span class="label-id">Nomor Order</span>
+                                                    </td>
+                                                    <td class="meta-value-cell" style="border: 0 !important; outline: 0 !important; padding-left: 8px !important;" t-esc="doc.name"/>
+                                                </tr>
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="meta-label-cell" style="border: 0 !important; outline: 0 !important;">
+                                                        <span class="label-en">DATE</span>
+                                                        <span class="label-id">Tanggal</span>
+                                                    </td>
+                                                    <td class="meta-value-cell" style="border: 0 !important; outline: 0 !important; padding-left: 8px !important;"><span t-field="doc.date" t-options='{"widget": "date"}'/></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                    <td style="border: 0 !important; outline: 0 !important; width: 60%;"></td>
+                                </tr>
                             </tbody>
                         </table>
 
-                        <div class="section-title">Rincian Lot Pengiriman</div>
-                        <table class="control-table">
-                            <thead><tr><th style="width: 5%;">No</th><th style="width: 17%;">Nomor Lot</th><th style="width: 17%;">Lokasi Stok</th><th style="width: 16%;">Weighing Location</th><th style="width: 15%;">Operator</th><th style="width: 15%;">Produk</th><th style="width: 15%;">Berat Dikirim</th></tr></thead>
-                            <tbody>
-                                <t t-if="doc.do_lot_line_ids">
-                                    <t t-set="lot_no" t-value="0"/>
-                                    <t t-foreach="doc.do_lot_line_ids" t-as="lot_line">
-                                        <t t-set="lot_no" t-value="lot_no + 1"/>
-                                        <tr>
-                                            <td class="text-center" t-esc="lot_no"/>
-                                            <td t-esc="lot_line.lot_id.name or '-'"/>
-                                            <td t-esc="lot_line.source_location_id.complete_name or lot_line.location_id.complete_name or '-'"/>
-                                            <td t-esc="lot_line.weighing_location_id.display_name or '-'"/>
-                                            <td t-esc="lot_line.operator_id.name or '-'"/>
-                                            <td t-esc="lot_line.product_id.display_name or '-'"/>
-                                            <td class="text-right"><span t-esc="'%.2f' % (lot_line.wt_physical_qty if lot_line.wt_physical_qty else lot_line.qty)"/> <span t-esc="lot_line.product_id.uom_id.name or uom_name"/></td>
-                                        </tr>
-                                    </t>
-                                </t>
-                                <tr t-if="not doc.do_lot_line_ids"><td colspan="7" class="text-center muted">Belum ada lot pengiriman.</td></tr>
+                        <table class="info-table wt-framed-table" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td class="info-cell">
+                                        <div class="box-title">
+                                            <span class="label-en">DELIVER TO</span>
+                                            <span class="label-id">Kirim Kepada</span>
+                                        </div>
+                                        <table class="contact-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="contact-label" style="border: 0 !important; outline: 0 !important;"><span class="label-en">CUSTOMER</span><span class="label-id">Pelanggan</span></td>
+                                                    <td class="contact-separator" style="border: 0 !important; outline: 0 !important;">:</td>
+                                                    <td class="contact-value" style="border: 0 !important; outline: 0 !important;" t-esc="customer_partner.display_name or '-'"/>
+                                                </tr>
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="contact-label" style="border: 0 !important; outline: 0 !important;"><span class="label-en">COMPANY</span><span class="label-id">Perusahaan</span></td>
+                                                    <td class="contact-separator" style="border: 0 !important; outline: 0 !important;">:</td>
+                                                    <td class="contact-value" style="border: 0 !important; outline: 0 !important;" t-esc="customer_partner.commercial_company_name or customer_partner.display_name or '-'"/>
+                                                </tr>
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="contact-label" style="border: 0 !important; outline: 0 !important;"><span class="label-en">PHONE</span><span class="label-id">Telepon</span></td>
+                                                    <td class="contact-separator" style="border: 0 !important; outline: 0 !important;">:</td>
+                                                    <td class="contact-value" style="border: 0 !important; outline: 0 !important;" t-esc="customer_partner.phone or '-'"/>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                    <td class="info-cell delivery-address-cell">
+                                        <div class="box-title">
+                                            <span class="label-en">DELIVERY ADDRESS</span>
+                                            <span class="label-id">Alamat Pengiriman</span>
+                                        </div>
+                                        <span t-esc="delivery_address or '-'"/>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
 
-                        <div class="section-title">Catatan Pengiriman</div>
-                        <div class="note-area"><span t-esc="doc.note or ''"/></div>
+                        <div class="section-caption">
+                            <span class="label-en">ITEMS DELIVERED</span>
+                            <span class="label-id">Barang yang Dikirim</span>
+                        </div>
+                        <table class="items-table wt-framed-table" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <thead style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <th style="width: 5%;"><span class="label-en">No.</span><span class="label-id">No.</span></th>
+                                    <th style="width: 55%;"><span class="label-en">Product</span><span class="label-id">Produk</span></th>
+                                    <th style="width: 20%;"><span class="label-en">Qty</span><span class="label-id">Jumlah</span></th>
+                                    <th style="width: 20%;"><span class="label-en">Unit</span><span class="label-id">Satuan</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="goods_lines">
+                                    <t t-set="goods_no" t-value="0"/>
+                                    <t t-foreach="goods_lines" t-as="goods">
+                                        <t t-set="goods_no" t-value="goods_no + 1"/>
+                                        <tr>
+                                            <td class="text-center" t-esc="goods_no"/>
+                                            <td t-esc="goods.get('name') or '-'"/>
+                                            <td class="text-right" t-esc="'%.2f' % (goods.get('qty') or 0.0)"/>
+                                            <td class="text-center" t-esc="goods.get('uom') or uom_name"/>
+                                        </tr>
+                                    </t>
+                                </t>
+                                <tr t-if="not goods_lines">
+                                    <td colspan="4" class="text-center muted">No items delivered. / Belum ada barang yang dikirim.</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                        <table class="signature-table">
-                            <tr><td>Dikirim Oleh,</td><td>Diperiksa Oleh,</td><td>Diketahui Oleh,</td><td>Penerima,</td><td>Driver,</td></tr>
-                            <tr class="signature-space"><td/><td/><td/><td/><td/></tr>
-                            <tr><td>(<span class="signature-name">&#160;</span>)</td><td>(<span class="signature-name">&#160;</span>)</td><td>(<span class="signature-name">&#160;</span>)</td><td>(<span class="signature-name">&#160;</span>)</td><td>(<span class="signature-name">&#160;</span>)</td></tr>
+                        <table class="total-position-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td style="border: 0 !important; outline: 0 !important; width: 65%;"></td>
+                                    <td style="border: 0 !important; outline: 0 !important; width: 35%;">
+                                        <table class="total-table wt-framed-table" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                                <tr style="border: 0 !important; outline: 0 !important;">
+                                                    <td class="total-label"><span class="label-en">TOTAL</span><span class="label-id">Total</span></td>
+                                                    <td class="total-value"><span t-esc="'%.2f' % (display_total_physical_qty or 0.0)"/> <span t-esc="uom_name"/></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="comment-table wt-framed-table" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td>
+                                        <strong><span class="label-en">Comments / Special Instructions</span><span class="label-id">Catatan / Instruksi Khusus</span></strong>
+                                        <div t-esc="doc.note or ''"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="signature-table wt-borderless table-borderless" border="0" cellspacing="0" cellpadding="0" style="border: 0 !important; box-shadow: none !important; outline: 0 !important;">
+                            <tbody style="border: 0 !important; outline: 0 !important;">
+                                <tr style="border: 0 !important; outline: 0 !important;">
+                                    <td style="border: 0 !important; outline: 0 !important;">
+                                        <span class="label-en">Sender,</span>
+                                        <span class="label-id">Pengirim</span>
+                                        <div class="signature-space"/>
+                                        (<span class="signature-name"></span>)
+                                    </td>
+                                    <td style="border: 0 !important; outline: 0 !important;">
+                                        <span class="label-en">Receiver,</span>
+                                        <span class="label-id">Penerima</span>
+                                        <div class="signature-space"/>
+                                        (<span class="signature-name"></span>)
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </t>
@@ -208,9 +310,9 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="page wt-despatch-slip">
                     <style>
-                        .wt-despatch-slip {
+.wt-despatch-slip {
                             color: #111;
-                            font-family: "Times New Roman", Times, serif;
+                            font-family: "Lato", sans-serif;
                             font-size: 12px;
                             letter-spacing: .2px;
                             line-height: 1.35;
@@ -459,9 +561,9 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="page wt-delivery-handover">
                     <style>
-                        .wt-delivery-handover {
+.wt-delivery-handover {
                             color: #111;
-                            font-family: "Times New Roman", Times, serif;
+                            font-family: "Lato", sans-serif;
                             font-size: 14px;
                             letter-spacing: .2px;
                             line-height: 1.45;
@@ -711,9 +813,9 @@
             <t t-foreach="docs" t-as="doc">
                 <div class="page wt-seal-layout">
                     <style>
-                        .wt-seal-layout {
+.wt-seal-layout {
                             color: #111;
-                            font-family: Verdana, Tahoma, Arial, sans-serif;
+                            font-family: "Lato", sans-serif;
                             font-size: 10.5px;
                             letter-spacing: .75px;
                             line-height: 1.5;
@@ -823,7 +925,7 @@
                             margin-bottom: 2px;
                         }
                         .wt-seal-layout .signature-date {
-                            font-family: Verdana, Tahoma, Arial, sans-serif;
+                            font-family: "Lato", sans-serif;
                             font-size: 10.5px;
                             letter-spacing: .75px;
                             line-height: 1.5;
@@ -838,7 +940,7 @@
                             width: 560px;
                         }
                         .wt-seal-layout .signature-table td {
-                            font-family: Verdana, Tahoma, Arial, sans-serif;
+                            font-family: "Lato", sans-serif;
                             font-size: 10.5px;
                             letter-spacing: .75px;
                             line-height: 1.5;
@@ -999,9 +1101,9 @@
                 <t t-set="sj_lines" t-value="sj_doc_line._get_surat_jalan_lines() if sj_doc_line else []"/>
                 <div class="page wt-surat-jalan">
                     <style>
-                        .wt-surat-jalan {
+.wt-surat-jalan {
                             color: #111;
-                            font-family: "Times New Roman", Times, serif;
+                            font-family: "Lato", sans-serif;
                             font-size: 13px;
                             letter-spacing: .25px;
                             line-height: 1.38;
