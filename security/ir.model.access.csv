@@ -43,6 +43,9 @@ access_wt_delivery_route_line_admin,access.wt.delivery.route.line.admin,model_wt
 access_wt_delivery_step_admin,access.wt.delivery.step.admin,model_wt_delivery_step,group_admin,1,1,1,1
 access_wt_delivery_line_allocation_admin,access.wt.delivery.line.allocation.admin,model_wt_delivery_line_allocation,group_admin,1,1,1,1
 access_wt_delivery_do_wizard_admin,access.wt.delivery.do.wizard.admin,model_wt_delivery_do_wizard,group_admin,1,1,1,1
+access_wt_delivery_backdate_wizard_admin,access.wt.delivery.backdate.wizard.admin,model_wt_delivery_backdate_wizard,group_admin,1,1,1,1
+access_wt_delivery_manual_weighing_wizard_admin,access.wt.delivery.manual.weighing.wizard.admin,model_wt_delivery_manual_weighing_wizard,group_admin,1,1,1,1
+access_wt_delivery_manual_weighing_wizard_line_admin,access.wt.delivery.manual.weighing.wizard.line.admin,model_wt_delivery_manual_weighing_wizard_line,group_admin,1,1,1,1
 access_wt_delivery_do_line_admin,access.wt.delivery.do.line.admin,model_wt_delivery_do_line,group_admin,1,1,1,1
 access_stock_picking_weightrack_admin,access.stock.picking.weightrack.admin,stock.model_stock_picking,group_admin,1,1,0,0
 access_stock_move_line_weightrack_admin,access.stock.move.line.weightrack.admin,stock.model_stock_move_line,group_admin,1,1,0,0
@@ -67,5 +70,14 @@ access_wt_stock_out_report_admin,access.wt.stock.out.report.admin,model_wt_stock
 access_wt_stock_out_report_summary_line_admin,access.wt.stock.out.report.summary.line.admin,model_wt_stock_out_report_summary_line,group_admin,1,1,1,1
 access_wt_stock_out_report_detail_line_admin,access.wt.stock.out.report.detail.line.admin,model_wt_stock_out_report_detail_line,group_admin,1,1,1,1
 access_wt_stock_out_report_wizard_admin,access.wt.stock.out.report.wizard.admin,model_wt_stock_out_report_wizard,group_admin,1,1,1,1
+access_wt_shipping_report_admin,access.wt.shipping.report.admin,model_wt_shipping_report,group_admin,1,1,1,1
+access_wt_shipping_report_summary_line_admin,access.wt.shipping.report.summary.line.admin,model_wt_shipping_report_summary_line,group_admin,1,1,1,1
+access_wt_shipping_report_detail_line_admin,access.wt.shipping.report.detail.line.admin,model_wt_shipping_report_detail_line,group_admin,1,1,1,1
+access_wt_shipping_report_wizard_admin,access.wt.shipping.report.wizard.admin,model_wt_shipping_report_wizard,group_admin,1,1,1,1
+access_wt_daily_stock_report_admin,access.wt.daily.stock.report.admin,model_wt_daily_stock_report,group_admin,1,1,1,1
+access_wt_daily_stock_report_wizard_admin,access.wt.daily.stock.report.wizard.admin,model_wt_daily_stock_report_wizard,group_admin,1,1,1,1
 access_wt_shrinkage_tolerance_override_admin,access.wt.shrinkage.tolerance.override.admin,model_wt_shrinkage_tolerance_override,group_admin,1,1,1,1
 access_wt_shrinkage_tolerance_override_line_admin,access.wt.shrinkage.tolerance.override.line.admin,model_wt_shrinkage_tolerance_override_line,group_admin,1,1,1,1
+access_wt_stock_movement_date_correction_admin,access.wt.stock.movement.date.correction.admin,model_wt_stock_movement_date_correction,group_admin,1,1,1,1
+access_wt_daily_stock_analysis_admin,access.wt.daily.stock.analysis.admin,model_wt_daily_stock_analysis,group_admin,1,0,0,0
+access_wt_daily_stock_analysis_refresh_wizard_admin,access.wt.daily.stock.analysis.refresh.wizard.admin,model_wt_daily_stock_analysis_refresh_wizard,group_admin,1,1,1,1

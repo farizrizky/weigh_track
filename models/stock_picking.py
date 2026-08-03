@@ -45,7 +45,13 @@ class StockPicking(models.Model):
                         "Validasi hanya bisa dilakukan melalui tombol 'Validasi & Kirim' "
                         "di dokumen Tugas Pengiriman WeighTrack."
                     ) % picking.origin)
-        return super().button_validate()
+        result = super().button_validate()
+        if not self.env.context.get("wt_skip_delivery_backdate_sync"):
+            for picking in self.filtered(
+                lambda record: record.wt_delivery_id and record.state == "done"
+            ):
+                picking.wt_delivery_id._sync_picking_effective_date(picking)
+        return result
 
     def action_view_stock_return_picking(self):
         """Mencegah retur DO individual jika berasal dari Tugas Pengiriman WeighTrack."""

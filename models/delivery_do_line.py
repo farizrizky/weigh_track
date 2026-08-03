@@ -616,7 +616,9 @@ class DeliveryDoLine(models.Model):
                         ) % (self.sequence, expected_lot.name, required_qty, selected_qty))
 
         lot_lines_to_weigh = active_lot_lines.filtered(lambda l: l.qty > 0.0)
-        unpulled_lots = lot_lines_to_weigh.filtered(lambda l: not l.wt_is_pulled)
+        unpulled_lots = lot_lines_to_weigh.filtered(
+            lambda lot: not lot._has_weighing_input()
+        )
         if unpulled_lots:
             lot_names = ", ".join(
                 l.lot_id.name or l.product_id.name
@@ -678,6 +680,54 @@ class DeliveryDoLine(models.Model):
             ("quantity", ">", 0),
         ], order="location_id, id", limit=1)
         return quant.location_id or source_location
+
+    def _check_backdated_stock_availability(self, effective_datetime):
+        """Prevent a backdated delivery from creating negative historical stock."""
+        self.ensure_one()
+        if not effective_datetime:
+            return
+        MoveLine = self.env["stock.move.line"].sudo().with_company(self.company_id)
+        shortages = []
+        source_location = self.location_id or self.picking_type_id.default_location_src_id
+        for lot_line in self.lot_line_ids.filtered(lambda line: line.qty > 0.0):
+            exact_location = self._get_lot_line_source_location(
+                lot_line, source_location
+            )
+            common_domain = [
+                ("state", "=", "done"),
+                ("company_id", "=", self.company_id.id),
+                ("product_id", "=", lot_line.product_id.id),
+                ("lot_id", "=", lot_line.lot_id.id),
+                ("date", "<=", effective_datetime),
+            ]
+            incoming = MoveLine.search(
+                common_domain + [("location_dest_id", "child_of", exact_location.id)]
+            )
+            outgoing = MoveLine.search(
+                common_domain + [("location_id", "child_of", exact_location.id)]
+            )
+            historical_qty = sum(incoming.mapped("quantity")) - sum(
+                outgoing.mapped("quantity")
+            )
+            required_qty = (
+                lot_line.wt_original_qty
+                if lot_line.wt_original_qty > 0.0
+                else lot_line.qty
+            )
+            if historical_qty + 0.001 < required_qty:
+                shortages.append(
+                    "%s / %s: %.4f kg available, %.4f kg required" % (
+                        lot_line.lot_id.display_name,
+                        exact_location.display_name,
+                        historical_qty,
+                        required_qty,
+                    )
+                )
+        if shortages:
+            raise ValidationError(_(
+                "The delivery cannot be backdated because stock was insufficient on the effective date:\n%s\n\n"
+                "Backdate the source receipt/opening stock first, then validate this delivery again."
+            ) % "\n".join("- " + shortage for shortage in shortages))
 
     def _get_warehouse_for_location(self, location):
         self.ensure_one()
@@ -927,7 +977,7 @@ class DeliveryDoLine(models.Model):
         active_lots = self.lot_line_ids.filtered(lambda l: l.qty > 0.0)
         if not active_lots:
             return False
-        if any(not lot.wt_is_pulled for lot in active_lots):
+        if any(not lot._has_weighing_input() for lot in active_lots):
             return False
         if any(lot.wt_weighing_status != "weighed" for lot in active_lots):
             return False
@@ -987,6 +1037,7 @@ class DeliveryDoLine(models.Model):
                 })
 
         if move_vals_list:
+            effective_datetime = self.delivery_id._ensure_backdate_metadata()
             ctx = dict(
                 inventory_mode=False,
                 tracking_disable=True,
@@ -994,8 +1045,11 @@ class DeliveryDoLine(models.Model):
                 no_recompute=True,
                 ignore_dest_packages=True,
             )
+            if effective_datetime:
+                ctx["force_period_date"] = self.delivery_id.date
             moves = self.env["stock.move"].sudo().with_context(**ctx).create(move_vals_list)
             moves.with_context(**ctx)._action_done()
+            self.delivery_id._sync_moves_effective_date(moves, effective_datetime)
 
         for line in adjustable_lines:
             # Demand tetap menjadi angka rencana/kontrol rantai DO.
@@ -1019,12 +1073,14 @@ class DeliveryDoLine(models.Model):
         """
         self.ensure_one()
         delivery = self.delivery_id
+        effective_datetime = delivery._ensure_backdate_metadata()
 
         if self.picking_id and self.picking_id.state == "done":
             return self.picking_id
 
         self._check_sequence_ready_for_validation()
         self._validate_before_generate()
+        self._check_backdated_stock_availability(effective_datetime)
 
         src_location = self.location_id or self.picking_type_id.default_location_src_id
         dest_location = self.location_dest_id or self.picking_type_id.default_location_dest_id
@@ -1105,7 +1161,11 @@ class DeliveryDoLine(models.Model):
             "location_id": src_location.id,
             "location_dest_id": dest_location.id,
             "partner_id": partner.id if partner else False,
-            "scheduled_date": self.scheduled_date or fields.Datetime.now(),
+            "scheduled_date": (
+                effective_datetime
+                or self.scheduled_date
+                or fields.Datetime.now()
+            ),
             "wt_delivery_id": delivery.id,
             "wt_operator_id": self.operator_id.id or (self.lot_line_ids.mapped("operator_id")[:1].id if self.lot_line_ids.mapped("operator_id") else False),
             "origin": delivery.name,
@@ -1125,7 +1185,8 @@ class DeliveryDoLine(models.Model):
             destination_warehouse = self._get_warehouse_for_location(dest_location)
 
             # Generate new lot
-            today_str = fields.Date.today().strftime("%Y%m%d")
+            transit_date = delivery.date or fields.Date.context_today(self)
+            today_str = transit_date.strftime("%Y%m%d")
             destination_code = self._clean_lot_component(
                 destination_warehouse.code or dest_location.name
             )
@@ -1149,8 +1210,6 @@ class DeliveryDoLine(models.Model):
             source_production_dates = [
                 lot.production_date for lot in source_lots if lot.production_date
             ]
-            transit_date = fields.Date.context_today(self)
-
             new_lot = self.env["stock.lot"].sudo().create({
                 "name": new_lot_name,
                 "product_id": product.id,
@@ -1226,12 +1285,18 @@ class DeliveryDoLine(models.Model):
                 })
 
         # Validasi langsung ke done â€” tanpa backorder karena demand sudah disesuaikan ke fisik
+        validation_context = {
+            "skip_backorder": True,
+            "no_backorder": True,
+            "skip_immediate": True,
+            "wt_force_validate": True,
+        }
+        if effective_datetime:
+            validation_context["force_period_date"] = delivery.date
         picking.with_context(
-            skip_backorder=True,
-            no_backorder=True,
-            skip_immediate=True,
-            wt_force_validate=True,
+            **validation_context
         ).button_validate()
+        delivery._sync_picking_effective_date(picking, effective_datetime)
 
         # Batalkan paksa backorder yang mungkin terbentuk (safety net)
         backorders = self.env["stock.picking"].search([

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime, time
+
+from pytz import UTC, timezone
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -1094,7 +1098,15 @@ class ProductionReceipt(models.Model):
         received_date = fields.Date.to_date(self.received_date)
         if not received_date:
             return False
-        return fields.Datetime.to_datetime(received_date)
+        timezone_name = self.company_id.partner_id.tz or self.env.user.tz or "UTC"
+        try:
+            business_timezone = timezone(timezone_name)
+        except Exception:
+            business_timezone = UTC
+        local_datetime = business_timezone.localize(
+            datetime.combine(received_date, time(hour=12))
+        )
+        return local_datetime.astimezone(UTC).replace(tzinfo=None)
 
     def _sync_inventory_receipt_dates(self, picking, received_datetime):
         if not received_datetime:
@@ -1106,6 +1118,32 @@ class ProductionReceipt(models.Model):
             values["date_done"] = received_datetime
         if values:
             picking.sudo().write(values)
+        moves = picking.move_ids
+        if moves:
+            moves.sudo().write({"date": received_datetime})
+            move_lines = moves.mapped("move_line_ids")
+            if move_lines and "date" in move_lines._fields:
+                move_lines.sudo().write({"date": received_datetime})
+
+    def action_open_movement_date_correction(self):
+        self.ensure_one()
+        if self.state != "validated":
+            raise ValidationError(_(
+                "Movement date correction is only available for a validated Production Receipt."
+            ))
+        return {
+            "name": _("Stock Movement Date Correction"),
+            "type": "ir.actions.act_window",
+            "res_model": "wt.stock.movement.date.correction",
+            "view_mode": "form",
+            "target": "current",
+            "context": {
+                "default_source_type": "production_receipt",
+                "default_production_receipt_id": self.id,
+                "default_company_id": self.company_id.id,
+                "default_effective_date": self.received_date,
+            },
+        }
 
     def _get_receipt_source_location(self, picking_type):
         self.ensure_one()

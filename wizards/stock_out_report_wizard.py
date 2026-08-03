@@ -4,6 +4,8 @@ import base64
 import io
 from datetime import datetime, time
 
+from pytz import UTC, timezone
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -89,6 +91,18 @@ class StockOutReport(models.TransientModel):
         string="Total Stock Keluar",
         readonly=True,
     )
+    total_shipping_qty = fields.Float(
+        string="Pengiriman",
+        readonly=True,
+    )
+    total_storage_shrinkage_qty = fields.Float(
+        string="Susut Penyimpanan",
+        readonly=True,
+    )
+    total_transfer_shrinkage_qty = fields.Float(
+        string="Susut Transfer",
+        readonly=True,
+    )
     summary_line_ids = fields.One2many(
         "wt.stock.out.report.summary.line",
         "report_id",
@@ -117,7 +131,6 @@ class StockOutReport(models.TransientModel):
                 "default_end_date": self.end_date or fields.Date.context_today(self),
                 "default_warehouse_id": self.warehouse_id.id,
                 "default_division_id": self.division_id.id,
-                "default_movement_type": self.movement_type or "all",
             },
         }
 
@@ -149,32 +162,30 @@ class StockOutReport(models.TransientModel):
         total_label_format = workbook.add_format({"bold": True, "align": "right", "border": 1})
         total_number_format = workbook.add_format({"bold": True, "border": 1, "num_format": "#,##0.00"})
 
-        sheet.merge_range("A1:N1", self.company_id.name or "", title_format)
-        sheet.merge_range("A2:N2", "LAPORAN STOCK KELUAR", title_format)
+        sheet.merge_range("A1:H1", self.company_id.name or "", title_format)
+        sheet.merge_range("A2:H2", "LAPORAN STOCK KELUAR", title_format)
         sheet.write("A4", "Rentang Tanggal", label_format)
         sheet.write("B4", "%s s/d %s" % (self.start_date or "", self.end_date or ""))
         sheet.write("A5", "Gudang", label_format)
         sheet.write("B5", self.warehouse_id.display_name if self.warehouse_id else "Semua Gudang")
         sheet.write("A6", "Divisi", label_format)
         sheet.write("B6", self.division_id.display_name if self.division_id else "Semua Divisi")
-        sheet.write("A7", "Jenis Pergerakan", label_format)
-        sheet.write("B7", self.movement_type_label or "Semua")
+        sheet.write("A7", "Status DO", label_format)
+        sheet.write("B7", "Selesai")
 
         summary_headers = [
             "No",
             "Gudang",
             "Divisi",
             "Pengiriman",
-            "Dokumen Inventory",
-            "Lot",
-            "Transfer Antar Gudang",
-            "Final ke Customer",
-            "Total Keluar",
+            "Susut Penyimpanan",
+            "Susut Transfer",
+            "Total",
         ]
-        summary_widths = [6, 24, 24, 14, 18, 12, 18, 18, 16]
+        summary_widths = [6, 26, 22, 16, 18, 16, 16]
         for column, width in enumerate(summary_widths):
             sheet.set_column(column, column, width)
-        sheet.write(8, 0, "RINGKASAN PER GUDANG DAN DIVISI", label_format)
+        sheet.write(8, 0, "STOCK KELUAR PER GUDANG DAN DIVISI", label_format)
         for column, header in enumerate(summary_headers):
             sheet.write(9, column, header, header_format)
         row_index = 10
@@ -182,43 +193,32 @@ class StockOutReport(models.TransientModel):
             sheet.write(row_index, 0, line.sequence, text_format)
             sheet.write(row_index, 1, line.warehouse_name or "", text_format)
             sheet.write(row_index, 2, line.division_name or "", text_format)
-            sheet.write(row_index, 3, line.delivery_count, text_format)
-            sheet.write(row_index, 4, line.picking_count, text_format)
-            sheet.write(row_index, 5, line.lot_count, text_format)
-            sheet.write(row_index, 6, line.transfer_qty, number_format)
-            sheet.write(row_index, 7, line.customer_qty, number_format)
-            sheet.write(row_index, 8, line.quantity, number_format)
+            sheet.write(row_index, 3, line.shipping_qty, number_format)
+            sheet.write(row_index, 4, line.storage_shrinkage_qty, number_format)
+            sheet.write(row_index, 5, line.transfer_shrinkage_qty, number_format)
+            sheet.write(row_index, 6, line.quantity, number_format)
             row_index += 1
         sheet.merge_range(row_index, 0, row_index, 2, "Total", total_label_format)
-        sheet.write(row_index, 3, self.total_delivery_count, text_format)
-        sheet.write(row_index, 4, self.total_picking_count, text_format)
-        sheet.write(row_index, 5, self.total_lot_count, text_format)
-        sheet.write(row_index, 6, self.total_transfer_qty, total_number_format)
-        sheet.write(row_index, 7, self.total_customer_qty, total_number_format)
-        sheet.write(row_index, 8, self.total_quantity, total_number_format)
+        sheet.write(row_index, 3, self.total_shipping_qty, total_number_format)
+        sheet.write(row_index, 4, self.total_storage_shrinkage_qty, total_number_format)
+        sheet.write(row_index, 5, self.total_transfer_shrinkage_qty, total_number_format)
+        sheet.write(row_index, 6, self.total_quantity, total_number_format)
 
         row_index += 3
         detail_headers = [
             "No",
             "Tanggal",
-            "No Pengiriman",
-            "No Inventory",
-            "Jenis Pergerakan",
-            "Customer",
+            "No DO / Referensi",
             "Gudang",
-            "Gudang Tujuan",
             "Divisi",
-            "Lokasi Sumber",
-            "Lokasi Tujuan",
             "Lot",
-            "Lot Transit",
-            "Produk",
-            "Qty Keluar",
+            "Kategori",
+            "Qty",
         ]
-        detail_widths = [6, 12, 20, 20, 22, 24, 22, 22, 22, 30, 30, 24, 24, 24, 14]
+        detail_widths = [6, 14, 22, 26, 20, 26, 22, 14]
         for column, width in enumerate(detail_widths):
             sheet.set_column(column, column, width)
-        sheet.write(row_index, 0, "DETAIL STOCK KELUAR GUDANG", label_format)
+        sheet.write(row_index, 0, "DETAIL SUMBER PERGERAKAN", label_format)
         row_index += 1
         for column, header in enumerate(detail_headers):
             sheet.write(row_index, column, header, header_format)
@@ -226,30 +226,27 @@ class StockOutReport(models.TransientModel):
         for line in self.detail_line_ids:
             sheet.write(row_index, 0, line.sequence, text_format)
             if line.movement_date:
+                local_movement_date = fields.Datetime.context_timestamp(
+                    self,
+                    fields.Datetime.to_datetime(line.movement_date),
+                ).replace(tzinfo=None)
                 sheet.write_datetime(
                     row_index,
                     1,
-                    fields.Datetime.to_datetime(line.movement_date),
+                    local_movement_date,
                     date_format,
                 )
             else:
                 sheet.write(row_index, 1, "", text_format)
-            sheet.write(row_index, 2, line.delivery_name or "", text_format)
-            sheet.write(row_index, 3, line.picking_name or "", text_format)
-            sheet.write(row_index, 4, line.movement_type_label or "", text_format)
-            sheet.write(row_index, 5, line.customer_name or "", text_format)
-            sheet.write(row_index, 6, line.warehouse_name or "", text_format)
-            sheet.write(row_index, 7, line.destination_warehouse_name or "", text_format)
-            sheet.write(row_index, 8, line.division_name or "", text_format)
-            sheet.write(row_index, 9, line.source_location_name or "", text_format)
-            sheet.write(row_index, 10, line.destination_location_name or "", text_format)
-            sheet.write(row_index, 11, line.lot_name or "", text_format)
-            sheet.write(row_index, 12, line.transit_lot_name or "", text_format)
-            sheet.write(row_index, 13, line.product_name or "", text_format)
-            sheet.write(row_index, 14, line.quantity, number_format)
+            sheet.write(row_index, 2, line.source_document or "", text_format)
+            sheet.write(row_index, 3, line.warehouse_name or "", text_format)
+            sheet.write(row_index, 4, line.division_name or "", text_format)
+            sheet.write(row_index, 5, line.lot_name or "", text_format)
+            sheet.write(row_index, 6, line.category_label or "", text_format)
+            sheet.write(row_index, 7, line.quantity, number_format)
             row_index += 1
-        sheet.merge_range(row_index, 0, row_index, 13, "Total", total_label_format)
-        sheet.write(row_index, 14, self.total_quantity, total_number_format)
+        sheet.merge_range(row_index, 0, row_index, 6, "Total", total_label_format)
+        sheet.write(row_index, 7, self.total_quantity, total_number_format)
 
         workbook.close()
         output.seek(0)
@@ -306,6 +303,9 @@ class StockOutReportSummaryLine(models.TransientModel):
     lot_count = fields.Integer(string="Lot", readonly=True)
     transfer_qty = fields.Float(string="Transfer Antar Gudang", readonly=True)
     customer_qty = fields.Float(string="Final ke Customer", readonly=True)
+    shipping_qty = fields.Float(string="Pengiriman", readonly=True)
+    storage_shrinkage_qty = fields.Float(string="Susut Penyimpanan", readonly=True)
+    transfer_shrinkage_qty = fields.Float(string="Susut Transfer", readonly=True)
     quantity = fields.Float(string="Qty Keluar", readonly=True)
 
 
@@ -335,6 +335,17 @@ class StockOutReportDetailLine(models.TransientModel):
         readonly=True,
     )
     movement_type_label = fields.Char(string="Jenis Pergerakan", readonly=True)
+    category = fields.Selection(
+        [
+            ("shipping", "Pengiriman"),
+            ("storage_shrinkage", "Susut Penyimpanan"),
+            ("transfer_shrinkage", "Susut Transfer"),
+        ],
+        string="Kategori",
+        readonly=True,
+    )
+    category_label = fields.Char(string="Kategori", readonly=True)
+    source_document = fields.Char(string="No DO / Referensi", readonly=True)
     customer_id = fields.Many2one("res.partner", string="Customer", readonly=True)
     customer_name = fields.Char(string="Customer", readonly=True)
     warehouse_id = fields.Many2one("stock.warehouse", string="Gudang", readonly=True)
@@ -430,14 +441,17 @@ class StockOutReportWizard(models.TransientModel):
                 "end_date": self.end_date,
                 "warehouse_id": self.warehouse_id.id or False,
                 "division_id": self.division_id.id or False,
-                "movement_type": self.movement_type,
-                "movement_type_label": self._get_filter_movement_type_label(),
+                "movement_type": "all",
+                "movement_type_label": _("Semua"),
                 "total_delivery_count": data["total_delivery_count"],
                 "total_picking_count": data["total_picking_count"],
                 "total_lot_count": data["total_lot_count"],
                 "total_transfer_qty": data["total_transfer_qty"],
                 "total_customer_qty": data["total_customer_qty"],
                 "total_quantity": data["total_quantity"],
+                "total_shipping_qty": data["total_shipping_qty"],
+                "total_storage_shrinkage_qty": data["total_storage_shrinkage_qty"],
+                "total_transfer_shrinkage_qty": data["total_transfer_shrinkage_qty"],
             }
         )
         if data["summary_vals"]:
@@ -447,104 +461,193 @@ class StockOutReportWizard(models.TransientModel):
         return report._open_current_report_action()
 
     def _prepare_report_data(self):
-        move_lines = self._get_move_lines()
         warehouses = self.env["stock.warehouse"].search([("company_id", "=", self.company_id.id)])
+        completed_deliveries = self.env["wt.delivery"].search(
+            [
+                ("company_id", "=", self.company_id.id),
+                ("state", "=", "done"),
+            ]
+        )
+        completed_delivery_by_name = {
+            delivery.name: delivery for delivery in completed_deliveries if delivery.name
+        }
+        events = []
+        provenance_cache = {}
 
+        for line in self._get_shipping_move_lines():
+            delivery = line.picking_id.wt_delivery_id
+            lot = line.lot_id
+            quantity = line.quantity or 0.0
+            if lot.wt_lot_type == "transit":
+                sources = self._get_transit_provenance(
+                    lot,
+                    warehouses,
+                    provenance_cache,
+                )
+                if sources:
+                    source_total = sum(source["quantity"] for source in sources)
+                    remaining = quantity
+                    for index, source in enumerate(sources):
+                        allocated_qty = (
+                            remaining
+                            if index == len(sources) - 1
+                            else quantity * source["quantity"] / source_total
+                        )
+                        remaining -= allocated_qty
+                        self._append_report_event(
+                            events,
+                            line=line,
+                            category="shipping",
+                            quantity=allocated_qty,
+                            warehouse=source["warehouse"],
+                            division=source["division"],
+                            lot=source["lot"],
+                            source_location=source["source_location"],
+                            source_document=delivery.name,
+                            delivery=delivery,
+                            picking=line.picking_id,
+                            customer=line.picking_id.partner_id or delivery.partner_id,
+                        )
+                    continue
+
+            warehouse = self._resolve_warehouse(line.location_id, warehouses)
+            self._append_report_event(
+                events,
+                line=line,
+                category="shipping",
+                quantity=quantity,
+                warehouse=warehouse,
+                division=lot.division_id,
+                lot=lot,
+                source_location=line.location_id,
+                source_document=delivery.name,
+                delivery=delivery,
+                picking=line.picking_id,
+                customer=line.picking_id.partner_id or delivery.partner_id,
+            )
+
+        for line in self._get_storage_shrinkage_move_lines():
+            warehouse = self._resolve_warehouse(line.location_id, warehouses)
+            self._append_report_event(
+                events,
+                line=line,
+                category="storage_shrinkage",
+                quantity=line.quantity or 0.0,
+                warehouse=warehouse,
+                division=line.lot_id.division_id,
+                lot=line.lot_id,
+                source_location=line.location_id,
+                source_document=line.move_id.origin or "",
+            )
+
+        for line in self._get_transfer_shrinkage_move_lines():
+            delivery = completed_delivery_by_name.get(line.move_id.origin)
+            warehouse = self._resolve_warehouse(line.location_id, warehouses)
+            self._append_report_event(
+                events,
+                line=line,
+                category="transfer_shrinkage",
+                quantity=line.quantity or 0.0,
+                warehouse=warehouse,
+                division=self.env["wt.division"],
+                lot=line.lot_id,
+                source_location=line.location_id,
+                source_document=line.move_id.origin or "",
+                delivery=delivery,
+                is_transit=True,
+            )
+
+        events.sort(
+            key=lambda event: (
+                event["movement_date"] or datetime.min,
+                event["source_document"] or "",
+                event["lot"].name or "",
+                event["category"],
+            )
+        )
         summary_map = {}
         detail_vals = []
         delivery_ids = set()
         picking_ids = set()
         lot_ids = set()
-        total_transfer_qty = 0.0
-        total_customer_qty = 0.0
-        total_quantity = 0.0
+        totals = {
+            "shipping": 0.0,
+            "storage_shrinkage": 0.0,
+            "transfer_shrinkage": 0.0,
+        }
 
-        for line in move_lines:
-            warehouse = self._resolve_warehouse(line.location_id, warehouses)
-            effective_dest_location = self._get_effective_destination_location(line)
-            destination_warehouse = self._resolve_warehouse(effective_dest_location, warehouses)
-            movement_type = self._get_movement_type(line, warehouse, destination_warehouse)
-            if not movement_type:
-                continue
-            if self.movement_type != "all" and movement_type != self.movement_type:
-                continue
-            division = line.lot_id.division_id
-            if self.warehouse_id and warehouse != self.warehouse_id:
-                continue
-            if self.division_id and division != self.division_id:
-                continue
+        for sequence, event in enumerate(events, start=1):
+            warehouse = event["warehouse"]
+            division = event["division"]
+            is_transit = event["is_transit"]
+            quantity = event["quantity"]
+            category = event["category"]
+            delivery = event["delivery"]
+            picking = event["picking"]
+            lot = event["lot"]
 
-            quantity = line.quantity or 0.0
-            picking = line.picking_id
-            delivery = picking.wt_delivery_id
-            customer = picking.partner_id or delivery.partner_id
-            transit_lot = self._get_transit_lot(line)
-
-            key = (warehouse.id or 0, division.id or 0)
+            key = (warehouse.id or 0, division.id or 0, is_transit)
             if key not in summary_map:
                 summary_map[key] = {
                     "warehouse": warehouse,
                     "division": division,
-                    "delivery_ids": set(),
-                    "picking_ids": set(),
-                    "lot_ids": set(),
-                    "transfer_qty": 0.0,
-                    "customer_qty": 0.0,
+                    "division_name": _("Transit") if is_transit else (division.display_name or "-"),
+                    "shipping_qty": 0.0,
+                    "storage_shrinkage_qty": 0.0,
+                    "transfer_shrinkage_qty": 0.0,
                     "quantity": 0.0,
                 }
-            summary_map[key]["delivery_ids"].add(delivery.id)
-            summary_map[key]["picking_ids"].add(picking.id)
-            summary_map[key]["lot_ids"].add(line.lot_id.id)
-            if movement_type == "inter_warehouse":
-                summary_map[key]["transfer_qty"] += quantity
-                total_transfer_qty += quantity
-            elif movement_type == "final_customer":
-                summary_map[key]["customer_qty"] += quantity
-                total_customer_qty += quantity
+            summary_map[key]["%s_qty" % category] += quantity
             summary_map[key]["quantity"] += quantity
+            totals[category] += quantity
 
-            delivery_ids.add(delivery.id)
-            picking_ids.add(picking.id)
-            lot_ids.add(line.lot_id.id)
-            total_quantity += quantity
+            if delivery:
+                delivery_ids.add(delivery.id)
+            if picking:
+                picking_ids.add(picking.id)
+            if lot:
+                lot_ids.add(lot.id)
 
             detail_vals.append(
                 {
                     "report_id": self.report_id.id,
-                    "sequence": len(detail_vals) + 1,
-                    "movement_date": line.move_id.date,
-                    "delivery_id": delivery.id,
-                    "delivery_name": delivery.name or "",
-                    "picking_id": picking.id,
-                    "picking_name": picking.name or "",
-                    "movement_type": movement_type,
-                    "movement_type_label": self._get_movement_type_label(movement_type),
-                    "customer_id": customer.id or False,
-                    "customer_name": (customer.display_name or "-") if movement_type == "final_customer" else "-",
+                    "sequence": sequence,
+                    "movement_date": event["movement_date"],
+                    "delivery_id": delivery.id if delivery else False,
+                    "delivery_name": delivery.name if delivery else "",
+                    "picking_id": picking.id if picking else False,
+                    "picking_name": picking.name if picking else "",
+                    "movement_type": "final_customer" if category == "shipping" else False,
+                    "movement_type_label": event["category_label"],
+                    "category": category,
+                    "category_label": event["category_label"],
+                    "source_document": event["source_document"],
+                    "customer_id": event["customer"].id if event["customer"] else False,
+                    "customer_name": event["customer"].display_name if event["customer"] else "-",
                     "warehouse_id": warehouse.id or False,
                     "warehouse_name": warehouse.display_name or "-",
-                    "destination_warehouse_id": destination_warehouse.id or False,
-                    "destination_warehouse_name": (
-                        destination_warehouse.display_name
-                        if movement_type == "inter_warehouse" and destination_warehouse
-                        else ((customer.display_name or "-") if movement_type == "final_customer" else "-")
-                    ),
+                    "destination_warehouse_id": False,
+                    "destination_warehouse_name": "-",
                     "division_id": division.id or False,
-                    "division_name": division.display_name or "-",
-                    "source_location_id": line.location_id.id,
-                    "source_location_name": line.location_id.complete_name or line.location_id.display_name,
-                    "destination_location_id": effective_dest_location.id,
-                    "destination_location_name": (
-                        effective_dest_location.complete_name or effective_dest_location.display_name
+                    "division_name": _("Transit") if is_transit else (division.display_name or "-"),
+                    "source_location_id": event["source_location"].id,
+                    "source_location_name": (
+                        event["source_location"].complete_name
+                        or event["source_location"].display_name
                     ),
-                    "lot_id": line.lot_id.id,
-                    "lot_name": line.lot_id.name or "",
-                    "transit_lot_id": transit_lot.id or False,
-                    "transit_lot_name": transit_lot.name or "-",
-                    "product_id": line.product_id.id,
-                    "product_name": line.product_id.display_name or "",
+                    "destination_location_id": event["destination_location"].id,
+                    "destination_location_name": (
+                        event["destination_location"].complete_name
+                        or event["destination_location"].display_name
+                    ),
+                    "lot_id": lot.id,
+                    "lot_name": lot.name or "",
+                    "transit_lot_id": lot.id if is_transit else False,
+                    "transit_lot_name": lot.name if is_transit else "-",
+                    "product_id": event["product"].id,
+                    "product_name": event["product"].display_name or "",
                     "quantity": quantity,
-                    "uom_name": line.product_uom_id.name or line.product_id.uom_id.name or "",
+                    "uom_name": event["uom"].name or "",
                 }
             )
 
@@ -554,7 +657,7 @@ class StockOutReportWizard(models.TransientModel):
                 summary_map.values(),
                 key=lambda row: (
                     row["warehouse"].display_name or "",
-                    row["division"].display_name or "",
+                    row["division_name"],
                 ),
             ),
             start=1,
@@ -566,93 +669,247 @@ class StockOutReportWizard(models.TransientModel):
                     "warehouse_id": value["warehouse"].id or False,
                     "warehouse_name": value["warehouse"].display_name or "-",
                     "division_id": value["division"].id or False,
-                    "division_name": value["division"].display_name or "-",
-                    "delivery_count": len(value["delivery_ids"]),
-                    "picking_count": len(value["picking_ids"]),
-                    "lot_count": len(value["lot_ids"]),
-                    "transfer_qty": value["transfer_qty"],
-                    "customer_qty": value["customer_qty"],
+                    "division_name": value["division_name"],
+                    "delivery_count": 0,
+                    "picking_count": 0,
+                    "lot_count": 0,
+                    "transfer_qty": value["transfer_shrinkage_qty"],
+                    "customer_qty": value["shipping_qty"],
+                    "shipping_qty": value["shipping_qty"],
+                    "storage_shrinkage_qty": value["storage_shrinkage_qty"],
+                    "transfer_shrinkage_qty": value["transfer_shrinkage_qty"],
                     "quantity": value["quantity"],
                 }
             )
 
+        total_quantity = sum(totals.values())
         return {
             "summary_vals": summary_vals,
             "detail_vals": detail_vals,
             "total_delivery_count": len(delivery_ids),
             "total_picking_count": len(picking_ids),
             "total_lot_count": len(lot_ids),
-            "total_transfer_qty": total_transfer_qty,
-            "total_customer_qty": total_customer_qty,
+            "total_transfer_qty": totals["transfer_shrinkage"],
+            "total_customer_qty": totals["shipping"],
             "total_quantity": total_quantity,
+            "total_shipping_qty": totals["shipping"],
+            "total_storage_shrinkage_qty": totals["storage_shrinkage"],
+            "total_transfer_shrinkage_qty": totals["transfer_shrinkage"],
         }
 
-    def _get_move_lines(self):
+    def _append_report_event(
+        self,
+        events,
+        *,
+        line,
+        category,
+        quantity,
+        warehouse,
+        division,
+        lot,
+        source_location,
+        source_document,
+        delivery=None,
+        picking=None,
+        customer=None,
+        is_transit=False,
+    ):
+        if quantity <= 0.0 or not source_location:
+            return
+        if self.warehouse_id and warehouse != self.warehouse_id:
+            return
+        if self.division_id and (is_transit or division != self.division_id):
+            return
+
+        category_labels = {
+            "shipping": _("Pengiriman"),
+            "storage_shrinkage": _("Susut Penyimpanan"),
+            "transfer_shrinkage": _("Susut Transfer"),
+        }
+        events.append(
+            {
+                "movement_date": line.move_id.date,
+                "source_document": source_document,
+                "category": category,
+                "category_label": category_labels[category],
+                "quantity": quantity,
+                "warehouse": warehouse,
+                "division": division,
+                "is_transit": is_transit,
+                "lot": lot,
+                "source_location": source_location,
+                "destination_location": line.location_dest_id,
+                "delivery": delivery or self.env["wt.delivery"],
+                "picking": picking or self.env["stock.picking"],
+                "customer": customer or self.env["res.partner"],
+                "product": line.product_id,
+                "uom": line.product_uom_id or line.product_id.uom_id,
+            }
+        )
+
+    def _get_shipping_move_lines(self):
         self.ensure_one()
-        start_dt = datetime.combine(self.start_date, time.min)
-        end_dt = datetime.combine(self.end_date, time.max)
+        start_dt, end_dt = self._get_utc_date_range()
         domain = [
             ("company_id", "=", self.company_id.id),
             ("move_id.state", "=", "done"),
             ("picking_id.wt_delivery_id", "!=", False),
+            ("picking_id.wt_delivery_id.state", "=", "done"),
             ("move_id.date", ">=", fields.Datetime.to_string(start_dt)),
             ("move_id.date", "<=", fields.Datetime.to_string(end_dt)),
+            ("location_dest_id.usage", "=", "customer"),
             ("quantity", ">", 0),
             ("lot_id", "!=", False),
         ]
         return self.env["stock.move.line"].search(domain, order="id")
 
-    def _get_movement_type(self, line, source_warehouse, destination_warehouse):
-        if self._is_transit_merge_consume(line):
-            if source_warehouse and destination_warehouse and source_warehouse != destination_warehouse:
-                return "inter_warehouse"
-            return False
-        if line.location_dest_id.usage == "customer":
-            return "final_customer"
-        if (
-            source_warehouse
-            and destination_warehouse
-            and source_warehouse != destination_warehouse
-        ):
-            return "inter_warehouse"
-        return False
-
-    def _get_movement_type_label(self, movement_type):
-        return dict(self.env["wt.stock.out.report.detail.line"]._fields["movement_type"].selection).get(
-            movement_type,
-            "",
+    def _get_storage_shrinkage_move_lines(self):
+        self.ensure_one()
+        return self._get_shrinkage_move_lines(
+            [
+                ("lot_id.wt_lot_type", "=", "production"),
+            ]
         )
+
+    def _get_transfer_shrinkage_move_lines(self):
+        self.ensure_one()
+        move_lines = self._get_shrinkage_move_lines(
+            [
+                ("lot_id.wt_lot_type", "=", "transit"),
+            ]
+        )
+        return move_lines.filtered(lambda line: not self._is_transit_merge_move_line(line))
+
+    def _get_shrinkage_move_lines(self, extra_domain):
+        shrinkage_location = self._get_shrinkage_location()
+        if not shrinkage_location:
+            return self.env["stock.move.line"]
+        start_dt, end_dt = self._get_utc_date_range()
+        domain = [
+            ("company_id", "=", self.company_id.id),
+            ("move_id.state", "=", "done"),
+            ("move_id.date", ">=", fields.Datetime.to_string(start_dt)),
+            ("move_id.date", "<=", fields.Datetime.to_string(end_dt)),
+            ("location_id.usage", "=", "internal"),
+            ("location_dest_id", "child_of", shrinkage_location.id),
+            ("quantity", ">", 0),
+            ("lot_id", "!=", False),
+        ]
+        return self.env["stock.move.line"].search(domain + extra_domain, order="id")
+
+    def _get_shrinkage_location(self):
+        location = self.env.ref(
+            "weightrack.stock_location_wt_inventory_loss_susut",
+            raise_if_not_found=False,
+        )
+        if location:
+            return location
+        return self.env["stock.location"].search(
+            [
+                ("name", "=", "Susut"),
+                ("usage", "=", "inventory"),
+                ("location_id.name", "=", "Inventory Loss"),
+            ],
+            limit=1,
+        )
+
+    def _get_utc_date_range(self):
+        user_tz = timezone(self.env.user.tz or "UTC")
+        start_local = user_tz.localize(datetime.combine(self.start_date, time.min))
+        end_local = user_tz.localize(datetime.combine(self.end_date, time.max))
+        return (
+            start_local.astimezone(UTC).replace(tzinfo=None),
+            end_local.astimezone(UTC).replace(tzinfo=None),
+        )
+
+    def _get_transit_provenance(self, lot, warehouses, cache, visiting=None):
+        if lot.id in cache:
+            return cache[lot.id]
+
+        visiting = set(visiting or ())
+        if lot.id in visiting:
+            return []
+        visiting.add(lot.id)
+
+        picking = lot.wt_source_picking_id
+        if not picking:
+            cache[lot.id] = []
+            return []
+
+        consume_lines = picking.move_line_ids.filtered(
+            lambda line: line.lot_id
+            and line.lot_id != lot
+            and self._is_transit_merge_consume(line)
+        )
+        if not consume_lines:
+            consume_lines = picking.move_line_ids.filtered(
+                lambda line: line.lot_id
+                and line.lot_id != lot
+                and line.location_id.usage == "internal"
+                and line.location_dest_id.usage == "inventory"
+            )
+
+        provenance_map = {}
+        for line in consume_lines:
+            source_lot = line.lot_id
+            source_quantity = line.quantity or 0.0
+            if source_quantity <= 0.0:
+                continue
+
+            if source_lot.wt_lot_type == "transit":
+                nested_sources = self._get_transit_provenance(
+                    source_lot,
+                    warehouses,
+                    cache,
+                    visiting,
+                )
+                nested_total = sum(source["quantity"] for source in nested_sources)
+                if nested_total:
+                    for source in nested_sources:
+                        self._merge_provenance_source(
+                            provenance_map,
+                            source,
+                            source_quantity * source["quantity"] / nested_total,
+                        )
+                continue
+
+            warehouse = self._resolve_warehouse(line.location_id, warehouses)
+            source = {
+                "warehouse": warehouse,
+                "division": source_lot.division_id,
+                "lot": source_lot,
+                "source_location": line.location_id,
+            }
+            self._merge_provenance_source(provenance_map, source, source_quantity)
+
+        result = list(provenance_map.values())
+        cache[lot.id] = result
+        return result
+
+    def _merge_provenance_source(self, provenance_map, source, quantity):
+        key = (
+            source["warehouse"].id or 0,
+            source["division"].id or 0,
+            source["lot"].id,
+            source["source_location"].id,
+        )
+        if key not in provenance_map:
+            provenance_map[key] = dict(source, quantity=0.0)
+        provenance_map[key]["quantity"] += quantity
 
     def _is_transit_merge_consume(self, line):
         description = line.move_id.description_picking or ""
         return (
             description.startswith("Consume old lots for transit merge")
             and line.location_dest_id.usage == "inventory"
-            and bool(line.picking_id.location_dest_id)
         )
 
-    def _is_transit_merge_produce(self, line):
+    def _is_transit_merge_move_line(self, line):
         description = line.move_id.description_picking or ""
         return (
-            description.startswith("Produce new merged lot for transit")
-            and line.location_id.usage == "inventory"
+            description.startswith("Consume old lots for transit merge")
+            or description.startswith("Produce new merged lot for transit")
         )
-
-    def _get_effective_destination_location(self, line):
-        if self._is_transit_merge_consume(line):
-            return line.picking_id.location_dest_id
-        return line.location_dest_id
-
-    def _get_transit_lot(self, line):
-        if not self._is_transit_merge_consume(line):
-            return self.env["stock.lot"]
-        produce_line = line.picking_id.move_line_ids.filtered(
-            lambda move_line: self._is_transit_merge_produce(move_line)
-        )[:1]
-        return produce_line.lot_id
-
-    def _get_filter_movement_type_label(self):
-        return dict(self._fields["movement_type"].selection).get(self.movement_type, "Semua")
 
     def _resolve_warehouse(self, location, warehouses):
         if not location or not location.parent_path:

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime, time
+
+from pytz import UTC, timezone
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from markupsafe import Markup
@@ -39,6 +43,34 @@ class Delivery(models.Model):
         string="Date",
         required=True,
         default=fields.Date.context_today,
+        tracking=True,
+    )
+    is_backdated = fields.Boolean(
+        string="Backdated",
+        compute="_compute_is_backdated",
+    )
+    backdate_reason = fields.Text(
+        string="Backdate Reason",
+        tracking=True,
+        copy=False,
+    )
+    backdate_effective_at = fields.Datetime(
+        string="Effective Movement Date",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    backdate_applied_at = fields.Datetime(
+        string="Backdate Applied At",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    backdate_applied_by_id = fields.Many2one(
+        "res.users",
+        string="Backdate Applied By",
+        readonly=True,
+        copy=False,
         tracking=True,
     )
     date_text = fields.Char(
@@ -217,6 +249,7 @@ class Delivery(models.Model):
     def _prepare_route_do_line_commands(self, route):
         self.ensure_one()
         product = self.product_id or self._get_configured_product()
+        scheduled_date = self._get_planned_movement_datetime()
         commands = [(5, 0, 0)]
         for route_line in route.line_ids.sorted("sequence"):
             commands.append((0, 0, {
@@ -228,7 +261,7 @@ class Delivery(models.Model):
                 "location_id": route_line.location_id.id,
                 "location_dest_id": route_line.location_dest_id.id,
                 "partner_id": self.partner_id.id if self.partner_id else False,
-                "scheduled_date": fields.Datetime.now(),
+                "scheduled_date": scheduled_date,
                 "document_do_number": self.name if self.name and self.name != _("New") else False,
             }))
         return commands
@@ -255,23 +288,43 @@ class Delivery(models.Model):
                 if not line.product_id:
                     line.product_id = delivery.product_id
 
-    @api.depends("do_line_ids.lot_line_ids.wt_is_pulled", "do_line_ids.lot_line_ids.qty")
+    @api.onchange("date")
+    def _onchange_date_update_do_lines(self):
+        for delivery in self:
+            scheduled_date = delivery._get_planned_movement_datetime()
+            for line in delivery.do_line_ids.filtered(
+                lambda route_line: route_line.picking_state != "done"
+            ):
+                line.scheduled_date = scheduled_date
+
+    @api.depends(
+        "do_line_ids.lot_line_ids.wt_is_pulled",
+        "do_line_ids.lot_line_ids.wt_weighing_source",
+        "do_line_ids.lot_line_ids.qty",
+    )
     def _compute_do_lot_line_ids(self):
         for delivery in self:
             all_lots = delivery.do_line_ids.mapped("lot_line_ids")
             delivery.do_lot_line_ids = all_lots
-            delivery.pulled_do_lot_line_ids = all_lots.filtered(lambda l: l.wt_is_pulled and l.qty > 0)
-            delivery.unpulled_do_lot_line_ids = all_lots.filtered(lambda l: not l.wt_is_pulled and l.qty > 0)
+            delivery.pulled_do_lot_line_ids = all_lots.filtered(
+                lambda line: line._has_weighing_input() and line.qty > 0
+            )
+            delivery.unpulled_do_lot_line_ids = all_lots.filtered(
+                lambda line: not line._has_weighing_input() and line.qty > 0
+            )
 
     @api.depends(
         "do_line_ids.lot_line_ids.qty",
         "do_line_ids.lot_line_ids.wt_original_qty",
         "do_line_ids.lot_line_ids.wt_physical_qty",
         "do_line_ids.lot_line_ids.wt_is_pulled",
+        "do_line_ids.lot_line_ids.wt_weighing_source",
     )
     def _compute_totals(self):
         for rec in self:
-            active_lots = rec.do_lot_line_ids.filtered(lambda l: l.wt_is_pulled)
+            active_lots = rec.do_lot_line_ids.filtered(
+                lambda line: line._has_weighing_input()
+            )
             rec.total_difference_qty = sum(active_lots.mapped("wt_difference_qty"))
             outgoing_lots = active_lots.filtered(
                 lambda l: l.do_line_id.picking_type_id.code == "outgoing"
@@ -287,6 +340,7 @@ class Delivery(models.Model):
         "do_line_ids.lot_line_ids.wt_is_fully_allocated",
         "do_line_ids.lot_line_ids.wt_adjustment_applied",
         "do_line_ids.lot_line_ids.wt_is_pulled",
+        "do_line_ids.lot_line_ids.wt_weighing_source",
     )
     def _compute_has_adjustable_lines(self):
         for rec in self:
@@ -294,7 +348,7 @@ class Delivery(models.Model):
                 abs(l.wt_difference_qty) > 0.001
                 and l.wt_is_fully_allocated
                 and not l.wt_adjustment_applied
-                and l.wt_is_pulled
+                and l._has_weighing_input()
                 for l in rec.do_lot_line_ids
             )
 
@@ -333,14 +387,112 @@ class Delivery(models.Model):
             else:
                 rec.date_text = False
 
+    @api.depends("date")
+    def _compute_is_backdated(self):
+        for delivery in self:
+            delivery.is_backdated = bool(
+                delivery.date and delivery.date < delivery._get_business_today()
+            )
+
+    def _get_business_timezone(self):
+        self.ensure_one()
+        timezone_name = self.company_id.partner_id.tz or self.env.user.tz or "UTC"
+        try:
+            return timezone(timezone_name)
+        except Exception:
+            return UTC
+
+    def _get_planned_movement_datetime(self, effective_date=None):
+        """Return noon on the business date, stored as a naive UTC datetime."""
+        self.ensure_one()
+        business_date = fields.Date.to_date(effective_date or self.date)
+        if not business_date:
+            return fields.Datetime.now()
+        local_datetime = self._get_business_timezone().localize(
+            datetime.combine(business_date, time(hour=12))
+        )
+        return local_datetime.astimezone(UTC).replace(tzinfo=None)
+
+    def _get_business_today(self):
+        self.ensure_one()
+        now_utc = UTC.localize(fields.Datetime.now())
+        return now_utc.astimezone(self._get_business_timezone()).date()
+
+    def _validate_effective_date(self):
+        for delivery in self:
+            today = delivery._get_business_today()
+            if not delivery.date:
+                continue
+            if delivery.date > today:
+                raise ValidationError(_("Delivery date cannot be in the future."))
+            if delivery.date < today:
+                if not self.env.user.has_group("weightrack.group_admin"):
+                    raise ValidationError(_(
+                        "Only a WeighTrack Administrator can process a backdated delivery."
+                    ))
+                if not (delivery.backdate_reason or "").strip():
+                    raise ValidationError(_(
+                        "Backdate Reason is required when Delivery Date is earlier than today."
+                    ))
+
+    @api.constrains("date", "backdate_reason")
+    def _check_effective_date(self):
+        self._validate_effective_date()
+
+    def _ensure_backdate_metadata(self):
+        self.ensure_one()
+        self._validate_effective_date()
+        if not self.is_backdated:
+            return False
+        if not self.backdate_effective_at:
+            self.with_context(wt_allow_backdate_update=True).write({
+                "backdate_effective_at": self._get_planned_movement_datetime(),
+                "backdate_applied_at": fields.Datetime.now(),
+                "backdate_applied_by_id": self.env.user.id,
+            })
+        return self.backdate_effective_at
+
+    def _sync_moves_effective_date(self, moves, effective_datetime=None):
+        self.ensure_one()
+        effective_datetime = effective_datetime or self._ensure_backdate_metadata()
+        if not effective_datetime or not moves:
+            return
+        sync_context = {
+            "tracking_disable": True,
+            "mail_notrack": True,
+            "wt_skip_delivery_backdate_sync": True,
+        }
+        moves.sudo().with_context(**sync_context).write({"date": effective_datetime})
+        move_lines = moves.mapped("move_line_ids")
+        if move_lines and "date" in move_lines._fields:
+            move_lines.sudo().with_context(**sync_context).write({
+                "date": effective_datetime,
+            })
+
+    def _sync_picking_effective_date(self, picking, effective_datetime=None):
+        self.ensure_one()
+        effective_datetime = effective_datetime or self._ensure_backdate_metadata()
+        if not effective_datetime or not picking or picking.state != "done":
+            return
+        picking.sudo().with_context(
+            tracking_disable=True,
+            mail_notrack=True,
+            wt_skip_delivery_backdate_sync=True,
+        ).write({
+            "scheduled_date": effective_datetime,
+            "date_done": effective_datetime,
+        })
+        self._sync_moves_effective_date(picking.move_ids, effective_datetime)
+
     @api.depends(
         "do_line_ids.lot_line_ids.wt_is_pulled",
+        "do_line_ids.lot_line_ids.wt_weighing_source",
         "do_line_ids.lot_line_ids.qty",
     )
     def _compute_wt_has_unpulled_lines(self):
         for rec in self:
             rec.wt_has_unpulled_lines = any(
-                not l.wt_is_pulled and l.qty > 0
+                not l._has_weighing_input() and l.qty > 0
                 for l in rec.do_lot_line_ids
             )
 
@@ -369,6 +521,18 @@ class Delivery(models.Model):
         return records
 
     def write(self, vals):
+        if (
+            {"date", "backdate_reason"} & set(vals)
+            and not self.env.context.get("wt_allow_backdate_update")
+        ):
+            locked = self.filtered(
+                lambda delivery: delivery.state != "draft" or delivery.picking_ids
+            )
+            if locked:
+                raise ValidationError(_(
+                    "Delivery Date and Backdate Reason can only be changed while the delivery is in Draft. "
+                    "Use Correct Effective Date for a completed delivery."
+                ))
         if "company_id" in vals and "product_id" not in vals:
             product = self.env["wt.product"].get_active_product(
                 self.env["res.company"].browse(vals["company_id"])
@@ -376,6 +540,7 @@ class Delivery(models.Model):
             if product:
                 vals = dict(vals, product_id=product.id)
         route_changed = "route_id" in vals
+        date_changed = "date" in vals
         result = super().write(vals)
         if route_changed:
             for record in self.filtered(lambda delivery: delivery.state == "draft"):
@@ -385,6 +550,13 @@ class Delivery(models.Model):
                     })
                 elif record.do_line_ids:
                     record.write({"do_line_ids": [(5, 0, 0)]})
+        if date_changed:
+            for record in self.filtered(lambda delivery: delivery.state == "draft"):
+                record.do_line_ids.filtered(
+                    lambda route_line: route_line.picking_state != "done"
+                ).write({
+                    "scheduled_date": record._get_planned_movement_datetime(),
+                })
         return result
 
     def init(self):
@@ -623,6 +795,7 @@ class Delivery(models.Model):
                 })
 
         if move_vals_list:
+            effective_datetime = self._ensure_backdate_metadata()
             ctx = dict(
                 inventory_mode=False,
                 tracking_disable=True,
@@ -630,8 +803,11 @@ class Delivery(models.Model):
                 no_recompute=True,
                 ignore_dest_packages=True,
             )
+            if effective_datetime:
+                ctx["force_period_date"] = self.date
             moves = self.env["stock.move"].sudo().with_context(**ctx).create(move_vals_list)
             moves.with_context(**ctx)._action_done()
+            self._sync_moves_effective_date(moves, effective_datetime)
 
         for line in adjustable_lines:
             write_vals = {"wt_adjustment_applied": True}
@@ -655,6 +831,7 @@ class Delivery(models.Model):
         for delivery in self:
             if delivery.state != "draft":
                 raise ValidationError(_("Hanya Draft yang bisa dikonfirmasi."))
+            delivery._validate_effective_date()
             if not delivery.partner_id:
                 raise ValidationError(_("Customer wajib diisi sebelum pengiriman dikonfirmasi."))
             if not delivery.route_id:
@@ -721,6 +898,8 @@ class Delivery(models.Model):
         if self.state not in ("confirmed", "in_progress"):
             raise ValidationError(_("Hanya Confirmed atau In Progress yang bisa divalidasi."))
 
+        self._ensure_backdate_metadata()
+
         lines_to_generate = self.do_line_ids.filtered(
             lambda l: not l.picking_id or l.picking_id.state != "done"
         )
@@ -758,6 +937,70 @@ class Delivery(models.Model):
             ) % self.env.user.name
 
         self.message_post(body=Markup(msg))
+
+    def _get_manual_weighing_candidates(self):
+        self.ensure_one()
+        return self.do_lot_line_ids.filtered(
+            lambda line: line.qty > 0.0
+            and line.wt_physical_qty <= 0.0
+            and not line.wt_adjustment_applied
+        )
+
+    def action_open_manual_weighing(self):
+        self.ensure_one()
+        if not self.env.user.has_group("weightrack.group_admin"):
+            raise ValidationError(_(
+                "Only a WeighTrack Administrator can enter manual delivery weighing data."
+            ))
+        if not self.is_backdated:
+            raise ValidationError(_(
+                "Manual weighing input is only available for a backdated delivery."
+            ))
+        if self.state not in ("confirmed", "in_progress"):
+            raise ValidationError(_(
+                "Manual weighing input is only available while the delivery is Confirmed or In Progress."
+            ))
+        if not self._get_manual_weighing_candidates():
+            raise ValidationError(_(
+                "No unweighed delivery lot is available for manual input."
+            ))
+        return {
+            "name": _("Manual Delivery Weighing"),
+            "type": "ir.actions.act_window",
+            "res_model": "wt.delivery.manual.weighing.wizard",
+            "view_mode": "form",
+            "view_id": self.env.ref(
+                "weightrack.view_wt_delivery_manual_weighing_wizard_form"
+            ).id,
+            "target": "new",
+            "context": {
+                "default_delivery_id": self.id,
+            },
+        }
+
+    def action_open_backdate_correction(self):
+        self.ensure_one()
+        if not self.env.user.has_group("weightrack.group_admin"):
+            raise ValidationError(_(
+                "Only a WeighTrack Administrator can correct an effective delivery date."
+            ))
+        if self.state != "done":
+            raise ValidationError(_(
+                "Effective date correction is only available for a completed delivery."
+            ))
+        return {
+            "name": _("Stock Movement Date Correction"),
+            "type": "ir.actions.act_window",
+            "res_model": "wt.stock.movement.date.correction",
+            "view_mode": "form",
+            "target": "current",
+            "context": {
+                "default_source_type": "delivery",
+                "default_delivery_id": self.id,
+                "default_effective_date": self.date,
+                "default_company_id": self.company_id.id,
+            },
+        }
 
     def action_return_delivery(self):
         """Buka popup wizard untuk memasukkan alasan retur sebelum memproses retur."""

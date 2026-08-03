@@ -35,15 +35,11 @@
                         .wt-stock-out-report .logo { max-height: 72px; max-width: 250px; }
                         .wt-stock-out-report .title { color: #111827; font-size: 18px; font-weight: 700; margin: 0 0 5px; text-align: right; text-transform: uppercase; }
                         .wt-stock-out-report .meta { color: #374151; text-align: right; }
-                        .wt-stock-out-report .section-title { background: #111827; color: #fff; font-size: 10px; font-weight: 700; margin-top: 10px; padding: 7px 10px; text-transform: uppercase; }
+                        .wt-stock-out-report .section-title { color: #111827; font-size: 10px; font-weight: 700; margin: 14px 0 6px; text-transform: uppercase; }
                         .wt-stock-out-report .info-table { border: 1px solid #cbd5e1; border-collapse: collapse; margin-bottom: 12px; width: 100%; }
                         .wt-stock-out-report .info-table td { border: 1px solid #cbd5e1; font-size: 10px; padding: 8px 10px !important; vertical-align: top; }
                         .wt-stock-out-report .info-label { background: #f3f4f6; font-weight: 700; width: 18%; }
                         .wt-stock-out-report .info-value { width: 32%; }
-                        .wt-stock-out-report .summary-grid { border-collapse: collapse; width: 100%; }
-                        .wt-stock-out-report .summary-grid td { border: 1px solid #cbd5e1; padding: 9px 12px !important; width: 16.66%; }
-                        .wt-stock-out-report .summary-label { color: #6b7280; font-size: 8px; text-transform: uppercase; }
-                        .wt-stock-out-report .summary-value { font-size: 14px; font-weight: 700; margin-top: 2px; }
                         .wt-stock-out-report .data-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
                         .wt-stock-out-report .data-table th { background: #f3f4f6; border: 1px solid #9ca3af; font-size: 10px; font-weight: 700; line-height: 1.35; padding: 8px 10px !important; text-align: center; vertical-align: middle; }
                         .wt-stock-out-report .data-table td { border: 1px solid #cbd5e1; font-size: 10px; line-height: 1.35; padding: 8px 10px !important; vertical-align: middle; word-break: break-word; }
@@ -86,36 +82,22 @@
                         <tr>
                             <td class="info-label">Tanggal Sampai</td>
                             <td class="info-value"><span t-field="doc.end_date"/></td>
-                            <td class="info-label">Jenis Pergerakan</td>
-                            <td class="info-value" t-esc="doc.movement_type_label or 'Semua'"/>
+                            <td class="info-label">Status DO</td>
+                            <td class="info-value">Selesai</td>
                         </tr>
                     </table>
 
-                    <div class="section-title">Total Stock Keluar</div>
-                    <table class="summary-grid">
-                        <tr>
-                            <td><div class="summary-label">Pengiriman</div><div class="summary-value"><span t-esc="doc.total_delivery_count or 0"/></div></td>
-                            <td><div class="summary-label">Dokumen Inventory</div><div class="summary-value"><span t-esc="doc.total_picking_count or 0"/></div></td>
-                            <td><div class="summary-label">Lot</div><div class="summary-value"><span t-esc="doc.total_lot_count or 0"/></div></td>
-                            <td><div class="summary-label">Transfer Antar Gudang</div><div class="summary-value"><span t-esc="'%.2f' % (doc.total_transfer_qty or 0.0)"/> kg</div></td>
-                            <td><div class="summary-label">Final Customer</div><div class="summary-value"><span t-esc="'%.2f' % (doc.total_customer_qty or 0.0)"/> kg</div></td>
-                            <td><div class="summary-label">Qty Keluar</div><div class="summary-value"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</div></td>
-                        </tr>
-                    </table>
-
-                    <div class="section-title">Ringkasan Per Gudang Dan Divisi</div>
+                    <div class="section-title">Stock Keluar Per Gudang dan Divisi</div>
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th style="width: 5%;">No</th>
-                                <th style="width: 18%;">Gudang</th>
-                                <th style="width: 18%;">Divisi</th>
-                                <th style="width: 9%;">Pengiriman</th>
-                                <th style="width: 9%;">Dokumen</th>
-                                <th style="width: 6%;">Lot</th>
-                                <th style="width: 12%;">Transfer</th>
-                                <th style="width: 12%;">Final Customer</th>
-                                <th style="width: 11%;">Total</th>
+                                <th style="width: 25%;">Gudang</th>
+                                <th style="width: 16%;">Divisi</th>
+                                <th style="width: 14%;">Pengiriman</th>
+                                <th style="width: 16%;">Susut Penyimpanan</th>
+                                <th style="width: 14%;">Susut Transfer</th>
+                                <th style="width: 10%;">Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -125,45 +107,38 @@
                                         <td class="text-center" t-esc="line.sequence"/>
                                         <td t-esc="line.warehouse_name"/>
                                         <td t-esc="line.division_name"/>
-                                        <td class="text-center" t-esc="line.delivery_count"/>
-                                        <td class="text-center" t-esc="line.picking_count"/>
-                                        <td class="text-center" t-esc="line.lot_count"/>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.transfer_qty or 0.0)"/> kg</td>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.customer_qty or 0.0)"/> kg</td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.shipping_qty or 0.0)"/> kg</td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.storage_shrinkage_qty or 0.0)"/> kg</td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.transfer_shrinkage_qty or 0.0)"/> kg</td>
                                         <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> kg</td>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
                                     <td colspan="3" class="text-right">Total</td>
-                                    <td class="text-center" t-esc="doc.total_delivery_count"/>
-                                    <td class="text-center" t-esc="doc.total_picking_count"/>
-                                    <td class="text-center" t-esc="doc.total_lot_count"/>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_transfer_qty or 0.0)"/> kg</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_customer_qty or 0.0)"/> kg</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_shipping_qty or 0.0)"/> kg</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_storage_shrinkage_qty or 0.0)"/> kg</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_transfer_shrinkage_qty or 0.0)"/> kg</td>
                                     <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
                                 </tr>
                             </t>
                             <tr t-if="not doc.summary_line_ids">
-                                <td colspan="9" class="text-center muted">Tidak ada stock keluar gudang pada filter ini.</td>
+                                <td colspan="7" class="text-center muted">Tidak ada stock keluar gudang pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div class="section-title">Detail Stock Keluar Gudang</div>
+                    <div class="section-title">Detail Sumber Pergerakan</div>
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th style="width: 5%;">No</th>
-                                <th style="width: 9%;">Tanggal</th>
-                                <th style="width: 12%;">Pengiriman</th>
-                                <th style="width: 12%;">Inventory</th>
-                                <th style="width: 12%;">Jenis</th>
-                                <th style="width: 11%;">Gudang Asal</th>
-                                <th style="width: 11%;">Gudang Tujuan</th>
-                                <th style="width: 10%;">Divisi</th>
-                                <th style="width: 10%;">Lot Asal</th>
-                                <th style="width: 10%;">Lot Transit</th>
-                                <th style="width: 6%;">Qty</th>
+                                <th style="width: 11%;">Tanggal</th>
+                                <th style="width: 17%;">No DO / Referensi</th>
+                                <th style="width: 19%;">Gudang</th>
+                                <th style="width: 12%;">Divisi</th>
+                                <th style="width: 16%;">Lot</th>
+                                <th style="width: 13%;">Kategori</th>
+                                <th style="width: 7%;">Qty</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -172,24 +147,21 @@
                                     <tr>
                                         <td class="text-center" t-esc="line.sequence"/>
                                         <td><span t-field="line.movement_date" t-options='{"widget": "date"}'/></td>
-                                        <td t-esc="line.delivery_name"/>
-                                        <td t-esc="line.picking_name"/>
-                                        <td t-esc="line.movement_type_label"/>
+                                        <td t-esc="line.source_document"/>
                                         <td t-esc="line.warehouse_name"/>
-                                        <td t-esc="line.destination_warehouse_name"/>
                                         <td t-esc="line.division_name"/>
                                         <td t-esc="line.lot_name"/>
-                                        <td t-esc="line.transit_lot_name"/>
+                                        <td t-esc="line.category_label"/>
                                         <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> <span t-esc="line.uom_name or 'kg'"/></td>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
-                                    <td colspan="10" class="text-right">Total</td>
+                                    <td colspan="7" class="text-right">Total</td>
                                     <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
                                 </tr>
                             </t>
                             <tr t-if="not doc.detail_line_ids">
-                                <td colspan="10" class="text-center muted">Tidak ada detail stock keluar pada filter ini.</td>
+                                <td colspan="8" class="text-center muted">Tidak ada detail stock keluar pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>

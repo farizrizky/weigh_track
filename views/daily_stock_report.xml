@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_daily_stock_report" model="report.paperformat">
+        <field name="name">Laporan Stock Harian A4 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_daily_stock_pdf" model="ir.actions.report">
+        <field name="name">Laporan Stock Harian</field>
+        <field name="model">wt.daily.stock.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_daily_stock_document</field>
+        <field name="report_file">weightrack.report_daily_stock_document</field>
+        <field name="paperformat_id" ref="paperformat_daily_stock_report"/>
+        <field name="print_report_name">'Laporan Stock Harian - %s' % object.report_date</field>
+    </record>
+
+    <template id="report_daily_stock_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="data" t-value="doc.get_matrix_data()"/>
+                <t t-set="columns" t-value="data.get('columns', [])"/>
+                <t t-set="rows" t-value="data.get('rows', [])"/>
+                <t t-set="division_columns" t-value="[column for column in columns if column.get('kind') == 'division']"/>
+                <t t-set="estate_columns" t-value="[column for column in columns if column.get('kind') == 'estate']"/>
+                <div class="page wt-daily-stock-report">
+                    <style>
+                        .wt-daily-stock-report {
+                            color: #000;
+                            font-family: Arial, sans-serif;
+                            font-size: 6.5px;
+                            line-height: 1.05;
+                        }
+                        .wt-daily-stock-report .report-header {
+                            border-collapse: collapse;
+                            margin-bottom: 10px;
+                            width: 100%;
+                        }
+                        .wt-daily-stock-report .report-header td {
+                            border: 0 !important;
+                            padding: 0 !important;
+                            vertical-align: top;
+                        }
+                        .wt-daily-stock-report .logo {
+                            max-height: 46px;
+                            max-width: 180px;
+                        }
+                        .wt-daily-stock-report .report-title {
+                            font-size: 14px;
+                            font-weight: 700;
+                            margin: 0 0 4px;
+                            text-align: right;
+                            text-transform: uppercase;
+                        }
+                        .wt-daily-stock-report .report-meta {
+                            color: #4b5563;
+                            font-size: 7px;
+                            text-align: right;
+                        }
+                        .wt-daily-stock-report .matrix {
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-daily-stock-report .matrix th,
+                        .wt-daily-stock-report .matrix td {
+                            border: 0.6px solid #111;
+                            padding: 1px 3px !important;
+                            vertical-align: middle;
+                        }
+                        .wt-daily-stock-report .matrix th {
+                            background: #c7dca5;
+                            font-weight: 700;
+                            text-align: center;
+                            text-transform: uppercase;
+                        }
+                        .wt-daily-stock-report .section td {
+                            font-weight: 700;
+                            text-transform: uppercase;
+                        }
+                        .wt-daily-stock-report .subsection td {
+                            font-weight: 700;
+                        }
+                        .wt-daily-stock-report .total td {
+                            background: #dcebc9;
+                            font-weight: 700;
+                        }
+                        .wt-daily-stock-report .section .description {
+                            padding-left: 7px !important;
+                        }
+                        .wt-daily-stock-report .subsection .description {
+                            padding-left: 20px !important;
+                        }
+                        .wt-daily-stock-report .data .description,
+                        .wt-daily-stock-report .total .description,
+                        .wt-daily-stock-report .percentage .description {
+                            padding-left: 38px !important;
+                        }
+                        .wt-daily-stock-report .percentage td {
+                            color: #c5221f;
+                        }
+                        .wt-daily-stock-report .number {
+                            text-align: right;
+                            white-space: nowrap;
+                        }
+                        .wt-daily-stock-report .total-column {
+                            border-left: 5px solid #fff !important;
+                        }
+                    </style>
+
+                    <table class="report-header">
+                        <tr>
+                            <td style="width: 35%;">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
+                                </t>
+                                <strong t-else="" t-esc="doc.company_id.name"/>
+                            </td>
+                            <td style="width: 65%;">
+                                <h2 class="report-title">Laporan Stock Harian</h2>
+                                <div class="report-meta">
+                                    <strong>Tanggal Laporan:</strong> <span t-field="doc.report_date"/>
+                                    &amp;nbsp; | &amp;nbsp;
+                                    <strong>Akumulasi Bulan:</strong> <span t-field="doc.month_start_date"/> s.d. <span t-field="doc.report_date"/>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="matrix">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="width: 4%;">No</th>
+                                <th rowspan="2" style="width: 27%;">Uraian</th>
+                                <th rowspan="2" style="width: 7%;">Satuan</th>
+                                <th t-if="division_columns" t-att-colspan="len(division_columns)">Sub Divisi</th>
+                                <th t-if="estate_columns" t-att-colspan="len(estate_columns)">Divisi</th>
+                                <th rowspan="2" class="total-column" style="width: 9%;">Total</th>
+                            </tr>
+                            <tr>
+                                <th t-foreach="columns" t-as="column" t-esc="column.get('label') or '-'"/>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="rows" t-as="row">
+                                <tr t-if="row.get('style') == 'section'" class="section">
+                                    <td t-esc="row.get('number')"/>
+                                    <td class="description" t-esc="row.get('label')"/>
+                                    <td></td>
+                                    <td t-foreach="columns" t-as="column"></td>
+                                    <td class="total-column"></td>
+                                </tr>
+                                <tr t-elif="row.get('style') == 'subsection'" class="subsection">
+                                    <td></td>
+                                    <td class="description" t-esc="row.get('label')"/>
+                                    <td></td>
+                                    <td t-foreach="columns" t-as="column"></td>
+                                    <td class="total-column"></td>
+                                </tr>
+                                <tr t-else="" t-att-class="row.get('style') or 'data'">
+                                    <td></td>
+                                    <td class="description" t-esc="row.get('label')"/>
+                                    <td t-esc="row.get('unit')"/>
+                                    <t t-set="values" t-value="row.get('values', {})"/>
+                                    <t t-set="percentage" t-value="row.get('style') == 'percentage'"/>
+                                    <td t-foreach="columns" t-as="column" class="number">
+                                        <span t-esc="doc.format_matrix_value(values.get(column.get('key')), percentage)"/>
+                                    </td>
+                                    <td class="number total-column">
+                                        <span t-esc="doc.format_matrix_value(values.get('total'), percentage)"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

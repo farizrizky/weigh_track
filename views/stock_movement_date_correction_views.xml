@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_move_inventory_correction_selection" model="ir.ui.view">
+        <field name="name">stock.move.inventory.correction.selection</field>
+        <field name="model">stock.move</field>
+        <field name="arch" type="xml">
+            <list string="Stock Adjustment Movements" create="0" delete="0">
+                <field name="date"/>
+                <field name="inventory_name" string="Reference"/>
+                <field name="product_id"/>
+                <field name="wt_inventory_lot_names"/>
+                <field name="location_id"/>
+                <field name="location_dest_id"/>
+                <field name="wt_inventory_done_quantity"/>
+                <field name="product_uom"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_stock_movement_date_correction_list" model="ir.ui.view">
+        <field name="name">wt.stock.movement.date.correction.list</field>
+        <field name="model">wt.stock.movement.date.correction</field>
+        <field name="arch" type="xml">
+            <list string="Stock Movement Date Corrections" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="source_type"/>
+                <field name="delivery_id" optional="show"/>
+                <field name="production_receipt_id" optional="show"/>
+                <field name="stock_opname_id" optional="show"/>
+                <field name="inventory_reference" optional="show"/>
+                <field name="old_date"/>
+                <field name="effective_date"/>
+                <field name="move_count"/>
+                <field name="applied_by_id" optional="show"/>
+                <field name="applied_at" optional="show"/>
+                <field name="state" widget="badge"
+                       decoration-info="state == 'draft'"
+                       decoration-success="state == 'applied'"
+                       decoration-muted="state == 'cancelled'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_stock_movement_date_correction_form" model="ir.ui.view">
+        <field name="name">wt.stock.movement.date.correction.form</field>
+        <field name="model">wt.stock.movement.date.correction</field>
+        <field name="arch" type="xml">
+            <form string="Stock Movement Date Correction">
+                <header>
+                    <button name="action_load_movements" type="object"
+                            string="Load Stock Movements"
+                            invisible="state != 'draft' or source_type == 'inventory_adjustment'"/>
+                    <button name="action_apply" type="object" string="Apply"
+                            class="oe_highlight" invisible="state != 'draft'"/>
+                    <button name="action_cancel" type="object" string="Cancel"
+                            invisible="state != 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,applied,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Source Document">
+                            <field name="company_id" readonly="state != 'draft'"/>
+                            <field name="source_type" readonly="state != 'draft'"/>
+                            <field name="delivery_id"
+                                   invisible="source_type != 'delivery'"
+                                   required="source_type == 'delivery'"
+                                   readonly="state != 'draft'"
+                                   domain="[('company_id', '=', company_id), ('state', '=', 'done')]"/>
+                            <field name="production_receipt_id"
+                                   invisible="source_type != 'production_receipt'"
+                                   required="source_type == 'production_receipt'"
+                                   readonly="state != 'draft'"
+                                   domain="[('company_id', '=', company_id), ('state', '=', 'validated')]"/>
+                            <field name="stock_opname_id"
+                                   invisible="source_type != 'stock_opname'"
+                                   required="source_type == 'stock_opname'"
+                                   readonly="state != 'draft'"
+                                   domain="[('company_id', '=', company_id), ('state', '=', 'applied')]"/>
+                            <field name="inventory_reference"
+                                   invisible="source_type != 'inventory_adjustment'"
+                                   readonly="1"/>
+                        </group>
+                        <group string="Correction">
+                            <field name="old_date" invisible="state == 'draft'"/>
+                            <field name="effective_date" readonly="state != 'draft'"/>
+                            <field name="picking_count" readonly="1"
+                                   invisible="source_type == 'inventory_adjustment'"/>
+                            <field name="move_count" readonly="1"/>
+                            <field name="applied_by_id" invisible="state != 'applied'"/>
+                            <field name="applied_at" invisible="state != 'applied'"/>
+                        </group>
+                    </group>
+                    <group string="Stock Adjustment Movements"
+                           invisible="source_type != 'inventory_adjustment'">
+                        <field name="inventory_adjustment_move_ids"
+                               nolabel="1" colspan="2"
+                               readonly="state != 'draft'"
+                               options="{'no_create': True, 'no_create_edit': True}"
+                               context="{'list_view_ref': 'weightrack.view_stock_move_inventory_correction_selection'}"
+                               domain="[('company_id', '=', company_id), ('state', '=', 'done'), ('is_inventory', '=', True), ('picking_id', '=', False)]">
+                            <list create="0" delete="1">
+                                <field name="date"/>
+                                <field name="inventory_name" string="Reference"/>
+                                <field name="product_id"/>
+                                <field name="wt_inventory_lot_names"/>
+                                <field name="location_id"/>
+                                <field name="location_dest_id"/>
+                                <field name="wt_inventory_done_quantity"/>
+                                <field name="product_uom"/>
+                                <field name="state" widget="badge" decoration-success="state == 'done'"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Correction Reason">
+                        <field name="reason" nolabel="1" colspan="2" readonly="state != 'draft'"/>
+                    </group>
+                    <notebook>
+                        <page string="Affected Transfers"
+                              invisible="source_type == 'inventory_adjustment'">
+                            <field name="picking_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="picking_type_id"/>
+                                    <field name="location_id"/>
+                                    <field name="location_dest_id"/>
+                                    <field name="date_done"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Affected Stock Movements"
+                              invisible="source_type == 'inventory_adjustment'">
+                            <field name="move_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="origin"/>
+                                    <field name="product_id"/>
+                                    <field name="location_id"/>
+                                    <field name="location_dest_id"/>
+                                    <field name="product_uom_qty"/>
+                                    <field name="date"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_wt_stock_movement_date_correction_search" model="ir.ui.view">
+        <field name="name">wt.stock.movement.date.correction.search</field>
+        <field name="model">wt.stock.movement.date.correction</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="source_type"/>
+                <field name="delivery_id"/>
+                <field name="production_receipt_id"/>
+                <field name="stock_opname_id"/>
+                <field name="inventory_reference"/>
+                <field name="effective_date"/>
+                <field name="applied_by_id"/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="applied" string="Applied" domain="[('state', '=', 'applied')]"/>
+                <filter name="group_source_type" string="Source Type" context="{'group_by': 'source_type'}"/>
+                <filter name="group_effective_date" string="Effective Date" context="{'group_by': 'effective_date'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_wt_stock_movement_date_correction" model="ir.actions.act_window">
+        <field name="name">Stock Movement Date Corrections</field>
+        <field name="res_model">wt.stock.movement.date.correction</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_stock_movement_date_correction_search"/>
+    </record>
+</odoo>

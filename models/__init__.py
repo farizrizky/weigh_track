@@ -13,6 +13,7 @@ from . import weighing
 from . import production_receipt
 from . import weather
 from . import weather_data
+from . import daily_stock_analysis
 from . import division
 from . import weighing_location
 from . import foreman
@@ -22,6 +23,7 @@ from . import stock_lot
 from . import stock_opname
 from . import stock_opname_difference_reason
 from . import stock_opname_line_allocation
+from . import stock_movement_date_correction
 from . import delivery
 from . import delivery_route
 from . import delivery_step

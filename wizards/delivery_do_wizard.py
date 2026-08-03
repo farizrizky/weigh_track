@@ -61,6 +61,7 @@ class DeliveryDoWizard(models.TransientModel):
         delivery_id = self.env.context.get("default_delivery_id")
         if delivery_id:
             delivery = self.env["wt.delivery"].browse(delivery_id)
+            res["scheduled_date"] = delivery._get_planned_movement_datetime()
             picking_type = self.env["stock.picking.type"].search(
                 [
                     ("code", "=", "outgoing"),

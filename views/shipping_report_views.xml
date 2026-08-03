@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_wt_stock_out_report_form" model="ir.ui.view">
-        <field name="name">wt.stock.out.report.form</field>
-        <field name="model">wt.stock.out.report</field>
+    <record id="view_wt_shipping_report_form" model="ir.ui.view">
+        <field name="name">wt.shipping.report.form</field>
+        <field name="model">wt.shipping.report</field>
         <field name="arch" type="xml">
-            <form string="Laporan Stock Keluar" edit="0" delete="0">
+            <form string="Laporan Pengiriman" edit="0" delete="0">
                 <header>
                     <button name="action_open_filter" type="object" string="Filter" class="oe_highlight"/>
                     <button name="action_print_pdf" type="object" string="Export PDF" invisible="not is_filtered"/>
@@ -29,36 +29,31 @@
                             <field name="division_id"/>
                         </group>
                         <group string="Total">
-                            <field name="total_shipping_qty"/>
-                            <field name="total_storage_shrinkage_qty"/>
-                            <field name="total_transfer_shrinkage_qty"/>
                             <field name="total_quantity"/>
                         </group>
                     </group>
                     <notebook invisible="not is_filtered">
-                        <page string="Stock Keluar Per Gudang dan Divisi">
+                        <page string="Ringkasan">
                             <field name="summary_line_ids">
-                                <list string="Ringkasan Stock Keluar" create="0" edit="0" delete="0">
+                                <list string="Ringkasan Pengiriman" create="0" edit="0" delete="0">
                                     <field name="sequence"/>
                                     <field name="warehouse_name"/>
                                     <field name="division_name"/>
-                                    <field name="shipping_qty" sum="Total"/>
-                                    <field name="storage_shrinkage_qty" sum="Total"/>
-                                    <field name="transfer_shrinkage_qty" sum="Total"/>
                                     <field name="quantity" sum="Total"/>
                                 </list>
                             </field>
                         </page>
                         <page string="Detail">
                             <field name="detail_line_ids">
-                                <list string="Detail Stock Keluar" create="0" edit="0" delete="0">
+                                <list string="Detail Pengiriman" create="0" edit="0" delete="0">
                                     <field name="sequence"/>
                                     <field name="movement_date"/>
-                                    <field name="source_document"/>
+                                    <field name="delivery_name"/>
+                                    <field name="customer_name"/>
                                     <field name="warehouse_name"/>
                                     <field name="division_name"/>
                                     <field name="lot_name"/>
-                                    <field name="category_label"/>
+                                    <field name="product_name"/>
                                     <field name="quantity" sum="Total"/>
                                     <field name="uom_name"/>
                                 </list>
@@ -70,20 +65,20 @@
         </field>
     </record>
 
-    <record id="action_wt_stock_out_report" model="ir.actions.act_window">
-        <field name="name">Laporan Stock Keluar</field>
-        <field name="res_model">wt.stock.out.report</field>
+    <record id="action_wt_shipping_report" model="ir.actions.act_window">
+        <field name="name">Laporan Pengiriman</field>
+        <field name="res_model">wt.shipping.report</field>
         <field name="view_mode">form</field>
-        <field name="view_id" ref="view_wt_stock_out_report_form"/>
+        <field name="view_id" ref="view_wt_shipping_report_form"/>
         <field name="target">current</field>
         <field name="context">{}</field>
     </record>
 
-    <record id="view_wt_stock_out_report_wizard_form" model="ir.ui.view">
-        <field name="name">wt.stock.out.report.wizard.form</field>
-        <field name="model">wt.stock.out.report.wizard</field>
+    <record id="view_wt_shipping_report_wizard_form" model="ir.ui.view">
+        <field name="name">wt.shipping.report.wizard.form</field>
+        <field name="model">wt.shipping.report.wizard</field>
         <field name="arch" type="xml">
-            <form string="Filter Laporan Stock Keluar">
+            <form string="Filter Laporan Pengiriman">
                 <sheet>
                     <field name="report_id" invisible="1"/>
                     <group>
@@ -104,11 +99,11 @@
         </field>
     </record>
 
-    <record id="action_wt_stock_out_report_wizard" model="ir.actions.act_window">
-        <field name="name">Filter Laporan Stock Keluar</field>
-        <field name="res_model">wt.stock.out.report.wizard</field>
+    <record id="action_wt_shipping_report_wizard" model="ir.actions.act_window">
+        <field name="name">Filter Laporan Pengiriman</field>
+        <field name="res_model">wt.shipping.report.wizard</field>
         <field name="view_mode">form</field>
-        <field name="view_id" ref="view_wt_stock_out_report_wizard_form"/>
+        <field name="view_id" ref="view_wt_shipping_report_wizard_form"/>
         <field name="target">new</field>
     </record>
 </odoo>

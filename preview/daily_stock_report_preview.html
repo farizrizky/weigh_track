@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Preview Laporan Harian Operasional dan Stock</title>
+    <style>
+        @page { size: A4 landscape; margin: 8mm; }
+        * { box-sizing: border-box; }
+        body {
+            background: #e5e7eb;
+            color: #172033;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 8px;
+            line-height: 1.25;
+            margin: 0;
+            padding: 20px;
+        }
+        .report-page {
+            background: #fff;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.14);
+            margin: 0 auto;
+            min-height: 210mm;
+            padding: 8mm;
+            width: 297mm;
+        }
+        .report-header {
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+        .report-header td { vertical-align: top; }
+        .brand {
+            color: #247a3b;
+            font-size: 19px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .brand-subtitle {
+            color: #247a3b;
+            font-size: 8px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        .report-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+            text-align: right;
+            text-transform: uppercase;
+        }
+        .report-date {
+            color: #4b5563;
+            margin-top: 4px;
+            text-align: right;
+        }
+        .matrix {
+            border-collapse: collapse;
+            table-layout: fixed;
+            width: 100%;
+        }
+        .matrix th,
+        .matrix td {
+            border: 1px solid #4b5563;
+            padding: 3px 5px;
+            vertical-align: middle;
+        }
+        .matrix th {
+            font-weight: 700;
+            text-align: center;
+        }
+        .top-header { background: #c8dca8; }
+        .section-row td {
+            background: #dbe7c5;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .subsection-row td {
+            background: #eef4e5;
+            font-weight: 700;
+        }
+        .total-row td {
+            background: #dbe7c5;
+            font-weight: 700;
+        }
+        .transfer-row td { background: #fff1d6; }
+        .transfer-row .label,
+        .transfer-row .number {
+            color: #a44200;
+            font-weight: 700;
+        }
+        .percentage-row td { color: #c5221f; }
+        .number {
+            text-align: right;
+            white-space: nowrap;
+        }
+        .center { text-align: center; }
+        .indent-1 { padding-left: 14px !important; }
+        .footer-note {
+            color: #4b5563;
+            display: flex;
+            font-size: 7px;
+            justify-content: space-between;
+            margin-top: 7px;
+        }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .report-page {
+                box-shadow: none;
+                margin: 0;
+                min-height: auto;
+                padding: 0;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="report-page">
+        <table class="report-header">
+            <tr>
+                <td style="width: 38%;">
+                    <div class="brand">JULANG</div>
+                    <div class="brand-subtitle">PLANTATIONS</div>
+                </td>
+                <td style="width: 62%;">
+                    <h1 class="report-title">Laporan Harian Operasional dan Stock</h1>
+                    <div class="report-date">
+                        <strong>Tanggal:</strong> 02/08/2026
+                        &nbsp;&nbsp;|&nbsp;&nbsp;
+                        <strong>Perusahaan:</strong> PT. Julang Plantations
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="matrix">
+            <colgroup>
+                <col style="width: 4%;">
+                <col style="width: 24%;">
+                <col style="width: 7%;">
+                <col style="width: 7%;">
+                <col style="width: 7%;">
+                <col style="width: 7%;">
+                <col style="width: 7%;">
+                <col style="width: 8%;">
+                <col style="width: 8%;">
+                <col style="width: 9%;">
+                <col style="width: 12%;">
+            </colgroup>
+            <thead>
+                <tr class="top-header">
+                    <th rowspan="2">No</th>
+                    <th rowspan="2">Uraian</th>
+                    <th rowspan="2">Satuan</th>
+                    <th colspan="5">Sub Divisi</th>
+                    <th colspan="2">Divisi</th>
+                    <th rowspan="2">Total</th>
+                </tr>
+                <tr class="top-header">
+                    <th>I</th>
+                    <th>III</th>
+                    <th>IV</th>
+                    <th>V</th>
+                    <th>VI</th>
+                    <th>Sebayur</th>
+                    <th>Gembung</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="section-row">
+                    <td class="center">I</td><td colspan="10">Pekerjaan yang Dilaksanakan</td>
+                </tr>
+                <tr>
+                    <td></td><td>Stock Awal Produksi</td><td>Kg Basah</td>
+                    <td class="number">1.000</td><td class="number">800</td>
+                    <td class="number">600</td><td class="number">700</td>
+                    <td class="number">700</td><td class="number">1.800</td>
+                    <td class="number">2.000</td><td class="number">3.800</td>
+                </tr>
+                <tr>
+                    <td></td><td>Stock Awal Lot Transit - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">200</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td>Jumlah Stock Awal</td><td>Kg Basah</td>
+                    <td class="number">1.000</td><td class="number">800</td>
+                    <td class="number">600</td><td class="number">700</td>
+                    <td class="number">700</td><td class="number">1.800</td>
+                    <td class="number">2.000</td><td class="number">4.000</td>
+                </tr>
+
+                <tr class="subsection-row">
+                    <td></td><td>Penimbangan Kebun</td><td></td><td colspan="8"></td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Hari ini</td><td>Kg Basah</td>
+                    <td class="number">100</td><td class="number">80</td>
+                    <td class="number">120</td><td class="number">50</td>
+                    <td class="number">60</td><td class="number">180</td>
+                    <td class="number">230</td><td class="number">410</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td class="indent-1">Sampai dengan hari ini</td><td>Kg Basah</td>
+                    <td class="number">520</td><td class="number">430</td>
+                    <td class="number">610</td><td class="number">300</td>
+                    <td class="number">360</td><td class="number">950</td>
+                    <td class="number">1.270</td><td class="number">2.220</td>
+                </tr>
+
+                <tr class="subsection-row">
+                    <td></td><td>Penimbangan Gudang</td><td></td><td colspan="8"></td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Gudang Induk</td><td>Kg Basah</td>
+                    <td class="number">98</td><td class="number">80</td>
+                    <td class="number">118</td><td class="number">-</td>
+                    <td class="number">60</td><td class="number">178</td>
+                    <td class="number">178</td><td class="number">356</td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Gudang Transit</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">50</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">50</td><td class="number">50</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td class="indent-1">Jumlah Penerimaan Gudang</td><td>Kg Basah</td>
+                    <td class="number">98</td><td class="number">80</td>
+                    <td class="number">118</td><td class="number">50</td>
+                    <td class="number">60</td><td class="number">178</td>
+                    <td class="number">228</td><td class="number">406</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td class="indent-1">Sampai dengan hari ini</td><td>Kg Basah</td>
+                    <td class="number">510</td><td class="number">428</td>
+                    <td class="number">600</td><td class="number">295</td>
+                    <td class="number">355</td><td class="number">938</td>
+                    <td class="number">1.250</td><td class="number">2.188</td>
+                </tr>
+
+                <tr class="subsection-row">
+                    <td></td><td>Pengeluaran Produksi</td><td></td><td colspan="8"></td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Pengiriman dari Lot Produksi</td><td>Kg Basah</td>
+                    <td class="number">300</td><td class="number">220</td>
+                    <td class="number">180</td><td class="number">48</td>
+                    <td class="number">120</td><td class="number">520</td>
+                    <td class="number">348</td><td class="number">868</td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Pengiriman dari Lot Transit - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">98</td>
+                </tr>
+                <tr class="transfer-row">
+                    <td></td><td class="indent-1 label">Susut Transfer Antar Gudang - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">2</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td class="indent-1">Jumlah Pengeluaran Hari ini</td><td>Kg Basah</td>
+                    <td class="number">300</td><td class="number">220</td>
+                    <td class="number">180</td><td class="number">48</td>
+                    <td class="number">120</td><td class="number">520</td>
+                    <td class="number">348</td><td class="number">968</td>
+                </tr>
+
+                <tr class="section-row">
+                    <td class="center">II</td><td colspan="10">Susut Produksi</td>
+                </tr>
+                <tr class="subsection-row">
+                    <td></td><td>Susut Timbang dari Kebun ke Gudang</td><td></td><td colspan="8"></td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Hari ini</td><td>Kg Basah</td>
+                    <td class="number">2</td><td class="number">0</td>
+                    <td class="number">2</td><td class="number">0</td>
+                    <td class="number">0</td><td class="number">2</td>
+                    <td class="number">2</td><td class="number">4</td>
+                </tr>
+                <tr class="percentage-row">
+                    <td></td><td class="indent-1">Hari ini</td><td>%</td>
+                    <td class="number">2,00%</td><td class="number">0,00%</td>
+                    <td class="number">1,67%</td><td class="number">0,00%</td>
+                    <td class="number">0,00%</td><td class="number">1,11%</td>
+                    <td class="number">0,87%</td><td class="number">0,98%</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td class="indent-1">Sampai dengan hari ini</td><td>Kg Basah</td>
+                    <td class="number">10</td><td class="number">2</td>
+                    <td class="number">10</td><td class="number">5</td>
+                    <td class="number">5</td><td class="number">12</td>
+                    <td class="number">20</td><td class="number">32</td>
+                </tr>
+
+                <tr class="subsection-row">
+                    <td></td><td>Susut dari Gudang ke Pengiriman</td><td></td><td colspan="8"></td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Susut Penyimpanan Hari ini</td><td>Kg Basah</td>
+                    <td class="number">5</td><td class="number">3</td>
+                    <td class="number">2</td><td class="number">4</td>
+                    <td class="number">1</td><td class="number">8</td>
+                    <td class="number">7</td><td class="number">15</td>
+                </tr>
+                <tr class="transfer-row">
+                    <td></td><td class="indent-1 label">Susut Transfer - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">2</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td class="indent-1">Jumlah Susut Hari ini</td><td>Kg Basah</td>
+                    <td class="number">5</td><td class="number">3</td>
+                    <td class="number">2</td><td class="number">4</td>
+                    <td class="number">1</td><td class="number">8</td>
+                    <td class="number">7</td><td class="number">17</td>
+                </tr>
+                <tr class="percentage-row">
+                    <td></td><td class="indent-1">Jumlah Susut Hari ini</td><td>%</td>
+                    <td class="number">0,46%</td><td class="number">0,34%</td>
+                    <td class="number">0,28%</td><td class="number">0,42%</td>
+                    <td class="number">0,13%</td><td class="number">0,40%</td>
+                    <td class="number">0,37%</td><td class="number">0,39%</td>
+                </tr>
+                <tr>
+                    <td></td><td class="indent-1">Susut Penyimpanan s.d. Hari ini</td><td>Kg Basah</td>
+                    <td class="number">12</td><td class="number">8</td>
+                    <td class="number">12</td><td class="number">15</td>
+                    <td class="number">7</td><td class="number">20</td>
+                    <td class="number">34</td><td class="number">54</td>
+                </tr>
+                <tr class="transfer-row">
+                    <td></td><td class="indent-1 label">Susut Transfer s.d. Hari ini - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">6</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td class="indent-1">Jumlah Susut s.d. Hari ini</td><td>Kg Basah</td>
+                    <td class="number">12</td><td class="number">8</td>
+                    <td class="number">12</td><td class="number">15</td>
+                    <td class="number">7</td><td class="number">20</td>
+                    <td class="number">34</td><td class="number">60</td>
+                </tr>
+
+                <tr class="section-row">
+                    <td class="center">III</td><td colspan="10">Stock Produksi</td>
+                </tr>
+                <tr>
+                    <td></td><td>Saldo Awal Produksi</td><td>Kg Basah</td>
+                    <td class="number">1.000</td><td class="number">800</td>
+                    <td class="number">600</td><td class="number">700</td>
+                    <td class="number">700</td><td class="number">1.800</td>
+                    <td class="number">2.000</td><td class="number">3.800</td>
+                </tr>
+                <tr>
+                    <td></td><td>Saldo Awal Lot Transit - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">200</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td>Jumlah Saldo Awal</td><td>Kg Basah</td>
+                    <td class="number">1.000</td><td class="number">800</td>
+                    <td class="number">600</td><td class="number">700</td>
+                    <td class="number">700</td><td class="number">1.800</td>
+                    <td class="number">2.000</td><td class="number">4.000</td>
+                </tr>
+                <tr>
+                    <td></td><td>Produksi Masuk</td><td>Kg Basah</td>
+                    <td class="number">98</td><td class="number">80</td>
+                    <td class="number">118</td><td class="number">50</td>
+                    <td class="number">60</td><td class="number">178</td>
+                    <td class="number">228</td><td class="number">406</td>
+                </tr>
+                <tr>
+                    <td></td><td>Pengiriman dari Lot Produksi</td><td>Kg Basah</td>
+                    <td class="number">300</td><td class="number">220</td>
+                    <td class="number">180</td><td class="number">48</td>
+                    <td class="number">120</td><td class="number">520</td>
+                    <td class="number">348</td><td class="number">868</td>
+                </tr>
+                <tr>
+                    <td></td><td>Pengiriman dari Lot Transit - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">98</td>
+                </tr>
+                <tr>
+                    <td></td><td>Susut Penyimpanan</td><td>Kg Basah</td>
+                    <td class="number">5</td><td class="number">3</td>
+                    <td class="number">2</td><td class="number">4</td>
+                    <td class="number">1</td><td class="number">8</td>
+                    <td class="number">7</td><td class="number">15</td>
+                </tr>
+                <tr class="transfer-row">
+                    <td></td><td class="label">Mutasi Keluar ke Lot Transit</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-100</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-100</td><td class="number">-100</td>
+                </tr>
+                <tr class="transfer-row">
+                    <td></td><td class="label">Mutasi Masuk Lot Transit - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">+100</td>
+                </tr>
+                <tr class="transfer-row">
+                    <td></td><td class="label">Susut Transfer - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">2</td>
+                </tr>
+                <tr>
+                    <td></td><td>Saldo Akhir Produksi</td><td>Kg Basah</td>
+                    <td class="number">793</td><td class="number">657</td>
+                    <td class="number">536</td><td class="number">598</td>
+                    <td class="number">639</td><td class="number">1.450</td>
+                    <td class="number">1.773</td><td class="number">3.223</td>
+                </tr>
+                <tr>
+                    <td></td><td>Saldo Akhir Lot Transit - Gudang Induk Gembung</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">200</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td>Jumlah Saldo Akhir</td><td>Kg Basah</td>
+                    <td class="number">793</td><td class="number">657</td>
+                    <td class="number">536</td><td class="number">598</td>
+                    <td class="number">639</td><td class="number">1.450</td>
+                    <td class="number">1.773</td><td class="number">3.423</td>
+                </tr>
+
+                <tr class="section-row">
+                    <td class="center">IV</td><td colspan="10">Ringkasan Stock per Lokasi</td>
+                </tr>
+                <tr>
+                    <td></td><td>Gudang Induk Sebayur</td><td>Kg Basah</td>
+                    <td class="number">793</td><td class="number">657</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">1.450</td>
+                    <td class="number">-</td><td class="number">1.450</td>
+                </tr>
+                <tr>
+                    <td></td><td>Gudang Induk Gembung - Lot Produksi</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">536</td><td class="number">598</td>
+                    <td class="number">639</td><td class="number">-</td>
+                    <td class="number">1.773</td><td class="number">1.773</td>
+                </tr>
+                <tr>
+                    <td></td><td>Gudang Induk Gembung - Lot Transit</td><td>Kg Basah</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">-</td>
+                    <td class="number">-</td><td class="number">200</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td><td>Jumlah</td><td>Kg Basah</td>
+                    <td class="number">793</td><td class="number">657</td>
+                    <td class="number">536</td><td class="number">598</td>
+                    <td class="number">639</td><td class="number">1.450</td>
+                    <td class="number">1.773</td><td class="number">3.423</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-note">
+            <span>Saldo akhir = saldo awal + produksi masuk - produk keluar - susut penyimpanan + mutasi internal - susut transfer.</span>
+            <span>Preview data contoh | Halaman 1 dari 1</span>
+        </div>
+    </main>
+</body>
+</html>

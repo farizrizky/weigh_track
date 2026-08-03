@@ -79,6 +79,12 @@
                              class="btn-danger"
                              invisible="state in ('done','returned','cancelled')"
                              confirm="Are you sure you want to cancel this delivery task?"/>
+                    <button name="action_open_manual_weighing"
+                            string="Input Manual Weighing"
+                            type="object"
+                            class="btn-secondary"
+                            groups="weightrack.group_admin"
+                            invisible="not is_backdated or state not in ('confirmed', 'in_progress')"/>
                     <button name="action_draft"
                             string="Reset to Draft"
                             type="object"
@@ -89,13 +95,22 @@
                             class="btn-danger"
                             invisible="state != 'done' or wt_is_returned"
                             confirm="Are you sure you want to return all delivered goods from this delivery task? Applied shrinkage remains valid and will not be reversed."/>
+                    <button name="action_open_backdate_correction"
+                            string="Correct Movement Date"
+                            type="object"
+                            class="btn-secondary"
+                            groups="weightrack.group_admin"
+                            invisible="state != 'done'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,in_progress,done,returned"/>
                 </header>
                 <sheet>
                     <field name="wt_is_returned" invisible="1"/>
+                    <field name="is_backdated" invisible="1"/>
                     <widget name="web_ribbon" title="Returned" bg_color="bg-danger"
                             invisible="not wt_is_returned"/>
+                    <widget name="web_ribbon" title="Backdated" bg_color="bg-warning"
+                            invisible="not is_backdated"/>
                     <!-- Smart Buttons -->
                     <div class="oe_button_box" name="button_box">
                         <!-- Smart button DO: muncul setelah done (picking dari do_lines) -->
@@ -118,6 +133,10 @@
                             <field name="company_id" groups="base.group_multi_company"
                                    readonly="state != 'draft'"/>
                             <field name="date" readonly="state != 'draft'"/>
+                            <field name="backdate_reason"
+                                   required="is_backdated"
+                                   readonly="state != 'draft'"
+                                   invisible="not is_backdated or state != 'draft'"/>
                             <field name="partner_id" readonly="state not in ('draft', 'confirmed')" required="1"/>
                             <field name="route_id"
                                    options="{'no_create': True}"
@@ -326,6 +345,7 @@
                                                         <field name="wt_is_pulled" column_invisible="1"/>
                                                         <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1" optional="show"/>
                                                         <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
+                                                        <field name="wt_weighing_source" string="Weighing Source" readonly="1" optional="show"/>
                                                         <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
                                                                decoration-success="wt_weighing_status == 'weighed'"
                                                                decoration-warning="wt_weighing_status == 'unweighed'"
@@ -391,6 +411,10 @@
                                     <field name="qty" string="DO Demand (kg)" readonly="1" optional="hide"/>
                                     <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1"/>
                                     <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
+                                    <field name="wt_weighing_source" string="Weighing Source" readonly="1" optional="show"/>
+                                    <field name="wt_manual_input_by_id" string="Manual Input By" readonly="1" optional="hide"/>
+                                    <field name="wt_manual_input_at" string="Manual Input At" readonly="1" optional="hide"/>
+                                    <field name="wt_manual_reason" string="Manual Input Reason" readonly="1" optional="hide"/>
                                     <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
                                            decoration-success="wt_weighing_status == 'weighed'"
                                            decoration-warning="wt_weighing_status == 'unweighed'"
@@ -429,6 +453,12 @@
                     <group string="Validation Information" invisible="state not in ('done', 'returned')">
                         <field name="validated_at" readonly="1"/>
                         <field name="validated_by_id" readonly="1"/>
+                    </group>
+                    <group string="Backdate Audit" invisible="not is_backdated or state == 'draft'">
+                        <field name="backdate_effective_at" readonly="1"/>
+                        <field name="backdate_applied_at" readonly="1"/>
+                        <field name="backdate_applied_by_id" readonly="1"/>
+                        <field name="backdate_reason" readonly="1"/>
                     </group>
                 </sheet>
                 <chatter/>

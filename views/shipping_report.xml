@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_shipping_report" model="report.paperformat">
+        <field name="name">Laporan Pengiriman A4 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_shipping_pdf" model="ir.actions.report">
+        <field name="name">Laporan Pengiriman</field>
+        <field name="model">wt.shipping.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_shipping_document</field>
+        <field name="report_file">weightrack.report_shipping_document</field>
+        <field name="paperformat_id" ref="paperformat_shipping_report"/>
+        <field name="print_report_name">'Laporan Pengiriman - %s sd %s' % (object.start_date, object.end_date)</field>
+    </record>
+
+    <template id="report_shipping_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page wt-shipping-report">
+                    <style>
+                        .wt-shipping-report {
+                            color: #111827;
+                            font-family: "Lato", sans-serif;
+                            font-size: 10px;
+                            line-height: 1.35;
+                        }
+                        .wt-shipping-report .header-table {
+                            border-collapse: collapse;
+                            margin-bottom: 24px;
+                            width: 100%;
+                        }
+                        .wt-shipping-report .header-table td {
+                            vertical-align: top;
+                        }
+                        .wt-shipping-report .logo {
+                            max-height: 72px;
+                            max-width: 250px;
+                        }
+                        .wt-shipping-report .title {
+                            color: #111827;
+                            font-size: 18px;
+                            font-weight: 700;
+                            margin: 0 0 5px;
+                            text-align: right;
+                            text-transform: uppercase;
+                        }
+                        .wt-shipping-report .meta {
+                            color: #374151;
+                            text-align: right;
+                        }
+                        .wt-shipping-report .section-title {
+                            color: #111827;
+                            font-size: 10px;
+                            font-weight: 700;
+                            margin: 14px 0 6px;
+                            text-transform: uppercase;
+                        }
+                        .wt-shipping-report .info-table {
+                            border: 1px solid #cbd5e1;
+                            border-collapse: collapse;
+                            margin-bottom: 12px;
+                            width: 100%;
+                        }
+                        .wt-shipping-report .info-table td {
+                            border: 1px solid #cbd5e1;
+                            font-size: 10px;
+                            padding: 8px 10px !important;
+                            vertical-align: top;
+                        }
+                        .wt-shipping-report .info-label {
+                            background: #f3f4f6;
+                            font-weight: 700;
+                            width: 18%;
+                        }
+                        .wt-shipping-report .info-value {
+                            width: 32%;
+                        }
+                        .wt-shipping-report .data-table {
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-shipping-report .data-table th {
+                            background: #f3f4f6;
+                            border: 1px solid #9ca3af;
+                            font-size: 9px;
+                            font-weight: 700;
+                            line-height: 1.35;
+                            padding: 7px 8px !important;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+                        .wt-shipping-report .data-table td {
+                            border: 1px solid #cbd5e1;
+                            font-size: 9px;
+                            line-height: 1.35;
+                            padding: 7px 8px !important;
+                            vertical-align: middle;
+                            word-break: break-word;
+                        }
+                        .wt-shipping-report .total-row td {
+                            background: #f9fafb;
+                            font-weight: 700;
+                        }
+                        .wt-shipping-report .text-center {
+                            text-align: center;
+                        }
+                        .wt-shipping-report .text-right {
+                            padding-right: 8px !important;
+                            text-align: right;
+                            white-space: nowrap;
+                        }
+                        .wt-shipping-report .muted {
+                            color: #6b7280;
+                        }
+                    </style>
+
+                    <table class="header-table">
+                        <tr>
+                            <td style="width: 40%;">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="logo" t-att-src="image_data_uri(doc.company_id.logo)" alt="Logo"/>
+                                </t>
+                                <t t-else="">
+                                    <strong t-esc="doc.company_id.name"/>
+                                </t>
+                            </td>
+                            <td style="width: 60%;">
+                                <h2 class="title">Laporan Pengiriman</h2>
+                                <div class="meta">
+                                    <strong>Tanggal Cetak:</strong>
+                                    <span t-esc="time.strftime('%d/%m/%Y')"/>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="info-table">
+                        <tr>
+                            <td class="info-label">Perusahaan</td>
+                            <td class="info-value" t-esc="doc.company_id.name"/>
+                            <td class="info-label">Gudang</td>
+                            <td class="info-value" t-esc="doc.warehouse_id.display_name if doc.warehouse_id else 'Semua Gudang'"/>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Tanggal Dari</td>
+                            <td class="info-value"><span t-field="doc.start_date"/></td>
+                            <td class="info-label">Divisi</td>
+                            <td class="info-value" t-esc="doc.division_id.display_name if doc.division_id else 'Semua Divisi'"/>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Tanggal Sampai</td>
+                            <td class="info-value"><span t-field="doc.end_date"/></td>
+                            <td class="info-label">Status DO</td>
+                            <td class="info-value">Selesai</td>
+                        </tr>
+                    </table>
+
+                    <div class="section-title">Ringkasan Per Gudang dan Divisi</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 6%;">No</th>
+                                <th style="width: 38%;">Gudang</th>
+                                <th style="width: 32%;">Divisi</th>
+                                <th style="width: 24%;">Total Terkirim</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="doc.summary_line_ids">
+                                <t t-foreach="doc.summary_line_ids" t-as="line">
+                                    <tr>
+                                        <td class="text-center" t-esc="line.sequence"/>
+                                        <td t-esc="line.warehouse_name"/>
+                                        <td t-esc="line.division_name"/>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> kg</td>
+                                    </tr>
+                                </t>
+                                <tr class="total-row">
+                                    <td colspan="3" class="text-right">Total</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
+                                </tr>
+                            </t>
+                            <tr t-if="not doc.summary_line_ids">
+                                <td colspan="4" class="text-center muted">Tidak ada pengiriman pada filter ini.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="section-title">Detail Pengiriman</div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 4%;">No</th>
+                                <th style="width: 8%;">Tanggal</th>
+                                <th style="width: 13%;">Nomor DO</th>
+                                <th style="width: 16%;">Customer Penerima</th>
+                                <th style="width: 15%;">Gudang</th>
+                                <th style="width: 11%;">Divisi</th>
+                                <th style="width: 14%;">Lot Produksi</th>
+                                <th style="width: 10%;">Produk</th>
+                                <th style="width: 6%;">Qty</th>
+                                <th style="width: 3%;">Sat.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="doc.detail_line_ids">
+                                <t t-foreach="doc.detail_line_ids" t-as="line">
+                                    <tr>
+                                        <td class="text-center" t-esc="line.sequence"/>
+                                        <td><span t-field="line.movement_date" t-options='{"widget": "date"}'/></td>
+                                        <td t-esc="line.delivery_name"/>
+                                        <td t-esc="line.customer_name"/>
+                                        <td t-esc="line.warehouse_name"/>
+                                        <td t-esc="line.division_name"/>
+                                        <td t-esc="line.lot_name"/>
+                                        <td t-esc="line.product_name"/>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/></td>
+                                        <td class="text-center" t-esc="line.uom_name or 'kg'"/>
+                                    </tr>
+                                </t>
+                                <tr class="total-row">
+                                    <td colspan="8" class="text-right">Total</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/></td>
+                                    <td class="text-center">kg</td>
+                                </tr>
+                            </t>
+                            <tr t-if="not doc.detail_line_ids">
+                                <td colspan="10" class="text-center muted">Tidak ada detail pengiriman pada filter ini.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -148,6 +148,32 @@ class DeliveryDoLineLot(models.Model):
     wt_note = fields.Char(
         string="Weighing Note",
     )
+    wt_weighing_source = fields.Selection(
+        [
+            ("device", "Device"),
+            ("manual", "Manual"),
+        ],
+        string="Weighing Source",
+        readonly=True,
+        copy=False,
+        index=True,
+    )
+    wt_manual_input_by_id = fields.Many2one(
+        "res.users",
+        string="Manual Input By",
+        readonly=True,
+        copy=False,
+    )
+    wt_manual_input_at = fields.Datetime(
+        string="Manual Input At",
+        readonly=True,
+        copy=False,
+    )
+    wt_manual_reason = fields.Text(
+        string="Manual Input Reason",
+        readonly=True,
+        copy=False,
+    )
     wt_adjustment_applied = fields.Boolean(
         string="Adjustment Applied",
         default=False,
@@ -185,19 +211,29 @@ class DeliveryDoLineLot(models.Model):
     )
 
 
-    @api.depends("wt_is_pulled", "wt_physical_qty", "wt_original_qty", "qty")
+    def _has_weighing_input(self):
+        self.ensure_one()
+        return self.wt_is_pulled or self.wt_weighing_source == "manual"
+
+    @api.depends(
+        "wt_is_pulled",
+        "wt_weighing_source",
+        "wt_physical_qty",
+        "wt_original_qty",
+        "qty",
+    )
     def _compute_wt_difference_qty(self):
         for line in self:
-            if not line.wt_is_pulled or line.wt_physical_qty <= 0.0:
+            if not line._has_weighing_input() or line.wt_physical_qty <= 0.0:
                 line.wt_difference_qty = 0.0
                 continue
             demand = line.wt_original_qty if line.wt_original_qty > 0.0 else line.qty
             line.wt_difference_qty = line.wt_physical_qty - demand
 
-    @api.depends("wt_is_pulled", "wt_physical_qty", "qty")
+    @api.depends("wt_is_pulled", "wt_weighing_source", "wt_physical_qty", "qty")
     def _compute_wt_weighing_status(self):
         for line in self:
-            if not line.wt_is_pulled or line.qty <= 0.0:
+            if not line._has_weighing_input() or line.qty <= 0.0:
                 line.wt_weighing_status = "not_pulled"
             elif line.wt_physical_qty > 0.0:
                 line.wt_weighing_status = "weighed"

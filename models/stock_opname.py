@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime, time
+
+from pytz import UTC, timezone
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -132,6 +136,59 @@ class StockOpname(models.Model):
             if not vals.get("name") or vals.get("name") == _("New"):
                 vals["name"] = self.env["ir.sequence"].next_by_code("wt.stock.opname") or _("New")
         return super().create(vals_list)
+
+    def write(self, vals):
+        if (
+            "date" in vals
+            and not self.env.context.get("wt_allow_stock_opname_date_update")
+            and self.filtered(lambda opname: opname.state == "applied")
+        ):
+            raise ValidationError(_(
+                "The date of an applied Stock Opname must be changed through Stock Movement Date Correction."
+            ))
+        return super().write(vals)
+
+    def _get_movement_datetime(self):
+        self.ensure_one()
+        timezone_name = self.company_id.partner_id.tz or self.env.user.tz or "UTC"
+        try:
+            business_timezone = timezone(timezone_name)
+        except Exception:
+            business_timezone = UTC
+        local_datetime = business_timezone.localize(
+            datetime.combine(fields.Date.to_date(self.date), time(hour=12))
+        )
+        return local_datetime.astimezone(UTC).replace(tzinfo=None)
+
+    def _sync_inventory_movement_dates(self, moves):
+        self.ensure_one()
+        if not moves:
+            return
+        movement_datetime = self._get_movement_datetime()
+        moves.sudo().write({"date": movement_datetime})
+        move_lines = moves.mapped("move_line_ids")
+        if move_lines and "date" in move_lines._fields:
+            move_lines.sudo().write({"date": movement_datetime})
+
+    def action_open_movement_date_correction(self):
+        self.ensure_one()
+        if self.state != "applied":
+            raise ValidationError(_(
+                "Movement date correction is only available for an applied Stock Opname."
+            ))
+        return {
+            "name": _("Stock Movement Date Correction"),
+            "type": "ir.actions.act_window",
+            "res_model": "wt.stock.movement.date.correction",
+            "view_mode": "form",
+            "target": "current",
+            "context": {
+                "default_source_type": "stock_opname",
+                "default_stock_opname_id": self.id,
+                "default_company_id": self.company_id.id,
+                "default_effective_date": self.date,
+            },
+        }
 
     @api.depends("warehouse_id", "company_id")
     def _compute_allowed_division_ids(self):
@@ -438,6 +495,7 @@ class StockOpname(models.Model):
         """
         opname = self
         company = opname.company_id
+        movement_datetime = opname._get_movement_datetime()
 
         move_vals_list = []
         for alloc in line.allocation_ids:
@@ -464,6 +522,7 @@ class StockOpname(models.Model):
                 "location_dest_id": location_dest.id,
                 "company_id": company.id,
                 "origin": opname.name,
+                "date": movement_datetime,
                 "move_line_ids": [(0, 0, {
                     "product_id": line.product_id.id,
                     "product_uom_id": line.uom_id.id,
@@ -482,10 +541,22 @@ class StockOpname(models.Model):
                 inventory_mode=False
             ).create(move_vals_list)
             moves.with_context(ignore_dest_packages=True)._action_done()
+            opname._sync_inventory_movement_dates(moves)
 
     def _apply_line_quant(self, line):
         """Fallback: apply via quant inventory quantity (line tanpa alokasi)."""
         opname = self
+        MoveLine = self.env["stock.move.line"].sudo()
+        move_line_domain = [
+            ("state", "=", "done"),
+            ("company_id", "=", opname.company_id.id),
+            ("product_id", "=", line.product_id.id),
+            ("lot_id", "=", line.lot_id.id),
+            "|",
+            ("location_id", "=", opname.location_id.id),
+            ("location_dest_id", "=", opname.location_id.id),
+        ]
+        previous_move_line_ids = MoveLine.search(move_line_domain).ids
         quant = self.env["stock.quant"].search([
             ("location_id", "=", opname.location_id.id),
             ("product_id", "=", line.product_id.id),
@@ -507,6 +578,10 @@ class StockOpname(models.Model):
             })
 
         quant.action_apply_inventory()
+        new_move_lines = MoveLine.search(
+            move_line_domain + [("id", "not in", previous_move_line_ids)]
+        )
+        opname._sync_inventory_movement_dates(new_move_lines.mapped("move_id"))
 
 
 

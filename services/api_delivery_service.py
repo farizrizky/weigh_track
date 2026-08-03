@@ -209,6 +209,12 @@ class ApiDeliveryService(models.AbstractModel):
                 errors.append(_("Line ID %s bukan milik operator ini.") % delivery_lot_line_id)
                 continue
 
+            if line.wt_weighing_source == "manual":
+                errors.append(_(
+                    "Line ID %s berisi penimbangan manual dan tidak dapat ditimpa perangkat."
+                ) % delivery_lot_line_id)
+                continue
+
             if lot_id:
                 try:
                     payload_lot_id = int(lot_id)
@@ -249,6 +255,7 @@ class ApiDeliveryService(models.AbstractModel):
             write_vals = {
                 "wt_physical_qty": qty,
                 "wt_weighed_at": weighed_dt,
+                "wt_weighing_source": "device",
             }
             if note:
                 write_vals["wt_note"] = note

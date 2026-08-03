@@ -81,6 +81,7 @@ msgstr "Aktif"
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -103,6 +104,26 @@ msgstr "Administrator"
 #: model:ir.ui.menu,name:weightrack.menu_wt_configuration
 msgid "Configuration"
 msgstr "Konfigurasi"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_reports
+msgid "Reports"
+msgstr "Laporan"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_report_group
+msgid "Report"
+msgstr "Laporan"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_reports_analytics
+msgid "Analytics"
+msgstr "Analitik"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_reports_log
+msgid "Logs"
+msgstr "Log"
 
 # -----------------------------------------------------------------------------
 # Estate
@@ -742,6 +763,7 @@ msgstr "Penugasan"
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__state
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__state
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__state
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__state
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Status"
 msgstr "Status"
@@ -811,6 +833,7 @@ msgstr "Konfirmasi"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_do_wizard_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_return_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
 msgid "Cancel"
 msgstr "Batalkan"
 
@@ -1250,6 +1273,16 @@ msgid "Operations"
 msgstr "Operasional"
 
 #. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_operations_data_entry
+msgid "Data Entry"
+msgstr "Entri Data"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_operations_stock_management
+msgid "Stock Management"
+msgstr "Manajemen Stok"
+
+#. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_inbound_weighing
 #: model:ir.actions.act_window,name:weightrack.action_wt_inbound_weighing
 #: model:ir.ui.menu,name:weightrack.menu_wt_inbound_weighing
@@ -1270,8 +1303,10 @@ msgstr "Service API Push Inbound Penimbangan"
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__draft
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__draft
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override__state__draft
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_stock_movement_date_correction__state__draft
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_search
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_search
 msgid "Draft"
 msgstr "Draft"
 
@@ -1434,6 +1469,7 @@ msgstr "Stok Inbound"
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__name
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__name
 msgid "Number"
 msgstr "Nomor"
 
@@ -1976,6 +2012,8 @@ msgstr "Sequence Penerimaan Produksi belum dikonfigurasi."
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__production_receipt_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__receipt_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__production_receipt_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__production_receipt_id
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_stock_movement_date_correction__source_type__production_receipt
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_list
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
 #: model:ir.actions.act_window,name:weightrack.action_wt_production_receipt
@@ -2028,6 +2066,7 @@ msgstr "Diproses"
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_production_receipt__state__cancelled
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery__state__cancelled
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_stock_movement_date_correction__state__cancelled
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
 msgid "Cancelled"
 msgstr "Dibatalkan"
@@ -3549,6 +3588,7 @@ msgid "Current"
 msgstr "Saat Ini"
 
 #. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_daily_stock_analysis_list
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
 msgid "Filter"
 msgstr "Filter"
@@ -3625,16 +3665,20 @@ msgstr "Jumlah Data Timbang Dipilih"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override__state__applied
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_stock_movement_date_correction__state__applied
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_search
 msgid "Applied"
 msgstr "Diterapkan"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__applied_at
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__applied_at
 msgid "Applied At"
 msgstr "Waktu Diterapkan"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__applied_by_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__applied_by_id
 msgid "Applied By"
 msgstr "User yang Menerapkan"
 
@@ -3741,3 +3785,438 @@ msgstr "Toleransi susut tidak bisa dioverride untuk data timbang yang sudah Rece
 #: code:addons/weightrack/models/weighing.py:0
 msgid "Shrinkage tolerance override requires initial weighing data."
 msgstr "Override toleransi susut membutuhkan data penimbangan awal."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__is_backdated
+msgid "Backdated"
+msgstr "Backdate"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__backdate_reason
+msgid "Backdate Reason"
+msgstr "Alasan Backdate"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__backdate_effective_at
+msgid "Effective Movement Date"
+msgstr "Tanggal Efektif Pergerakan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__backdate_applied_at
+msgid "Backdate Applied At"
+msgstr "Backdate Diterapkan Pada"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__backdate_applied_by_id
+msgid "Backdate Applied By"
+msgstr "Backdate Diterapkan Oleh"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_backdate_wizard_form
+#: code:addons/weightrack/models/delivery.py:0
+msgid "Correct Effective Date"
+msgstr "Koreksi Tanggal Efektif"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Backdate Audit"
+msgstr "Audit Backdate"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_backdate_wizard__current_date
+msgid "Current Effective Date"
+msgstr "Tanggal Efektif Saat Ini"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_backdate_wizard__effective_date
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__effective_date
+msgid "New Effective Date"
+msgstr "Tanggal Efektif Baru"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_backdate_wizard__reason
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__reason
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Correction Reason"
+msgstr "Alasan Koreksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_backdate_wizard__picking_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__picking_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Affected Transfers"
+msgstr "Transfer Terdampak"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_backdate_wizard__move_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__move_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Affected Stock Movements"
+msgstr "Pergerakan Stok Terdampak"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_backdate_wizard_form
+msgid "Affected Records"
+msgstr "Data Terdampak"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_backdate_wizard_form
+msgid "Apply Correction"
+msgstr "Terapkan Koreksi"
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery.py:0
+msgid "Delivery date cannot be in the future."
+msgstr "Tanggal pengiriman tidak boleh berada di masa depan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery.py:0
+msgid "Backdate Reason is required when Delivery Date is earlier than today."
+msgstr "Alasan Backdate wajib diisi jika Tanggal Pengiriman lebih awal dari hari ini."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_backdate_wizard.py:0
+msgid "The corrected effective date must be earlier than today."
+msgstr "Tanggal efektif hasil koreksi harus lebih awal dari hari ini."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_backdate_wizard.py:0
+msgid "Correction Reason is required."
+msgstr "Alasan Koreksi wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_backdate_wizard.py:0
+msgid "No completed stock movement was found for this delivery."
+msgstr "Tidak ditemukan pergerakan stok selesai untuk pengiriman ini."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_weighing_source
+msgid "Weighing Source"
+msgstr "Sumber Penimbangan"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line_lot__wt_weighing_source__device
+msgid "Device"
+msgstr "Perangkat"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_delivery_do_line_lot__wt_weighing_source__manual
+msgid "Manual"
+msgstr "Manual"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_manual_input_by_id
+msgid "Manual Input By"
+msgstr "Input Manual Oleh"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_manual_input_at
+msgid "Manual Input At"
+msgstr "Input Manual Pada"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__wt_manual_reason
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_manual_weighing_wizard__reason
+msgid "Manual Input Reason"
+msgstr "Alasan Input Manual"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Input Manual Weighing"
+msgstr "Input Penimbangan Manual"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_manual_weighing_wizard_form
+#: code:addons/weightrack/models/delivery.py:0
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Manual Delivery Weighing"
+msgstr "Penimbangan Delivery Manual"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_manual_weighing_wizard__effective_date
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_search
+msgid "Effective Date"
+msgstr "Tanggal Efektif"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_manual_weighing_wizard__line_ids
+msgid "Weighing Data"
+msgstr "Data Penimbangan"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_manual_weighing_wizard_form
+msgid "Apply Manual Weighing"
+msgstr "Terapkan Penimbangan Manual"
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery.py:0
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Manual weighing input is only available for a backdated delivery."
+msgstr "Input penimbangan manual hanya tersedia untuk delivery backdate."
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery.py:0
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Manual weighing input is only available while the delivery is Confirmed or In Progress."
+msgstr "Input penimbangan manual hanya tersedia saat delivery berstatus Confirmed atau In Progress."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Manual Input Reason is required."
+msgstr "Alasan Input Manual wajib diisi."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Select at least one weighing line."
+msgstr "Pilih minimal satu baris penimbangan."
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_stock_movement_date_correction
+#: code:addons/weightrack/models/delivery.py:0
+#: code:addons/weightrack/models/production_receipt.py:0
+#: code:addons/weightrack/models/stock_opname.py:0
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Stock Movement Date Correction"
+msgstr "Koreksi Tanggal Pergerakan Stok"
+
+#. module: weightrack
+#: model:ir.actions.act_window,name:weightrack.action_wt_stock_movement_date_correction
+#: model:ir.ui.menu,name:weightrack.menu_wt_stock_movement_date_correction
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_list
+msgid "Stock Movement Date Corrections"
+msgstr "Koreksi Tanggal Pergerakan Stok"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_opname_form
+msgid "Correct Movement Date"
+msgstr "Koreksi Tanggal Pergerakan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__source_type
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_search
+msgid "Source Type"
+msgstr "Tipe Sumber"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__old_date
+msgid "Previous Date"
+msgstr "Tanggal Sebelumnya"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Load Stock Movements"
+msgstr "Muat Pergerakan Stok"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Source Document"
+msgstr "Dokumen Sumber"
+
+#. module: weightrack
+#: model:ir.ui.menu,name:weightrack.menu_wt_operations_correction
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Correction"
+msgstr "Koreksi"
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Select exactly one source document matching the source type."
+msgstr "Pilih tepat satu dokumen sumber yang sesuai dengan tipe sumber."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "The correction company must match the source document company."
+msgstr "Perusahaan koreksi harus sama dengan perusahaan pada dokumen sumber."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "The selected source document must be completed before its movement date can be corrected."
+msgstr "Dokumen sumber harus sudah selesai sebelum tanggal pergerakannya dapat dikoreksi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "The effective date cannot be in the future."
+msgstr "Tanggal efektif tidak boleh berada di masa depan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "No completed stock movement was found for the source document."
+msgstr "Tidak ditemukan pergerakan stok selesai untuk dokumen sumber tersebut."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "The movement date cannot be corrected because an affected movement already has a posted valuation journal entry."
+msgstr "Tanggal pergerakan tidak dapat dikoreksi karena pergerakan terdampak sudah memiliki jurnal valuasi yang diposting."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "The correction would make historical stock negative for lot %(lot)s at %(location)s."
+msgstr "Koreksi akan membuat stok historis lot %(lot)s pada %(location)s menjadi negatif."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Only a WeighTrack Administrator can correct movement dates."
+msgstr "Hanya Administrator WeighTrack yang dapat mengoreksi tanggal pergerakan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/production_receipt.py:0
+msgid "Movement date correction is only available for a validated Production Receipt."
+msgstr "Koreksi tanggal pergerakan hanya tersedia untuk Penerimaan Produksi yang sudah divalidasi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_opname.py:0
+msgid "Movement date correction is only available for an applied Stock Opname."
+msgstr "Koreksi tanggal pergerakan hanya tersedia untuk Stock Opname yang sudah diterapkan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_opname.py:0
+msgid "The date of an applied Stock Opname must be changed through Stock Movement Date Correction."
+msgstr "Tanggal Stock Opname yang sudah diterapkan harus diubah melalui Koreksi Tanggal Pergerakan Stok."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "An applied or cancelled correction cannot be changed."
+msgstr "Koreksi yang sudah diterapkan atau dibatalkan tidak dapat diubah."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "An applied correction cannot be deleted."
+msgstr "Koreksi yang sudah diterapkan tidak dapat dihapus."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Only a draft correction can reload stock movements."
+msgstr "Pergerakan stok hanya dapat dimuat ulang pada koreksi berstatus Draft."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Only a draft correction can be applied."
+msgstr "Hanya koreksi berstatus Draft yang dapat diterapkan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Only a draft correction can be cancelled."
+msgstr "Hanya koreksi berstatus Draft yang dapat dibatalkan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Stock movement date corrected from %(old_date)s to %(new_date)s by %(user)s. Reason: %(reason)s"
+msgstr "Tanggal pergerakan stok dikoreksi dari %(old_date)s menjadi %(new_date)s oleh %(user)s. Alasan: %(reason)s"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__delivery_id
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_stock_movement_date_correction__source_type__delivery
+msgid "Delivery Order"
+msgstr "Dokumen Pengiriman"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__stock_opname_id
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_stock_movement_date_correction__source_type__stock_opname
+msgid "Stock Opname"
+msgstr "Stock Opname"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__picking_count
+msgid "Transfer Count"
+msgstr "Jumlah Transfer"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__move_count
+msgid "Stock Movement Count"
+msgstr "Jumlah Pergerakan Stok"
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/storage_shrinkage_report_wizard.py:0
+msgid "Stock Movement"
+msgstr "Pergerakan Stok"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Apply"
+msgstr "Terapkan"
+
+#. module: weightrack
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_stock_movement_date_correction__source_type__inventory_adjustment
+msgid "Stock Adjustment"
+msgstr "Penyesuaian Stok"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__inventory_adjustment_move_ids
+#: model_terms:ir.ui.view,arch_db:weightrack.view_stock_move_inventory_correction_selection
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Stock Adjustment Movements"
+msgstr "Pergerakan Penyesuaian Stok"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__inventory_reference
+msgid "Inventory Reference"
+msgstr "Referensi Inventaris"
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Select at least one Stock Adjustment movement."
+msgstr "Pilih minimal satu pergerakan Penyesuaian Stok."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Stock Adjustment movements can only be selected for the Stock Adjustment source type."
+msgstr "Pergerakan Penyesuaian Stok hanya dapat dipilih untuk tipe sumber Penyesuaian Stok."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Only completed inventory movements without a transfer can be selected."
+msgstr "Hanya pergerakan inventaris selesai tanpa transfer yang dapat dipilih."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "All selected inventory movements must belong to the correction company."
+msgstr "Semua pergerakan inventaris terpilih harus berasal dari perusahaan koreksi."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "All selected inventory movements must have the same current movement date."
+msgstr "Semua pergerakan inventaris terpilih harus memiliki tanggal pergerakan saat ini yang sama."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Movements generated by a WeighTrack document must be corrected from their source document."
+msgstr "Pergerakan yang dibuat oleh dokumen WeighTrack harus dikoreksi melalui dokumen sumbernya."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "No completed stock movement was found for the selected source."
+msgstr "Tidak ditemukan pergerakan stok selesai untuk sumber yang dipilih."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "The new effective date must differ from the current movement date."
+msgstr "Tanggal efektif baru harus berbeda dari tanggal pergerakan saat ini."
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Without Lot"
+msgstr "Tanpa Lot"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_stock_move_inventory_correction_selection
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+msgid "Reference"
+msgstr "Referensi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_stock_move__wt_inventory_lot_names
+msgid "Lot/Serial Numbers"
+msgstr "Nomor Lot/Seri"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_stock_move__wt_inventory_done_quantity
+msgid "Done Quantity"
+msgstr "Kuantitas Selesai"
+
+#. module: weightrack
+#: code:addons/weightrack/models/stock_movement_date_correction.py:0
+msgid "Select at least one Stock Adjustment movement and do not select another source document."
+msgstr "Pilih minimal satu pergerakan Penyesuaian Stok dan jangan memilih dokumen sumber lainnya."

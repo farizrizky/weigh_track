@@ -35,6 +35,9 @@
                     <button name="action_assign"          string="Proses / Tetapkan"         type="object" class="oe_highlight" invisible="state != 'draft'"/>
                     <button name="action_populate_lines"  string="Muat Stok"                  type="object" invisible="state != 'draft'"/>
                     <button name="action_apply_inventory" string="Terapkan Penyesuaian Stok"   type="object" class="oe_highlight" invisible="state != 'completed'"/>
+                    <button name="action_open_movement_date_correction" string="Correct Movement Date"
+                            type="object" invisible="state != 'applied'"
+                            groups="weightrack.group_admin"/>
                     <button name="action_cancel"          string="Batalkan"                    type="object" invisible="state not in ['draft', 'assigned', 'in_progress', 'completed']"/>
                     <button name="action_draft"           string="Atur ke Draft"               type="object" invisible="state != 'cancelled'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,completed,applied"/>

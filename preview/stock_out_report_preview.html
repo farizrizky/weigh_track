@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Preview Laporan Stock Keluar</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 12mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #e5e7eb;
+            color: #172033;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10px;
+            line-height: 1.4;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .report-page {
+            background: #fff;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+            margin: 0 auto;
+            min-height: 297mm;
+            padding: 12mm;
+            width: 210mm;
+        }
+
+        .header-table,
+        .info-table,
+        .data-table,
+        .footer-table {
+            border-collapse: collapse;
+            table-layout: fixed;
+            width: 100%;
+        }
+
+        .header-table {
+            margin-bottom: 24px;
+        }
+
+        .header-table td {
+            border: 0;
+            padding: 0;
+            vertical-align: top;
+        }
+
+        .brand {
+            color: #247a39;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .brand-subtitle {
+            color: #3f6e49;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 3px;
+        }
+
+        .report-title {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin: 0 0 8px;
+            text-align: right;
+        }
+
+        .report-meta {
+            color: #4b5563;
+            text-align: right;
+        }
+
+        .info-table {
+            margin-bottom: 17px;
+        }
+
+        .info-table td {
+            border: 1px solid #cbd5e1;
+            padding: 7px 8px;
+            vertical-align: middle;
+        }
+
+        .info-label {
+            background: #f1f5f9;
+            font-weight: 700;
+            width: 17%;
+        }
+
+        .info-value {
+            width: 33%;
+        }
+
+        .section-title {
+            border-bottom: 1px solid #b8c2cf;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 16px;
+            padding: 0 0 5px;
+            text-transform: uppercase;
+        }
+
+        .data-table th,
+        .data-table td {
+            border: 1px solid #cbd5e1;
+            padding: 7px 7px;
+            vertical-align: middle;
+        }
+
+        .data-table th {
+            background: #f1f5f9;
+            font-size: 9px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .total-row td {
+            background: #f8fafc;
+            font-weight: 700;
+        }
+
+        .route-transit {
+            border-left: 3px solid #b7791f !important;
+        }
+
+        .route-outgoing {
+            border-left: 3px solid #247a39 !important;
+        }
+
+        .stock-type {
+            font-weight: 700;
+        }
+
+        .lot-cell {
+            font-size: 8px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .muted {
+            color: #64748b;
+            display: block;
+            font-size: 8px;
+            margin-top: 2px;
+        }
+
+        .formula {
+            color: #475569;
+            font-size: 8px;
+            margin-top: 4px;
+        }
+
+        .footer-table {
+            color: #64748b;
+            font-size: 8px;
+            margin-top: 18px;
+        }
+
+        .footer-table td {
+            border: 0;
+            padding: 0;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .report-page {
+                box-shadow: none;
+                margin: 0;
+                min-height: auto;
+                padding: 0;
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="report-page">
+        <table class="header-table">
+            <tr>
+                <td style="width: 42%;">
+                    <div class="brand">JULANG</div>
+                    <div class="brand-subtitle">PLANTATIONS</div>
+                </td>
+                <td style="width: 58%;">
+                    <h1 class="report-title">LAPORAN STOCK KELUAR</h1>
+                    <div class="report-meta">
+                        <strong>Tanggal Cetak:</strong> 02/08/2026
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="info-table">
+            <tr>
+                <td class="info-label">Perusahaan</td>
+                <td class="info-value">PT. Julang Plantations</td>
+                <td class="info-label">Gudang</td>
+                <td class="info-value">Semua Gudang</td>
+            </tr>
+            <tr>
+                <td class="info-label">Tanggal Dari</td>
+                <td class="info-value">01/08/2026</td>
+                <td class="info-label">Divisi</td>
+                <td class="info-value">Semua Divisi</td>
+            </tr>
+            <tr>
+                <td class="info-label">Tanggal Sampai</td>
+                <td class="info-value">02/08/2026</td>
+                <td class="info-label">Status DO</td>
+                <td class="info-value">Selesai</td>
+            </tr>
+        </table>
+
+        <div class="section-title">Stock Keluar Per Gudang dan Divisi</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">No</th>
+                    <th style="width: 25%;">Gudang</th>
+                    <th style="width: 16%;">Divisi</th>
+                    <th style="width: 14%;">Pengiriman</th>
+                    <th style="width: 16%;">Susut Penyimpanan</th>
+                    <th style="width: 14%;">Susut Transfer</th>
+                    <th style="width: 10%;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">1</td>
+                    <td>Gudang Induk Sebayur</td>
+                    <td>Divisi 1</td>
+                    <td class="text-right">96.00 kg</td>
+                    <td class="text-right">2.00 kg</td>
+                    <td class="text-right">0.00 kg</td>
+                    <td class="text-right"><strong>98.00 kg</strong></td>
+                </tr>
+                <tr>
+                    <td class="text-center">2</td>
+                    <td>Gudang Induk Gembung</td>
+                    <td><strong>Transit</strong></td>
+                    <td class="text-right">0.00 kg</td>
+                    <td class="text-right">0.00 kg</td>
+                    <td class="text-right">2.00 kg</td>
+                    <td class="text-right"><strong>2.00 kg</strong></td>
+                </tr>
+                <tr>
+                    <td class="text-center">3</td>
+                    <td>Gudang Induk Sebayur</td>
+                    <td>Divisi 2</td>
+                    <td class="text-right">49.00 kg</td>
+                    <td class="text-right">1.00 kg</td>
+                    <td class="text-right">0.00 kg</td>
+                    <td class="text-right"><strong>50.00 kg</strong></td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="3" class="text-right">TOTAL PENGELUARAN GUDANG</td>
+                    <td class="text-right">145.00 kg</td>
+                    <td class="text-right">3.00 kg</td>
+                    <td class="text-right">2.00 kg</td>
+                    <td class="text-right">150.00 kg</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="formula">
+            Lot transit tidak membawa divisi. Susut transfer dikelompokkan ke gudang tempat lot transit berada dengan nilai Divisi "Transit".
+        </div>
+
+        <div class="section-title">Detail Sumber Pergerakan</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">No</th>
+                    <th style="width: 11%;">Tanggal</th>
+                    <th style="width: 15%;">No DO / Referensi</th>
+                    <th style="width: 17%;">Gudang</th>
+                    <th style="width: 12%;">Divisi</th>
+                    <th style="width: 16%;">Lot</th>
+                    <th style="width: 14%;">Kategori</th>
+                    <th style="width: 10%;">Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-center">1</td>
+                    <td>01/08/2026</td>
+                    <td>SO/20260801/0003</td>
+                    <td>Gudang Induk Sebayur</td>
+                    <td>Divisi 1</td>
+                    <td class="lot-cell">LOT/DIV1/20260730/001</td>
+                    <td>Susut Penyimpanan</td>
+                    <td class="text-right">2.00 kg</td>
+                </tr>
+                <tr>
+                    <td class="text-center">2</td>
+                    <td>01/08/2026</td>
+                    <td>DO/20260801/0001</td>
+                    <td>Gudang Induk Sebayur</td>
+                    <td>Divisi 1</td>
+                    <td class="lot-cell">LOT/DIV1/20260730/001</td>
+                    <td>Pengiriman</td>
+                    <td class="text-right">96.00 kg</td>
+                </tr>
+                <tr>
+                    <td class="text-center">3</td>
+                    <td>01/08/2026</td>
+                    <td>DO/20260801/0001</td>
+                    <td>Gudang Induk Gembung</td>
+                    <td><strong>Transit</strong></td>
+                    <td class="lot-cell">TR/GIGMB/20260801/001</td>
+                    <td>Susut Transfer</td>
+                    <td class="text-right">2.00 kg</td>
+                </tr>
+                <tr>
+                    <td class="text-center">4</td>
+                    <td>02/08/2026</td>
+                    <td>SO/20260802/0001</td>
+                    <td>Gudang Induk Sebayur</td>
+                    <td>Divisi 2</td>
+                    <td class="lot-cell">LOT/DIV2/20260731/002</td>
+                    <td>Susut Penyimpanan</td>
+                    <td class="text-right">1.00 kg</td>
+                </tr>
+                <tr>
+                    <td class="text-center">5</td>
+                    <td>02/08/2026</td>
+                    <td>DO/20260802/0002</td>
+                    <td>Gudang Induk Sebayur</td>
+                    <td>Divisi 2</td>
+                    <td class="lot-cell">LOT/DIV2/20260731/002</td>
+                    <td>Pengiriman</td>
+                    <td class="text-right">49.00 kg</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="footer-table">
+            <tr>
+                <td>Laporan Stock Keluar - Preview Struktur</td>
+                <td style="text-align: right;">Halaman 1 dari 1</td>
+            </tr>
+        </table>
+    </main>
+</body>
+</html>

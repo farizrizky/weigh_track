@@ -51,5 +51,15 @@
             <field name="implementation">standard</field>
             <field name="company_id" eval="False"/>
         </record>
+        <record id="sequence_wt_stock_movement_date_correction" model="ir.sequence">
+            <field name="name">Stock Movement Date Correction</field>
+            <field name="code">wt.stock.movement.date.correction</field>
+            <field name="prefix">SMDC/%(year)s%(month)s%(day)s/</field>
+            <field name="padding">3</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

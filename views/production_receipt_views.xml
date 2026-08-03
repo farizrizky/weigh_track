@@ -60,6 +60,9 @@
                     <button name="action_process" type="object" string="Process" class="oe_highlight" invisible="state not in ('draft', 'processed')"/>
                     <button name="action_validate" type="object" string="Validate" class="oe_highlight" invisible="state not in ('draft', 'processed')"/>
                     <button name="action_cancel" type="object" string="Cancel" invisible="state != 'validated'"/>
+                    <button name="action_open_movement_date_correction" type="object"
+                            string="Correct Movement Date" invisible="state != 'validated'"
+                            groups="weightrack.group_admin"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,processed,validated,cancelled"/>
                 </header>
                 <sheet>

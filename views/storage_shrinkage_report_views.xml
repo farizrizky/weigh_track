@@ -29,7 +29,6 @@
                             <field name="division_id"/>
                         </group>
                         <group string="Total">
-                            <field name="total_stock_opname_qty"/>
                             <field name="total_shrinkage_qty"/>
                         </group>
                     </group>
@@ -40,7 +39,6 @@
                                     <field name="sequence"/>
                                     <field name="warehouse_name"/>
                                     <field name="division_name"/>
-                                    <field name="stock_opname_qty" sum="Total"/>
                                     <field name="total_qty" sum="Total"/>
                                 </list>
                             </field>
