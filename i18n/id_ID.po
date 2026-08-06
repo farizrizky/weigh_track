@@ -82,6 +82,12 @@ msgstr "Aktif"
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_wizard__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__company_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -112,6 +118,17 @@ msgstr "Laporan"
 
 #. module: weightrack
 #: model:ir.ui.menu,name:weightrack.menu_wt_report_group
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_date__report_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__report_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__report_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__report_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_wizard__report_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__name
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_date__report_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__report_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__report_id
 msgid "Report"
 msgstr "Laporan"
 
@@ -137,6 +154,19 @@ msgstr "Log"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weather_data__estate_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__estate_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__estate_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__estate_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__estate_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__estate_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__estate_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__estate_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__estate_id
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Estate"
 msgstr "Estate"
 
@@ -188,6 +218,9 @@ msgstr "Deskripsi"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weather_data_search
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__date
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__event_date
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Date"
 msgstr "Tanggal"
 
@@ -211,6 +244,22 @@ msgstr "Nama Cuaca"
 #: model:ir.model.fields,field_description:weightrack.field_wt_receipt_rule__division_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__division_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_division_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__division_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__division_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__division_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__division_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__division_id
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_summary_report__report_level__division
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_summary_report_wizard__report_level__division
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Division"
 msgstr "Divisi"
 
@@ -580,6 +629,9 @@ msgstr "Tipe Operasi"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_location_form
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__weighing_location_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__weighing_location_name
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Weighing Location"
 msgstr "Lokasi Timbang"
 
@@ -600,6 +652,9 @@ msgstr "Nama Lokasi Timbang"
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__warehouse_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__warehouse_id
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_location__location_type__warehouse
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report__location_type__warehouse
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_line__location_type__warehouse
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_wizard__location_type__warehouse
 msgid "Warehouse"
 msgstr "Gudang"
 
@@ -625,6 +680,9 @@ msgstr "Penimbangan"
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__operator_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line_lot__operator_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__operator_name
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Operator"
 msgstr "Operator"
 
@@ -662,6 +720,22 @@ msgstr "Produk yang Diizinkan"
 #: code:addons/weightrack/constants/roles.py:0
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__foreman_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__foreman_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__foreman_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__foreman_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__foreman_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__foreman_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__foreman_id
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_summary_report__report_level__foreman
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_production_summary_report_wizard__report_level__foreman
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Foreman"
 msgstr "Mandor"
 
@@ -694,6 +768,15 @@ msgstr "Tanpa Mandor"
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override_line__tapper_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_form
 #: code:addons/weightrack/constants/roles.py:0
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__tapper_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__tapper_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__tapper_name
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__tapper_id
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
 msgid "Tapper"
 msgstr "Tapper"
 
@@ -732,12 +815,18 @@ msgstr "Perangkat"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_device_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__device_name
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Device Name"
 msgstr "Nama Perangkat"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_device__device_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__device_id
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__device_identifier
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Device ID"
 msgstr "ID Perangkat"
 
@@ -765,6 +854,9 @@ msgstr "Penugasan"
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__state
 #: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__state
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_search
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__state
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Status"
 msgstr "Status"
 
@@ -834,6 +926,9 @@ msgstr "Konfirmasi"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_return_wizard_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_stock_movement_date_correction_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_wizard_form
 msgid "Cancel"
 msgstr "Batalkan"
 
@@ -1321,6 +1416,8 @@ msgstr "Tervalidasi"
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt__production_date
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_receipt_line__production_date
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__production_date
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_date__production_date
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_date__production_date
 msgid "Production Date"
 msgstr "Tanggal Produksi"
 
@@ -1920,6 +2017,9 @@ msgstr "Penimbangan Manual"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__manual_weighing_reason
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__manual_weighing_reason
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Manual Weighing Reason"
 msgstr "Alasan Penimbangan Manual"
 
@@ -1948,6 +2048,13 @@ msgstr "Nomor Badge Pemilik Device"
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__clerk_barcode
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__foreman_barcode
 #: model:ir.model.fields,field_description:weightrack.field_wt_weighing__tapper_barcode
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__badge_number
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__badge_number
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Badge Number"
 msgstr "Nomor Badge"
 
@@ -2034,6 +2141,7 @@ msgstr "Status Penerimaan"
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__not_receipted
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__not_receipted
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_line__state__not_receipted
 msgid "Not Receipted"
 msgstr "Belum Diterima"
 
@@ -2041,6 +2149,7 @@ msgstr "Belum Diterima"
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__in_production_receipt
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__in_production_receipt
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_line__state__in_production_receipt
 msgid "In Production Receipt"
 msgstr "Dalam Penerimaan Produksi"
 
@@ -2048,12 +2157,14 @@ msgstr "Dalam Penerimaan Produksi"
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__receipt_validated
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__receipt_validated
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_weighing_search
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_line__state__receipt_validated
 msgid "Receipt Validated"
 msgstr "Penerimaan Tervalidasi"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing__state__receipt_cancelled
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_shrinkage_tolerance_override_line__weighing_state__receipt_cancelled
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_line__state__receipt_cancelled
 msgid "Receipt Cancelled"
 msgstr "Penerimaan Dibatalkan"
 
@@ -2100,6 +2211,9 @@ msgstr "Berat Stock"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_receipt_form
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__weighing_number
+#. odoo-python
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Weighing Number"
 msgstr "Nomor Timbang"
 
@@ -3125,6 +3239,9 @@ msgstr "Lokasi Tujuan"
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__sequence
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_route_line__sequence
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_step__sequence
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_date__sequence
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__sequence
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_date__sequence
 msgid "Sequence"
 msgstr "Urutan"
 
@@ -3466,6 +3583,9 @@ msgstr "Tipe Lokasi"
 
 #. module: weightrack
 #: model:ir.model.fields.selection,name:weightrack.selection__wt_weighing_location__location_type__field
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report__location_type__field
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_line__location_type__field
+#: model:ir.model.fields.selection,name:weightrack.selection__wt_manual_weighing_report_wizard__location_type__field
 msgid "Field"
 msgstr "Lapangan"
 
@@ -3590,12 +3710,21 @@ msgstr "Saat Ini"
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_daily_stock_analysis_list
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_wizard_form
 msgid "Filter"
 msgstr "Filter"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__preview_html
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__preview_html
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__preview_html
 msgid "Preview"
-msgstr "Preview"
+msgstr "Pratinjau"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_shrinkage_tolerance_override_form
@@ -3655,8 +3784,11 @@ msgstr "Terapkan Override"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__line_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__line_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__line_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__line_ids
 msgid "Lines"
-msgstr "Line"
+msgstr "Baris"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_shrinkage_tolerance_override__total_count
@@ -4207,8 +4339,10 @@ msgstr "Tanpa Lot"
 #: model:ir.actions.act_window,name:weightrack.action_wt_tapper_production_total_report_wizard
 #: model:ir.actions.report,name:weightrack.action_report_tapper_production_total_pdf
 #: model:ir.ui.menu,name:weightrack.menu_wt_tapper_production_total_report
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_wizard_form
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
 msgid "Tapper Production Total Report"
 msgstr "Laporan Total Produksi Tapper"
@@ -4229,29 +4363,40 @@ msgid "Tapper Production Total Report Wizard"
 msgstr "Wizard Laporan Total Produksi Tapper"
 
 #. module: weightrack
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
 msgid "Filter Tapper Production Total Report"
 msgstr "Filter Laporan Total Produksi Tapper"
 
 #. module: weightrack
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
 msgid "TAPPER PRODUCTION TOTAL REPORT"
 msgstr "LAPORAN TOTAL PRODUKSI TAPPER"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__date_column_ids
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__date_column_ids
 msgid "Production Dates"
 msgstr "Tanggal Produksi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__date_start
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__date_start
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__date_start
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_wizard__date_start
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__date_start
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__date_start
 msgid "Start Date"
 msgstr "Tanggal Mulai"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__date_end
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__date_end
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__date_end
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_wizard__date_end
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__date_end
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__date_end
 msgid "End Date"
 msgstr "Tanggal Selesai"
 
@@ -4259,61 +4404,207 @@ msgstr "Tanggal Selesai"
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__total_production
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_date__total_production
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__total_production
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__total_production
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_date__total_production
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__total_production
 #: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Total Production"
 msgstr "Total Produksi"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__sequence
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__sequence
 #: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "No."
 msgstr "No."
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__daily_production
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__daily_production
 msgid "Daily Production"
 msgstr "Produksi Harian"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__division_code
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__division_code
 msgid "Division Code"
 msgstr "Kode Divisi"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Date Range"
 msgstr "Rentang Tanggal"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Production"
 msgstr "Produksi"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "No weighing data found."
 msgstr "Tidak ditemukan data penimbangan."
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_form
 msgid "Please click Filter to display the report data."
 msgstr "Silakan klik Filter untuk menampilkan data laporan."
 
 #. module: weightrack
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "Start Date cannot be later than End Date."
 msgstr "Tanggal Mulai tidak boleh lebih akhir dari Tanggal Selesai."
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: model_terms:ir.ui.view,arch_db:weightrack.report_production_summary_document
+#. odoo-python
 #: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
 msgid "All"
 msgstr "Semua"
+
+#. module: weightrack
+#: model:ir.actions.act_window,name:weightrack.action_wt_division_production_total_report
+#: model:ir.ui.menu,name:weightrack.menu_wt_division_production_total_report
+#. odoo-python
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
+msgid "Division Production Total Report"
+msgstr "Laporan Total Produksi Divisi"
+
+#. module: weightrack
+#: model:ir.actions.act_window,name:weightrack.action_wt_foreman_production_total_report
+#: model:ir.ui.menu,name:weightrack.menu_wt_foreman_production_total_report
+#. odoo-python
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
+msgid "Foreman Production Total Report"
+msgstr "Laporan Total Produksi Mandor"
+
+#. module: weightrack
+#: model:ir.actions.report,name:weightrack.action_report_production_summary_pdf
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_wizard_form
+msgid "Production Total Report"
+msgstr "Laporan Total Produksi"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_production_summary_report
+#: model:ir.model,name:weightrack.model_report_weightrack_report_production_summary_document
+msgid "Production Total Summary Report"
+msgstr "Ringkasan Laporan Total Produksi"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_production_summary_report_date
+msgid "Production Total Summary Report Date"
+msgstr "Tanggal Ringkasan Laporan Total Produksi"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_production_summary_report_line
+msgid "Production Total Summary Report Line"
+msgstr "Baris Ringkasan Laporan Total Produksi"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_production_summary_report_wizard
+msgid "Production Total Summary Report Wizard"
+msgstr "Wizard Ringkasan Laporan Total Produksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__report_level
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__report_level
+msgid "Report Level"
+msgstr "Tingkat Laporan"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_line__estate_code
+msgid "Estate Code"
+msgstr "Kode Estate"
+
+#. module: weightrack
+#. odoo-python
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
+msgid "Filter %s"
+msgstr "Filter %s"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_wizard_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_wizard_form
+msgid "Apply Filter"
+msgstr "Terapkan Filter"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_form
+msgid "Export PDF"
+msgstr "Ekspor PDF"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_form
+msgid "Export Excel"
+msgstr "Ekspor Excel"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__is_filtered
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__is_filtered
+#: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__is_filtered
+msgid "Filtered"
+msgstr "Terfilter"
+
+#. module: weightrack
+#. odoo-python
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
+msgid "Please apply a filter before printing the report."
+msgstr "Terapkan filter sebelum mencetak laporan."
+
+#. module: weightrack
+#. odoo-python
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
+msgid "Please apply a filter before exporting the report."
+msgstr "Terapkan filter sebelum mengekspor laporan."
+
+#. module: weightrack
+#. odoo-python
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: code:addons/weightrack/wizards/production_summary_report_wizard.py:0
+msgid "The xlsxwriter Python package is not installed."
+msgstr "Paket Python xlsxwriter belum terpasang."
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_manual_weighing_report
@@ -4324,6 +4615,7 @@ msgstr "Semua"
 #: model:ir.ui.menu,name:weightrack.menu_wt_manual_weighing_report
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_wizard_form
+#. odoo-python
 #: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Manual Weighing Report"
 msgstr "Laporan Penimbangan Manual"
@@ -4339,12 +4631,15 @@ msgid "Manual Weighing Report Wizard"
 msgstr "Wizard Laporan Penimbangan Manual"
 
 #. module: weightrack
+#. odoo-python
 #: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Filter Manual Weighing Report"
 msgstr "Filter Laporan Penimbangan Manual"
 
 #. module: weightrack
+#. odoo-python
 #: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
 msgid "MANUAL WEIGHING REPORT"
 msgstr "LAPORAN PENIMBANGAN MANUAL"
 
@@ -4353,6 +4648,7 @@ msgstr "LAPORAN PENIMBANGAN MANUAL"
 #: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__location_type
 #: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_wizard__location_type
 #: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#. odoo-python
 #: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Weighing Location Type"
 msgstr "Tipe Lokasi Timbang"
@@ -4360,6 +4656,7 @@ msgstr "Tipe Lokasi Timbang"
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__total_records
 #: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#. odoo-python
 #: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
 msgid "Total Records"
 msgstr "Total Data"

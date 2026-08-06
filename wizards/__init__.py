@@ -8,6 +8,7 @@ from . import delivery_return_wizard
 from . import weighing_production_report_wizard
 from . import weighing_production_detail_report_wizard
 from . import tapper_production_total_report_wizard
+from . import production_summary_report_wizard
 from . import manual_weighing_report_wizard
 from . import weighing_reject_slab_report_wizard
 from . import storage_shrinkage_report_wizard

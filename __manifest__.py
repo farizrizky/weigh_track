@@ -28,6 +28,8 @@
         "views/weighing_production_detail_report_views.xml",
         "views/tapper_production_total_report.xml",
         "views/tapper_production_total_report_views.xml",
+        "views/production_summary_report.xml",
+        "views/production_summary_report_views.xml",
         "views/manual_weighing_report.xml",
         "views/manual_weighing_report_views.xml",
         "views/weighing_reject_slab_report.xml",
