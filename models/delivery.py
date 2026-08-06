@@ -387,11 +387,27 @@ class Delivery(models.Model):
             else:
                 rec.date_text = False
 
-    @api.depends("date")
+    @api.depends("date", "create_date", "backdate_applied_at")
     def _compute_is_backdated(self):
         for delivery in self:
+            reference_datetime = (
+                delivery.backdate_applied_at or delivery.create_date
+            )
+            if reference_datetime:
+                reference_datetime = fields.Datetime.to_datetime(
+                    reference_datetime
+                )
+                if reference_datetime.tzinfo is None:
+                    reference_datetime = UTC.localize(reference_datetime)
+                reference_date = reference_datetime.astimezone(
+                    delivery._get_business_timezone()
+                ).date()
+            else:
+                # Unsaved records use today so the reason field appears as soon
+                # as a user selects an earlier delivery date.
+                reference_date = delivery._get_business_today()
             delivery.is_backdated = bool(
-                delivery.date and delivery.date < delivery._get_business_today()
+                delivery.date and delivery.date < reference_date
             )
 
     def _get_business_timezone(self):
@@ -425,14 +441,14 @@ class Delivery(models.Model):
                 continue
             if delivery.date > today:
                 raise ValidationError(_("Delivery date cannot be in the future."))
-            if delivery.date < today:
+            if delivery.is_backdated:
                 if not self.env.user.has_group("weightrack.group_admin"):
                     raise ValidationError(_(
                         "Only a WeighTrack Administrator can process a backdated delivery."
                     ))
                 if not (delivery.backdate_reason or "").strip():
                     raise ValidationError(_(
-                        "Backdate Reason is required when Delivery Date is earlier than today."
+                        "Backdate Reason is required for a backdated delivery."
                     ))
 
     @api.constrains("date", "backdate_reason")

@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_manual_weighing_report" model="report.paperformat">
+        <field name="name">Manual Weighing Report A3 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A3</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">9</field>
+        <field name="margin_bottom">9</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_manual_weighing_pdf" model="ir.actions.report">
+        <field name="name">Manual Weighing Report</field>
+        <field name="model">wt.manual.weighing.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_manual_weighing_document</field>
+        <field name="report_file">weightrack.report_manual_weighing_document</field>
+        <field name="paperformat_id" ref="paperformat_manual_weighing_report"/>
+        <field name="print_report_name">'Laporan Penimbangan Manual - %s - %s' % (object.date_start, object.date_end)</field>
+    </record>
+
+    <template id="report_manual_weighing_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page wt-manual-weighing-report">
+                    <style>
+                        .wt-manual-weighing-report {
+                            color: #111827;
+                            font-family: "Lato", sans-serif;
+                            font-size: 8px;
+                            line-height: 1.25;
+                        }
+                        .wt-manual-weighing-report .header-table {
+                            border-collapse: collapse;
+                            margin-bottom: 18px;
+                            width: 100%;
+                        }
+                        .wt-manual-weighing-report .header-table td {
+                            border: 0;
+                            vertical-align: top;
+                        }
+                        .wt-manual-weighing-report .logo {
+                            max-height: 65px;
+                            max-width: 230px;
+                        }
+                        .wt-manual-weighing-report .company-name {
+                            font-size: 17px;
+                            font-weight: 700;
+                            text-align: right;
+                        }
+                        .wt-manual-weighing-report .title {
+                            font-size: 16px;
+                            font-weight: 700;
+                            margin: 3px 0 0;
+                            text-align: right;
+                            text-transform: uppercase;
+                        }
+                        .wt-manual-weighing-report .info-table {
+                            border-collapse: collapse;
+                            margin-bottom: 12px;
+                            width: 100%;
+                        }
+                        .wt-manual-weighing-report .info-table td {
+                            border: 1px solid #cbd5e1;
+                            padding: 6px 8px !important;
+                        }
+                        .wt-manual-weighing-report .info-label {
+                            background: #f3f4f6;
+                            font-weight: 700;
+                            width: 14%;
+                        }
+                        .wt-manual-weighing-report .info-value {
+                            width: 19%;
+                        }
+                        .wt-manual-weighing-report .data-table {
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-manual-weighing-report .data-table th,
+                        .wt-manual-weighing-report .data-table td {
+                            border: 1px solid #9ca3af;
+                            font-size: 7px;
+                            line-height: 1.2;
+                            overflow-wrap: anywhere;
+                            padding: 4px 3px !important;
+                            vertical-align: top;
+                        }
+                        .wt-manual-weighing-report .data-table th {
+                            background: #e5e7eb;
+                            font-weight: 700;
+                            text-align: center;
+                            vertical-align: middle;
+                        }
+                        .wt-manual-weighing-report .text-center {
+                            text-align: center;
+                        }
+                    </style>
+
+                    <table class="header-table">
+                        <tr>
+                            <td style="width:40%;">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="logo"
+                                         t-att-src="image_data_uri(doc.company_id.logo)"
+                                         alt="Logo"/>
+                                </t>
+                            </td>
+                            <td style="width:60%;">
+                                <div class="company-name" t-esc="doc.company_id.name"/>
+                                <h2 class="title">Manual Weighing Report</h2>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="info-table">
+                        <tr>
+                            <td class="info-label">Date Range</td>
+                            <td class="info-value">
+                                <span t-esc="doc.date_start.strftime('%d/%m/%Y')"/>
+                                <span> - </span>
+                                <span t-esc="doc.date_end.strftime('%d/%m/%Y')"/>
+                            </td>
+                            <td class="info-label">Weighing Location Type</td>
+                            <td class="info-value" t-esc="doc._get_location_type_display()"/>
+                            <td class="info-label">Total Records</td>
+                            <td class="info-value" t-esc="doc.total_records"/>
+                        </tr>
+                    </table>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:7%;">Date</th>
+                                <th style="width:8%;">Weighing Number</th>
+                                <th style="width:7%;">Estate</th>
+                                <th style="width:6%;">Division</th>
+                                <th style="width:8%;">Tapper</th>
+                                <th style="width:8%;">Foreman</th>
+                                <th style="width:8%;">Operator</th>
+                                <th style="width:7%;">Device Name</th>
+                                <th style="width:7%;">Device ID</th>
+                                <th style="width:8%;">Weighing Location</th>
+                                <th style="width:7%;">Weighing Location Type</th>
+                                <th style="width:11%;">Manual Weighing Reason</th>
+                                <th style="width:8%;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="doc.line_ids">
+                                <t t-foreach="doc.line_ids" t-as="line">
+                                    <tr>
+                                        <td class="text-center" t-esc="line.get_event_date_display()"/>
+                                        <td t-esc="line.weighing_number"/>
+                                        <td t-esc="line.estate_name"/>
+                                        <td t-esc="line.division_name"/>
+                                        <td t-esc="line.tapper_name"/>
+                                        <td t-esc="line.foreman_name"/>
+                                        <td t-esc="line.operator_name"/>
+                                        <td t-esc="line.device_name"/>
+                                        <td t-esc="line.device_identifier"/>
+                                        <td t-esc="line.weighing_location_name"/>
+                                        <td class="text-center" t-esc="line.get_location_type_display()"/>
+                                        <td t-esc="line.manual_weighing_reason"/>
+                                        <td class="text-center" t-esc="line.get_state_display()"/>
+                                    </tr>
+                                </t>
+                            </t>
+                            <tr t-if="not doc.line_ids">
+                                <td colspan="13" class="text-center">No manual weighing data found.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -3872,8 +3872,8 @@ msgstr "Tanggal pengiriman tidak boleh berada di masa depan."
 
 #. module: weightrack
 #: code:addons/weightrack/models/delivery.py:0
-msgid "Backdate Reason is required when Delivery Date is earlier than today."
-msgstr "Alasan Backdate wajib diisi jika Tanggal Pengiriman lebih awal dari hari ini."
+msgid "Backdate Reason is required for a backdated delivery."
+msgstr "Alasan Backdate wajib diisi untuk pengiriman backdate."
 
 #. module: weightrack
 #: code:addons/weightrack/wizards/delivery_backdate_wizard.py:0
@@ -4199,6 +4199,175 @@ msgstr "Tanggal efektif baru harus berbeda dari tanggal pergerakan saat ini."
 #: code:addons/weightrack/models/stock_movement_date_correction.py:0
 msgid "Without Lot"
 msgstr "Tanpa Lot"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_tapper_production_total_report
+#: model:ir.model,name:weightrack.model_report_weightrack_report_tapper_production_total_document
+#: model:ir.actions.act_window,name:weightrack.action_wt_tapper_production_total_report
+#: model:ir.actions.act_window,name:weightrack.action_wt_tapper_production_total_report_wizard
+#: model:ir.actions.report,name:weightrack.action_report_tapper_production_total_pdf
+#: model:ir.ui.menu,name:weightrack.menu_wt_tapper_production_total_report
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_wizard_form
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "Tapper Production Total Report"
+msgstr "Laporan Total Produksi Tapper"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_tapper_production_total_report_date
+msgid "Tapper Production Total Report Date"
+msgstr "Tanggal Laporan Total Produksi Tapper"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_tapper_production_total_report_line
+msgid "Tapper Production Total Report Line"
+msgstr "Baris Laporan Total Produksi Tapper"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_tapper_production_total_report_wizard
+msgid "Tapper Production Total Report Wizard"
+msgstr "Wizard Laporan Total Produksi Tapper"
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "Filter Tapper Production Total Report"
+msgstr "Filter Laporan Total Produksi Tapper"
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "TAPPER PRODUCTION TOTAL REPORT"
+msgstr "LAPORAN TOTAL PRODUKSI TAPPER"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__date_column_ids
+msgid "Production Dates"
+msgstr "Tanggal Produksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__date_start
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__date_start
+msgid "Start Date"
+msgstr "Tanggal Mulai"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__date_end
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_wizard__date_end
+msgid "End Date"
+msgstr "Tanggal Selesai"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report__total_production
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_date__total_production
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__total_production
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "Total Production"
+msgstr "Total Produksi"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__sequence
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "No."
+msgstr "No."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__daily_production
+msgid "Daily Production"
+msgstr "Produksi Harian"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_tapper_production_total_report_line__division_code
+msgid "Division Code"
+msgstr "Kode Divisi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "Date Range"
+msgstr "Rentang Tanggal"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "Production"
+msgstr "Produksi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "No weighing data found."
+msgstr "Tidak ditemukan data penimbangan."
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_form
+msgid "Please click Filter to display the report data."
+msgstr "Silakan klik Filter untuk menampilkan data laporan."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "Start Date cannot be later than End Date."
+msgstr "Tanggal Mulai tidak boleh lebih akhir dari Tanggal Selesai."
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.report_tapper_production_total_document
+#: code:addons/weightrack/wizards/tapper_production_total_report_wizard.py:0
+msgid "All"
+msgstr "Semua"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_manual_weighing_report
+#: model:ir.model,name:weightrack.model_report_weightrack_report_manual_weighing_document
+#: model:ir.actions.act_window,name:weightrack.action_wt_manual_weighing_report
+#: model:ir.actions.act_window,name:weightrack.action_wt_manual_weighing_report_wizard
+#: model:ir.actions.report,name:weightrack.action_report_manual_weighing_pdf
+#: model:ir.ui.menu,name:weightrack.menu_wt_manual_weighing_report
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_form
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_wizard_form
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+msgid "Manual Weighing Report"
+msgstr "Laporan Penimbangan Manual"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_manual_weighing_report_line
+msgid "Manual Weighing Report Line"
+msgstr "Baris Laporan Penimbangan Manual"
+
+#. module: weightrack
+#: model:ir.model,name:weightrack.model_wt_manual_weighing_report_wizard
+msgid "Manual Weighing Report Wizard"
+msgstr "Wizard Laporan Penimbangan Manual"
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+msgid "Filter Manual Weighing Report"
+msgstr "Filter Laporan Penimbangan Manual"
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+msgid "MANUAL WEIGHING REPORT"
+msgstr "LAPORAN PENIMBANGAN MANUAL"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__location_type
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_line__location_type
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_wizard__location_type
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+msgid "Weighing Location Type"
+msgstr "Tipe Lokasi Timbang"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report__total_records
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+#: code:addons/weightrack/wizards/manual_weighing_report_wizard.py:0
+msgid "Total Records"
+msgstr "Total Data"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.report_manual_weighing_document
+msgid "No manual weighing data found."
+msgstr "Tidak ditemukan data penimbangan manual."
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_stock_move_inventory_correction_selection

@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_tapper_production_total_report" model="report.paperformat">
+        <field name="name">Tapper Production Total Report A3 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A3</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">9</field>
+        <field name="margin_bottom">9</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_tapper_production_total_pdf" model="ir.actions.report">
+        <field name="name">Tapper Production Total Report</field>
+        <field name="model">wt.tapper.production.total.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_tapper_production_total_document</field>
+        <field name="report_file">weightrack.report_tapper_production_total_document</field>
+        <field name="paperformat_id" ref="paperformat_tapper_production_total_report"/>
+        <field name="print_report_name">'Laporan Total Produksi Tapper - %s - %s' % (object.date_start, object.date_end)</field>
+    </record>
+
+    <template id="report_tapper_production_total_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-foreach="doc.get_date_chunks()" t-as="date_chunk">
+                    <div class="page wt-tapper-production-total-report">
+                        <style>
+                            .wt-tapper-production-total-report {
+                                color: #111827;
+                                font-family: "Lato", sans-serif;
+                                font-size: 9px;
+                                line-height: 1.3;
+                            }
+                            .wt-tapper-production-total-report .header-table {
+                                border-collapse: collapse;
+                                margin-bottom: 18px;
+                                width: 100%;
+                            }
+                            .wt-tapper-production-total-report .header-table td {
+                                border: 0;
+                                vertical-align: top;
+                            }
+                            .wt-tapper-production-total-report .logo {
+                                max-height: 65px;
+                                max-width: 230px;
+                            }
+                            .wt-tapper-production-total-report .company-name {
+                                font-size: 17px;
+                                font-weight: 700;
+                                text-align: right;
+                            }
+                            .wt-tapper-production-total-report .title {
+                                font-size: 16px;
+                                font-weight: 700;
+                                margin: 3px 0 0;
+                                text-align: right;
+                                text-transform: uppercase;
+                            }
+                            .wt-tapper-production-total-report .info-table {
+                                border-collapse: collapse;
+                                margin-bottom: 12px;
+                                width: 100%;
+                            }
+                            .wt-tapper-production-total-report .info-table td {
+                                border: 1px solid #cbd5e1;
+                                padding: 6px 8px !important;
+                                vertical-align: top;
+                            }
+                            .wt-tapper-production-total-report .info-label {
+                                background: #f3f4f6;
+                                font-weight: 700;
+                                width: 13%;
+                            }
+                            .wt-tapper-production-total-report .info-value {
+                                width: 20%;
+                            }
+                            .wt-tapper-production-total-report .data-table {
+                                border-collapse: collapse;
+                                table-layout: fixed;
+                                width: 100%;
+                            }
+                            .wt-tapper-production-total-report .data-table th,
+                            .wt-tapper-production-total-report .data-table td {
+                                border: 1px solid #9ca3af;
+                                font-size: 8px;
+                                line-height: 1.25;
+                                padding: 5px 4px !important;
+                                vertical-align: middle;
+                            }
+                            .wt-tapper-production-total-report .data-table th {
+                                background: #e5e7eb;
+                                font-weight: 700;
+                                text-align: center;
+                            }
+                            .wt-tapper-production-total-report .no-column {
+                                width: 3%;
+                            }
+                            .wt-tapper-production-total-report .badge-column {
+                                width: 9%;
+                            }
+                            .wt-tapper-production-total-report .name-column {
+                                width: 13%;
+                            }
+                            .wt-tapper-production-total-report .foreman-column {
+                                width: 12%;
+                            }
+                            .wt-tapper-production-total-report .division-column {
+                                width: 8%;
+                            }
+                            .wt-tapper-production-total-report .total-column {
+                                width: 10%;
+                            }
+                            .wt-tapper-production-total-report .text-center {
+                                text-align: center;
+                            }
+                            .wt-tapper-production-total-report .text-right {
+                                text-align: right;
+                                white-space: nowrap;
+                            }
+                            .wt-tapper-production-total-report .total-row td {
+                                background: #f8fafc;
+                                font-weight: 700;
+                            }
+                        </style>
+
+                        <table class="header-table">
+                            <tr>
+                                <td style="width:40%;">
+                                    <t t-if="doc.company_id.logo">
+                                        <img class="logo"
+                                             t-att-src="image_data_uri(doc.company_id.logo)"
+                                             alt="Logo"/>
+                                    </t>
+                                </td>
+                                <td style="width:60%;">
+                                    <div class="company-name" t-esc="doc.company_id.name"/>
+                                    <h2 class="title">Tapper Production Total Report</h2>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Date Range</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.date_start.strftime('%d/%m/%Y')"/>
+                                    <span> - </span>
+                                    <span t-esc="doc.date_end.strftime('%d/%m/%Y')"/>
+                                </td>
+                                <td class="info-label">Estate</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.estate_id.display_name if doc.estate_id else 'All'"/>
+                                </td>
+                                <td class="info-label">Division</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.division_id.display_name if doc.division_id else 'All'"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Foreman</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.foreman_id.display_name if doc.foreman_id else 'All'"/>
+                                </td>
+                                <td class="info-label">Tapper</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.tapper_id.display_name if doc.tapper_id else 'All'"/>
+                                </td>
+                                <td class="info-label">Total Production</td>
+                                <td class="info-value text-right">
+                                    <span t-esc="'%.2f' % doc.total_production"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" class="no-column">No.</th>
+                                    <th rowspan="2" class="badge-column">Badge Number</th>
+                                    <th rowspan="2" class="name-column">Tapper</th>
+                                    <th rowspan="2" class="foreman-column">Foreman</th>
+                                    <th rowspan="2" class="division-column">Division</th>
+                                    <th t-att-colspan="len(date_chunk)">Production</th>
+                                    <th rowspan="2" class="total-column">Total Production</th>
+                                </tr>
+                                <tr>
+                                    <t t-foreach="date_chunk" t-as="date_column">
+                                        <th>
+                                            <span t-esc="date_column.production_date.strftime('%d/%m/%Y')"/>
+                                        </th>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="doc.line_ids">
+                                    <t t-foreach="doc.line_ids" t-as="line">
+                                        <tr>
+                                            <td class="text-center" t-esc="line.sequence"/>
+                                            <td t-esc="line.badge_number"/>
+                                            <td t-esc="line.tapper_name"/>
+                                            <td t-esc="line.foreman_name"/>
+                                            <td t-esc="line.division_name"/>
+                                            <t t-foreach="date_chunk" t-as="date_column">
+                                                <td class="text-right">
+                                                    <span t-esc="'%.2f' % line.get_daily_production(date_column.production_date)"/>
+                                                </td>
+                                            </t>
+                                            <td class="text-right">
+                                                <span t-esc="'%.2f' % line.total_production"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                </t>
+                                <tr t-if="not doc.line_ids">
+                                    <td t-att-colspan="len(date_chunk) + 6" class="text-center">
+                                        No weighing data found.
+                                    </td>
+                                </tr>
+                                <tr class="total-row">
+                                    <td colspan="5" class="text-right">Total Production</td>
+                                    <t t-foreach="date_chunk" t-as="date_column">
+                                        <td class="text-right">
+                                            <span t-esc="'%.2f' % date_column.total_production"/>
+                                        </td>
+                                    </t>
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % doc.total_production"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
