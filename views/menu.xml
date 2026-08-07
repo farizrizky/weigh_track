@@ -19,7 +19,6 @@
             <menuitem id="menu_wt_operations_correction" name="Correction" parent="menu_wt_operations" sequence="30" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_shrinkage_tolerance_override" name="Override Toleransi Susut" parent="menu_wt_operations_correction" action="action_wt_shrinkage_tolerance_override" sequence="10" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_stock_movement_date_correction" name="Stock Movement Date Corrections" parent="menu_wt_operations_correction" action="action_wt_stock_movement_date_correction" sequence="20" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_delivery_migration_reset_log" name="Delivery Migration Reset Logs" parent="menu_wt_operations_correction" action="action_wt_delivery_migration_reset_log" sequence="30" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_device" name="Device" parent="menu_wt_root" action="action_wt_device" sequence="12" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_reports" name="Reports" parent="menu_wt_root" sequence="13" groups="weightrack.group_admin"/>
         <record id="menu_wt_reports" model="ir.ui.menu">

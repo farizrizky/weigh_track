@@ -101,12 +101,6 @@
                             class="btn-secondary"
                             groups="weightrack.group_admin"
                             invisible="state != 'done'"/>
-                    <button name="action_open_migration_reset"
-                            string="Reset Delivery for Migration"
-                            type="object"
-                            class="btn-danger"
-                            groups="weightrack.group_admin"
-                            invisible="state != 'done' or wt_is_returned"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,in_progress,done,returned"/>
                 </header>
@@ -126,16 +120,6 @@
                                 icon="fa-truck"
                                 invisible="picking_count == 0">
                             <field name="picking_count" widget="statinfo" string="Created DO"/>
-                        </button>
-                        <button name="action_view_migration_reset_logs"
-                                type="object"
-                                class="oe_stat_button"
-                                icon="fa-history"
-                                groups="weightrack.group_admin"
-                                invisible="migration_reset_count == 0">
-                            <field name="migration_reset_count"
-                                   widget="statinfo"
-                                   string="Migration Resets"/>
                         </button>
                     </div>
 

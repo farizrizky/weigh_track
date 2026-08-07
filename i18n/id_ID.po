@@ -88,8 +88,6 @@ msgstr "Aktif"
 #: model:ir.model.fields,field_description:weightrack.field_wt_manual_weighing_report_wizard__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report__company_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_production_summary_report_wizard__company_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__company_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__company_id
 msgid "Company"
 msgstr "Perusahaan"
 
@@ -931,7 +929,6 @@ msgstr "Konfirmasi"
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_production_total_report_wizard_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_manual_weighing_report_wizard_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_production_summary_report_wizard_form
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
 msgid "Cancel"
 msgstr "Batalkan"
 
@@ -1862,7 +1859,6 @@ msgstr "%s wajib diisi."
 
 #. module: weightrack
 #: code:addons/weightrack/models/weighing.py:0
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
 msgid "New"
 msgstr "Baru"
 
@@ -2638,12 +2634,8 @@ msgstr "Diretur"
 #: model:ir.model.fields,field_description:weightrack.field_stock_picking__wt_delivery_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_do_line__delivery_id
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery_line_allocation__wt_delivery_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__delivery_id
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__delivery_id
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
-#. odoo-python
-#: code:addons/weightrack/wizards/delivery_migration_reset_wizard.py:0
 msgid "Delivery Task"
 msgstr "Tugas Pengiriman"
 
@@ -4260,8 +4252,6 @@ msgstr "Stock Opname"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_stock_movement_date_correction__picking_count
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__picking_count
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__picking_count
 msgid "Transfer Count"
 msgstr "Jumlah Transfer"
 
@@ -4696,360 +4686,3 @@ msgstr "Kuantitas Selesai"
 #: code:addons/weightrack/models/stock_movement_date_correction.py:0
 msgid "Select at least one Stock Adjustment movement and do not select another source document."
 msgstr "Pilih minimal satu pergerakan Penyesuaian Stok dan jangan memilih dokumen sumber lainnya."
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid "%(lot)s at %(location)s: expected %(expected).4f, actual %(actual).4f"
-msgstr "%(lot)s di %(location)s: diharapkan %(expected).4f, aktual %(actual).4f"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid ""
-"<b>Delivery Migration Reset Completed</b><br/>Reset Number: "
-"%(reset)s<br/>Reason: %(reason)s<br/>%(movement_count)s original movements "
-"were reversed and excluded from WeighTrack reports."
-msgstr ""
-"<b>Reset Migrasi Pengiriman Selesai</b><br/>Nomor Reset: "
-"%(reset)s<br/>Alasan: %(reason)s<br/>%(movement_count)s pergerakan asli "
-"telah dibalikkan dan dikecualikan dari laporan WeighTrack."
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
-msgid ""
-"<i class=\"fa fa-exclamation-triangle me-1\"/>\n"
-"                        This migration-only operation reverses all delivery stock movements,\n"
-"                        restores shrinkage to the source lots, closes generated transit lots,\n"
-"                        and returns the delivery to Draft."
-msgstr ""
-"<i class=\"fa fa-exclamation-triangle me-1\"/>\n"
-"                        Operasi khusus migrasi ini membalikkan seluruh pergerakan stok pengiriman,\n"
-"                        memulihkan susut ke lot sumber, menutup lot transit yang dihasilkan,\n"
-"                        dan mengembalikan pengiriman ke Draft."
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid ""
-"A returned delivery cannot be reset for migration. Review its return "
-"movements first."
-msgstr ""
-"Pengiriman yang sudah diretur tidak dapat direset untuk migrasi. Periksa "
-"pergerakan returnya terlebih dahulu."
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__confirmation
-msgid "Confirmation"
-msgstr "Konfirmasi"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/wizards/delivery_migration_reset_wizard.py:0
-msgid ""
-"Confirmation does not match the delivery number. Type %(delivery)s exactly."
-msgstr ""
-"Konfirmasi tidak cocok dengan nomor pengiriman. Ketik %(delivery)s dengan tepat."
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-#: model:ir.model.fields,field_description:weightrack.field_stock_lot__wt_migration_reset_log_id
-#: model:ir.model.fields,field_description:weightrack.field_stock_move__wt_migration_reset_log_id
-#: model:ir.model.fields,field_description:weightrack.field_stock_picking__wt_migration_reset_log_id
-msgid "Delivery Migration Reset"
-msgstr "Reset Migrasi Pengiriman"
-
-#. module: weightrack
-#: model:ir.model,name:weightrack.model_wt_delivery_migration_reset_log
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_log_form
-msgid "Delivery Migration Reset Log"
-msgstr "Log Reset Migrasi Pengiriman"
-
-#. module: weightrack
-#: model:ir.actions.act_window,name:weightrack.action_wt_delivery_migration_reset_log
-#: model:ir.ui.menu,name:weightrack.menu_wt_delivery_migration_reset_log
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_log_list
-msgid "Delivery Migration Reset Logs"
-msgstr "Log Reset Migrasi Pengiriman"
-
-#. module: weightrack
-#: model:ir.model,name:weightrack.model_wt_delivery_migration_reset_wizard
-msgid "Delivery Migration Reset Wizard"
-msgstr "Wizard Reset Migrasi Pengiriman"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__delivery_name
-msgid "Delivery Number"
-msgstr "Nomor Pengiriman"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
-msgid "Explain why this delivery must be reset for data migration..."
-msgstr "Jelaskan alasan pengiriman ini harus direset untuk migrasi data..."
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__migration_reset_count
-msgid "Migration Reset Count"
-msgstr "Jumlah Reset Migrasi"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__migration_reset_log_ids
-msgid "Migration Reset Logs"
-msgstr "Log Reset Migrasi"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_stock_lot__wt_is_migration_reset
-msgid "Migration Reset Lot"
-msgstr "Lot Reset Migrasi"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_stock_move__wt_is_migration_reset
-msgid "Migration Reset Movement"
-msgstr "Pergerakan Reset Migrasi"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_stock_move__wt_migration_reset_role
-msgid "Migration Reset Role"
-msgstr "Peran Reset Migrasi"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_stock_picking__wt_is_migration_reset
-msgid "Migration Reset Transfer"
-msgstr "Transfer Reset Migrasi"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
-msgid "Migration Resets"
-msgstr "Reset Migrasi"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid "Migration reset %(reset)s: %(movement)s"
-msgstr "Reset migrasi %(reset)s: %(movement)s"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid ""
-"Migration reset cannot continue because some delivery movements do not "
-"contain a lot number."
-msgstr ""
-"Reset migrasi tidak dapat dilanjutkan karena beberapa pergerakan pengiriman "
-"tidak memiliki nomor lot."
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid ""
-"Migration reset does not support owner or package movements. Remove the "
-"package dependency before resetting this delivery."
-msgstr ""
-"Reset migrasi tidak mendukung pergerakan dengan pemilik atau kemasan. "
-"Hilangkan ketergantungan kemasan sebelum mereset pengiriman ini."
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__movement_count
-msgid "Movement Count"
-msgstr "Jumlah Pergerakan"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid "Only a WeighTrack Administrator can reset a delivery for migration."
-msgstr "Hanya Administrator WeighTrack yang dapat mereset pengiriman untuk migrasi."
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid "Only a completed delivery can be reset for migration."
-msgstr "Hanya pengiriman yang selesai yang dapat direset untuk migrasi."
-
-#. module: weightrack
-#: model:ir.model.fields.selection,name:weightrack.selection__stock_move__wt_migration_reset_role__original
-msgid "Original Movement"
-msgstr "Pergerakan Asli"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__movement_count
-msgid "Original Movement Count"
-msgstr "Jumlah Pergerakan Asli"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__original_state
-msgid "Original Status"
-msgstr "Status Awal"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__move_ids
-msgid "Related Movements"
-msgstr "Pergerakan Terkait"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__picking_ids
-msgid "Related Transfers"
-msgstr "Transfer Terkait"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__transit_lot_ids
-msgid "Related Transit Lots"
-msgstr "Lot Transit Terkait"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__reset_at
-msgid "Reset At"
-msgstr "Direset Pada"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__reset_by_id
-msgid "Reset By"
-msgstr "Direset Oleh"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
-msgid "Reset Confirmation"
-msgstr "Konfirmasi Reset"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
-msgid "Reset Delivery"
-msgstr "Reset Pengiriman"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
-msgid "Reset Delivery for Migration"
-msgstr "Reset Pengiriman untuk Migrasi"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__name
-msgid "Reset Number"
-msgstr "Nomor Reset"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__reason
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__reason
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_log_form
-msgid "Reset Reason"
-msgstr "Alasan Reset"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid "Reset reason is required."
-msgstr "Alasan reset wajib diisi."
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__shrinkage_quantity
-msgid "Restored Shrinkage"
-msgstr "Susut yang Dipulihkan"
-
-#. module: weightrack
-#: model:ir.model.fields.selection,name:weightrack.selection__stock_move__wt_migration_reset_role__reversal
-msgid "Reversal Movement"
-msgstr "Pergerakan Pembalik"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__reversal_movement_count
-msgid "Reversal Movement Count"
-msgstr "Jumlah Pergerakan Pembalik"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__shrinkage_quantity
-msgid "Shrinkage to Restore"
-msgstr "Susut yang Akan Dipulihkan"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_log_form
-msgid "Stock Movements"
-msgstr "Pergerakan Stok"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_log_form
-msgid "Stock Snapshot"
-msgstr "Snapshot Stok"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__stock_snapshot_after
-msgid "Stock Snapshot After Reset"
-msgstr "Snapshot Stok Setelah Reset"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__stock_snapshot_before
-msgid "Stock Snapshot Before Reset"
-msgstr "Snapshot Stok Sebelum Reset"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid ""
-"Stock is no longer sufficient to reverse delivery %(delivery)s.\n"
-"Lot: %(lot)s\n"
-"Location: %(location)s\n"
-"Required: %(required).4f\n"
-"Available: %(available).4f"
-msgstr ""
-"Stok tidak lagi mencukupi untuk membalikkan pengiriman %(delivery)s.\n"
-"Lot: %(lot)s\n"
-"Lokasi: %(location)s\n"
-"Dibutuhkan: %(required).4f\n"
-"Tersedia: %(available).4f"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid ""
-"Stock verification failed after migration reset:\n"
-"%s"
-msgstr ""
-"Verifikasi stok gagal setelah reset migrasi:\n"
-"%s"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
-msgid "This operation will reverse all stock movements for this delivery. Continue?"
-msgstr "Operasi ini akan membalikkan seluruh pergerakan stok pengiriman ini. Lanjutkan?"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__total_reversed_quantity
-msgid "Total Reversed Quantity"
-msgstr "Total Kuantitas yang Dibalikkan"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_log_form
-msgid "Transfers"
-msgstr "Transfer"
-
-#. module: weightrack
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_log__transit_lot_count
-#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_migration_reset_wizard__transit_lot_count
-msgid "Transit Lot Count"
-msgstr "Jumlah Lot Transit"
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_log_form
-msgid "Transit Lots"
-msgstr "Lot Transit"
-
-#. module: weightrack
-#. odoo-python
-#: code:addons/weightrack/models/delivery_migration_reset.py:0
-msgid ""
-"Transit lot %(lot)s has been used by another stock movement (%(movement)s). "
-"Reset that downstream transaction first."
-msgstr ""
-"Lot transit %(lot)s telah digunakan oleh pergerakan stok lain (%(movement)s). "
-"Reset transaksi lanjutan tersebut terlebih dahulu."
-
-#. module: weightrack
-#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_migration_reset_wizard_form
-msgid "Type the delivery number exactly"
-msgstr "Ketik nomor pengiriman dengan tepat"
-
-#. module: weightrack
-#: model:ir.model.fields,help:weightrack.field_wt_delivery_migration_reset_wizard__confirmation
-msgid "Type the delivery number exactly to confirm the migration reset."
-msgstr "Ketik nomor pengiriman dengan tepat untuk mengonfirmasi reset migrasi."
