@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "WeighTrack",
-    "version": "19.0.1.4.2",
+    "version": "19.0.1.4.3",
     "category": "Operations/Inventory",
     "summary": "Weighing management for estate operations",
     "author": "PT. Hanara Prima Solusindo",
@@ -67,6 +67,7 @@
         "views/delivery_backdate_wizard_views.xml",
         "views/delivery_manual_weighing_wizard_views.xml",
         "views/delivery_return_wizard_views.xml",
+        "views/delivery_migration_reset_views.xml",
         "views/delivery_line_allocation_views.xml",
         "views/delivery_route_views.xml",
         "views/delivery_step_views.xml",

@@ -5,6 +5,7 @@ from . import delivery_do_wizard
 from . import delivery_backdate_wizard
 from . import delivery_manual_weighing_wizard
 from . import delivery_return_wizard
+from . import delivery_migration_reset_wizard
 from . import weighing_production_report_wizard
 from . import weighing_production_detail_report_wizard
 from . import tapper_production_total_report_wizard
