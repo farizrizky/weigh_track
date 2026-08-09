@@ -571,20 +571,20 @@ class WeighingProductionDetailReportWizard(models.TransientModel):
             op_nm = record.operator_name or (record.operator_employee_id.name if record.operator_employee_id else "") or "-"
             foreman_nm = record.foreman_name or (record.foreman_id.name if record.foreman_id else "") or "-"
             clerk_nm = record.clerk_name or (record.clerk_employee_id.name if record.clerk_employee_id else "") or "-"
-            pr_number = record.production_receipt_id.name if record.production_receipt_id else "-"
-            ir_number = (
-                record.production_receipt_id.stock_picking_id.name
-                if record.production_receipt_id and record.production_receipt_id.stock_picking_id
-                else "-"
+            receipt = record.production_receipt_id
+            receipt_line = receipt.line_ids.filtered(
+                lambda line: line.weighing_id == record
+            )[:1]
+            inventory_receipt = (
+                receipt_line.stock_picking_id or receipt.stock_picking_id
             )
-            lot_nm = (
-                record.production_receipt_id.lot_id.name
-                if record.production_receipt_id and record.production_receipt_id.lot_id
-                else "-"
-            )
+            lot = receipt_line.lot_id or receipt.lot_id
+            pr_number = receipt.name or "-"
+            ir_number = inventory_receipt.name or "-"
+            lot_nm = lot.name or "-"
             manual_yn = "Y" if record.is_manual_weighing else "N"
             manual_reason = record.manual_weighing_reason or "-"
-            rcpt_dt = str(record.production_receipt_id.received_date) if record.production_receipt_id and record.production_receipt_id.received_date else "-"
+            rcpt_dt = str(receipt.received_date) if receipt.received_date else "-"
             weigh_dt = record.weighing_date.strftime("%Y-%m-%d %H:%M:%S") if record.weighing_date else "-"
             prod_dt = str(record.production_date) if record.production_date else "-"
             ds = "API" if record.data_source == "api" else ("Manual" if record.data_source == "manual" else "-")

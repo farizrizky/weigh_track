@@ -520,10 +520,19 @@ class DailyStockReportWizard(models.TransientModel):
         )
         weighing_mtd = self._aggregate_weighings(month_start, self.report_date)
 
-        opening = self._build_stock_snapshot(
+        month_opening = self._build_stock_snapshot(
             product,
-            day_start,
+            mtd_start,
             warehouses,
+        )
+        day_opening = (
+            month_opening
+            if day_start == mtd_start
+            else self._build_stock_snapshot(
+                product,
+                day_start,
+                warehouses,
+            )
         )
         closing = self._build_stock_snapshot(
             product,
@@ -543,13 +552,13 @@ class DailyStockReportWizard(models.TransientModel):
             warehouses,
         )
 
-        opening_total = opening["all"].get("total", 0.0)
+        opening_total = month_opening["all"].get("total", 0.0)
         closing_total = closing["all"].get("total", 0.0)
-        production_in_total = stock_day["production_in"].get("total", 0.0)
-        shipping_total = stock_day["shipping"].get("total", 0.0)
+        production_in_total = stock_mtd["production_in"].get("total", 0.0)
+        shipping_total = stock_mtd["shipping"].get("total", 0.0)
         shrink_total = self._sum_values(
-            stock_day["storage_shrinkage"],
-            stock_day["transfer_shrinkage"],
+            stock_mtd["storage_shrinkage"],
+            stock_mtd["transfer_shrinkage"],
         ).get("total", 0.0)
         balance_difference = (
             opening_total
@@ -560,7 +569,7 @@ class DailyStockReportWizard(models.TransientModel):
         )
 
         rows = self._prepare_matrix_rows(
-            opening,
+            month_opening,
             closing,
             weighing_day,
             weighing_mtd,
@@ -574,7 +583,7 @@ class DailyStockReportWizard(models.TransientModel):
             },
             "product_id": product.id,
             "analysis_values": {
-                "opening_stock": opening["all"],
+                "opening_stock": day_opening["all"],
                 "weighing_qty": stock_day["production_in"],
                 "sales_qty": stock_day["shipping"],
                 "storage_shrinkage_qty": stock_day["storage_shrinkage"],
@@ -623,7 +632,7 @@ class DailyStockReportWizard(models.TransientModel):
 
     def _prepare_matrix_rows(
         self,
-        opening,
+        month_opening,
         closing,
         weighing_day,
         weighing_mtd,
@@ -664,7 +673,11 @@ class DailyStockReportWizard(models.TransientModel):
         rows = [
             self._section_row("I", _("Penimbangan")),
             self._subsection_row(_("Stock Awal")),
-            self._data_row(_("Stock Awal"), opening["all"], style="total"),
+            self._data_row(
+                _("Stock Awal"),
+                month_opening["all"],
+                style="total",
+            ),
                 self._subsection_row(_("Penimbangan Kebun")),
                 self._data_row(_("Hari ini"), weighing_day["field_weight"]),
                 self._data_row(
@@ -764,10 +777,13 @@ class DailyStockReportWizard(models.TransientModel):
                     style="percentage",
                 ),
                 self._section_row("III", _("Stock Produksi")),
-                self._data_row(_("Saldo Awal"), opening["all"]),
-                self._data_row(_("Produksi Masuk"), stock_day["production_in"]),
-                self._data_row(_("Produksi Keluar"), stock_day["shipping"]),
-                self._data_row(_("Penyesuaian Susut Produksi"), stock_shrink_day),
+                self._data_row(_("Saldo Awal"), month_opening["all"]),
+                self._data_row(_("Produksi Masuk"), stock_mtd["production_in"]),
+                self._data_row(_("Produksi Keluar"), stock_mtd["shipping"]),
+                self._data_row(
+                    _("Penyesuaian Susut Produksi"),
+                    stock_shrink_mtd,
+                ),
                 self._data_row(
                     _("Saldo Akhir"),
                     closing["all"],
