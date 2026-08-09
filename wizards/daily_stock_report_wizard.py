@@ -810,13 +810,12 @@ class DailyStockReportWizard(models.TransientModel):
         )
         for record in records:
             initial_weight = record.initial_weight or 0.0
-            warehouse_weight = record.production_weight or 0.0
-            field_weight = initial_weight if initial_weight > 0.0 else warehouse_weight
-            warehouse_main = warehouse_weight if initial_weight <= 0.0 else 0.0
-            warehouse_transit = initial_weight if initial_weight > 0.0 else 0.0
-            field_shrinkage = (
-                initial_weight - warehouse_weight if initial_weight > 0.0 else 0.0
-            )
+            net_weight = record.net_weight or 0.0
+            tolerance_weight = record.shrinkage_tolerance_weight or 0.0
+            field_weight = net_weight + tolerance_weight
+            warehouse_main = net_weight if initial_weight <= 0.0 else 0.0
+            warehouse_transit = net_weight if initial_weight > 0.0 else 0.0
+            field_shrinkage = tolerance_weight
             division = record.division_id
             estate = division.estate_id if division else record.estate_id
             self._add_scope_value(result["field_weight"], field_weight, division, estate)
