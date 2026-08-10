@@ -15,6 +15,7 @@
         "data/daily_stock_analysis_cron.xml",
         "views/api_views.xml",
         "views/api_request_log_views.xml",
+        "views/weighing_manual_log_views.xml",
         "views/employee_role_views.xml",
         "views/product_views.xml",
         "views/shrinkage_tolerance_views.xml",

@@ -145,6 +145,11 @@
                                     <field name="shrinkage_tolerance_weight" readonly="state == 'receipt_validated'"/>
                                     <field name="is_manual_weighing" readonly="state == 'receipt_validated'"/>
                                     <field name="manual_weighing_reason" readonly="state == 'receipt_validated'" required="is_manual_weighing"/>
+                                    <label for="manual_log_id" invisible="not manual_log_id"/>
+                                    <div class="o_row" invisible="not manual_log_id">
+                                        <field name="manual_log_id" readonly="1" options="{'no_open': True, 'no_create': True, 'no_edit': True}"/>
+                                        <button name="action_view_manual_log" type="object" string="Lihat Detail Log" class="btn-link oe_inline" icon="fa-external-link"/>
+                                    </div>
                                     <field name="note" readonly="state == 'receipt_validated'"/>
                                 </group>
                             </group>

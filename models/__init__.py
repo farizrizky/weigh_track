@@ -10,6 +10,7 @@ from . import stock_picking
 from . import stock_return_picking
 from . import receipt_rule
 from . import weighing
+from . import weighing_manual_log
 from . import production_receipt
 from . import weather
 from . import weather_data

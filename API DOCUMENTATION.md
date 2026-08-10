@@ -499,6 +499,14 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
   "batch_local_id": "batch-20260614-001",
   "master_synced_at": "2026-06-14 06:00:00",
   "sent_at": "2026-06-15 08:30:00",
+  "manual_logs": [
+    {
+      "local_id": "LOG-MANUAL-DES-X36N-4",
+      "date": "2026-06-15 08:00:00",
+      "manual_reason": "Timbangan mati listrik / error",
+      "image_base64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+    }
+  ],
   "items": [
     {
       "local_id": "cup-lump-20260614-0001",
@@ -526,8 +534,9 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
       "net_weight": 900.0,
       "shrinkage_tolerance_percentage": 5.0,
       "shrinkage_tolerance_weight": 50.0,
-      "is_manual_weighing": false,
-      "manual_weighing_reason": null,
+      "is_manual_weighing": true,
+      "manual_weighing_reason": "Timbangan mati listrik / error",
+      "manual_log_local_id": "LOG-MANUAL-DES-X36N-4",
       "note": "Penimbangan gudang dilakukan H+1",
       "initial_weighing": {
         "weighing_date": "2026-06-14 16:00:00",
@@ -550,6 +559,8 @@ Payload memakai object nested sebagai snapshot data yang diketahui aplikasi saat
 - `wt.api.push_enabled` wajib aktif untuk company device.
 - Bot user pada `wt.api` wajib berupa internal user aktif.
 - `items` wajib berupa list dan minimal berisi satu item.
+- `manual_logs` (opsional): list object log timbang manual (`local_id`, `date`, `manual_reason`, `image_base64`). Jika `local_id` belum ada di Odoo, Odoo akan membuat record `wt.weighing.manual.log`. Jika sudah ada, data di-skip/di-upsert by `local_id`.
+- `manual_log_local_id` (opsional, pada item): string `local_id` dari log manual yang berelasi dengan item penimbangan. Odoo menghubungkan item penimbangan ke record log manual terkait via `manual_log_id`.
 - `master_synced_at` dan `sent_at`, jika dikirim, harus berupa datetime valid.
 - Setiap item weighing wajib memiliki `local_id`, `production_date`, dan `weighing_date`.
 - `production_date` harus berupa date valid dan `weighing_date` harus berupa datetime valid.

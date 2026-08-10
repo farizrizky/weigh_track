@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_weighing_manual_log_search" model="ir.ui.view">
+        <field name="name">wt.weighing.manual.log.search</field>
+        <field name="model">wt.weighing.manual.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="local_id"/>
+                <field name="device_id"/>
+                <field name="device_record_id"/>
+                <field name="company_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_wt_weighing_manual_log_list" model="ir.ui.view">
+        <field name="name">wt.weighing.manual.log.list</field>
+        <field name="model">wt.weighing.manual.log</field>
+        <field name="arch" type="xml">
+            <list string="Timbang Manual Log" create="false" edit="false">
+                <field name="local_id"/>
+                <field name="date"/>
+                <field name="manual_reason"/>
+                <field name="device_record_id"/>
+                <field name="company_id"/>
+                <field name="received_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_wt_weighing_manual_log_form" model="ir.ui.view">
+        <field name="name">wt.weighing.manual.log.form</field>
+        <field name="model">wt.weighing.manual.log</field>
+        <field name="arch" type="xml">
+            <form string="Timbang Manual Log" create="false" edit="false">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="local_id"/>
+                        <h1>
+                            <field name="local_id"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Informasi Log Manual">
+                            <field name="date" string="Tanggal"/>
+                            <field name="manual_reason" string="Alasan Manual"/>
+                            <field name="received_at" string="Diterima Pada"/>
+                        </group>
+                        <group string="Device">
+                            <field name="device_id" string="Device ID"/>
+                            <field name="device_record_id" string="Device"/>
+                            <field name="company_id" string="Perusahaan"/>
+                        </group>
+                    </group>
+
+                    <group string="Foto Timbang Manual" invisible="not image_path">
+                        <field name="image_html" widget="html" nolabel="1"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Penimbangan Terkait">
+                            <field name="weighing_ids" readonly="1">
+                                <list>
+                                    <field name="name" string="Nomor"/>
+                                    <field name="production_date" string="Tanggal Produksi"/>
+                                    <field name="weighing_date" string="Tanggal Timbang"/>
+                                    <field name="manual_log_local_id" string="Log Local ID"/>
+                                    <field name="state" string="Status"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button string="Tutup" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wt_weighing_manual_log" model="ir.actions.act_window">
+        <field name="name">Timbang Manual Log</field>
+        <field name="res_model">wt.weighing.manual.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_weighing_manual_log_search"/>
+    </record>
+</odoo>

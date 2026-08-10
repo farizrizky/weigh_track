@@ -425,6 +425,20 @@ class Weighing(models.Model):
         string="Manual Weighing Reason",
         tracking=True,
     )
+    manual_log_local_id = fields.Char(
+        string="Manual Log Local ID",
+        related="manual_log_id.local_id",
+        store=True,
+        index=True,
+        readonly=True,
+    )
+    manual_log_id = fields.Many2one(
+        "wt.weighing.manual.log",
+        string="Manual Log",
+        ondelete="set null",
+        index=True,
+        tracking=True,
+    )
     note = fields.Text(
         string="Note",
         tracking=True,
@@ -1090,3 +1104,17 @@ class Weighing(models.Model):
         raise ValidationError(
             _("Weighing detail validation is handled from Production Receipt.")
         )
+
+    def action_view_manual_log(self):
+        self.ensure_one()
+        if not self.manual_log_id:
+            return False
+        return {
+            "name": _("Detail Timbang Manual Log"),
+            "type": "ir.actions.act_window",
+            "res_model": "wt.weighing.manual.log",
+            "res_id": self.manual_log_id.id,
+            "view_mode": "form",
+            "target": "new",
+        }
+

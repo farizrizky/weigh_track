@@ -39,7 +39,8 @@
             <menuitem id="menu_wt_reports_analytics" name="Analytics" parent="menu_wt_reports" sequence="20" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_daily_stock_analysis" name="Data Analitik Stock Harian" parent="menu_wt_reports_analytics" action="action_wt_daily_stock_analysis" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_reports_log" name="Logs" parent="menu_wt_reports" sequence="30" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_api_request_log" name="API Request Logs" parent="menu_wt_reports_log" action="action_wt_api_request_log" sequence="10" groups="weightrack.group_admin"/>
+                <menuitem id="menu_wt_api_request_log" name="Log Request API" parent="menu_wt_reports_log" action="action_wt_api_request_log" sequence="10" groups="weightrack.group_admin"/>
+                <menuitem id="menu_wt_weighing_manual_log" name="Timbang Manual Log" parent="menu_wt_reports_log" action="action_wt_weighing_manual_log" sequence="20" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="14" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_api" name="API" parent="menu_wt_configuration" action="action_wt_api" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_employee_role" name="Employee Roles" parent="menu_wt_configuration" action="action_wt_employee_role" sequence="20" groups="weightrack.group_admin"/>

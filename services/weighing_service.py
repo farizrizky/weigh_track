@@ -1,11 +1,30 @@
 # -*- coding: utf-8 -*-
 
+import base64
 import json
+import logging
+import os
 
+import odoo.tools.config as odoo_config
 import pytz
 from psycopg2 import IntegrityError
 
 from odoo import _, fields, models
+
+_logger = logging.getLogger(__name__)
+
+
+def _detect_image_ext(image_bytes):
+    """Deteksi ekstensi gambar dari magic bytes tanpa library imghdr (removed di Python 3.13)."""
+    if image_bytes[:2] == b'\xff\xd8':
+        return 'jpeg'
+    if image_bytes[:4] == b'\x89PNG':
+        return 'png'
+    if image_bytes[:6] in (b'GIF87a', b'GIF89a'):
+        return 'gif'
+    if image_bytes[:4] == b'RIFF' and image_bytes[8:12] == b'WEBP':
+        return 'webp'
+    return 'jpeg'  # default fallback
 
 
 class WeighingService(models.AbstractModel):
@@ -175,6 +194,13 @@ class WeighingService(models.AbstractModel):
         sent_at,
         received_at,
     ):
+        # Proses manual_logs terlebih dahulu (upsert by local_id)
+        manual_log_map = self._process_manual_logs(
+            payload.get("manual_logs") or [],
+            device,
+            bot_user,
+            received_at,
+        )
         return [
             self._process_weighing_item(
                 item,
@@ -184,9 +210,102 @@ class WeighingService(models.AbstractModel):
                 master_synced_at,
                 sent_at,
                 received_at,
+                manual_log_map,
             )
             for item in items
         ]
+
+    def _process_manual_logs(self, manual_logs, device, bot_user, received_at):
+        """Upsert manual log entries by local_id. Return dict {local_id: record_id}."""
+        if not manual_logs or not isinstance(manual_logs, list):
+            return {}
+        log_model = (
+            self.env["wt.weighing.manual.log"]
+            .with_user(bot_user)
+            .sudo()
+        )
+        log_map = {}
+        for log_data in manual_logs:
+            if not isinstance(log_data, dict):
+                continue
+            local_id = log_data.get("local_id")
+            if not local_id:
+                continue
+            log_record = self._upsert_manual_log(
+                log_model, log_data, local_id, device, bot_user, received_at
+            )
+            if log_record:
+                log_map[local_id] = log_record.id
+        return log_map
+
+    def _upsert_manual_log(self, log_model, log_data, local_id, device, bot_user, received_at):
+        """Buat manual log jika local_id belum ada, atau kembalikan yang sudah ada."""
+        _logger.info("[ManualLog] Memproses local_id=%s", local_id)
+
+        existing = log_model.search([("local_id", "=", local_id)], limit=1)
+        if existing:
+            _logger.info("[ManualLog] local_id=%s sudah ada, skip.", local_id)
+            return existing
+
+        date_val = self._to_datetime(log_data.get("date"), bot_user)
+
+        # Decode base64 gambar dan simpan ke filesystem
+        image_base64 = log_data.get("image_base64")
+        if not image_base64:
+            raise ValueError(f"Manual log '{local_id}': image_base64 wajib diisi.")
+
+        _logger.info("[ManualLog] Memulai decode base64 untuk local_id=%s (len=%d)", local_id, len(image_base64))
+
+        # Bersihkan header data URI jika ada (misal: data:image/jpeg;base64,...)
+        if "," in image_base64:
+            image_base64 = image_base64.split(",", 1)[1]
+
+        image_bytes = base64.b64decode(image_base64)
+        _logger.info("[ManualLog] Decode berhasil, ukuran=%d bytes", len(image_bytes))
+
+        img_type = _detect_image_ext(image_bytes)
+        ext = img_type
+
+        data_dir = (
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("wt.manual_log_image_dir", "")
+            or os.path.join(
+                odoo_config.get("data_dir", "/var/lib/odoo"),
+                "weightrack",
+                "manual_log_images",
+            )
+        )
+        _logger.info("[ManualLog] Direktori target: %s", data_dir)
+
+        os.makedirs(data_dir, exist_ok=True)
+
+        safe_local_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in local_id)
+        file_path = os.path.join(data_dir, f"{safe_local_id}.{ext}")
+        _logger.info("[ManualLog] Menyimpan file ke: %s", file_path)
+
+        with open(file_path, "wb") as f:
+            f.write(image_bytes)
+
+        _logger.info("[ManualLog] File berhasil disimpan, membuat record DB...")
+
+        vals = {
+            "local_id": local_id,
+            "date": date_val,
+            "manual_reason": log_data.get("manual_reason"),
+            "image_path": file_path,
+            "device_id": device.device_id,
+            "device_record_id": device.id,
+            "company_id": device.company_id.id,
+            "received_at": received_at,
+        }
+        try:
+            record = log_model.create(vals)
+            _logger.info("[ManualLog] Record DB berhasil dibuat, id=%s", record.id)
+            return record
+        except Exception as e:
+            _logger.error("[ManualLog] Gagal buat record DB: %s", e, exc_info=True)
+            return log_model.search([("local_id", "=", local_id)], limit=1)
 
     def _process_weighing_item(
         self,
@@ -197,6 +316,7 @@ class WeighingService(models.AbstractModel):
         master_synced_at,
         sent_at,
         received_at,
+        manual_log_map=None,
     ):
         existing = self._existing_weighing(device, item.get("local_id"))
         if existing:
@@ -215,26 +335,29 @@ class WeighingService(models.AbstractModel):
         )
         try:
             with self.env.cr.savepoint():
+                vals = self._weighing_values(
+                    item,
+                    payload,
+                    records,
+                    device,
+                    production_date,
+                    weighing_date,
+                    master_synced_at,
+                    sent_at,
+                    received_at,
+                    problem,
+                    bot_user,
+                )
+                # Link ke manual log jika ada
+                manual_log_local_id = item.get("manual_log_local_id")
+                if manual_log_local_id and manual_log_map and manual_log_local_id in manual_log_map:
+                    vals["manual_log_id"] = manual_log_map[manual_log_local_id]
                 detail = (
                     self.env["wt.weighing"]
                     .with_user(bot_user)
                     .sudo()
                     .with_context(tz=bot_user.tz or "UTC")
-                    .create(
-                        self._weighing_values(
-                            item,
-                            payload,
-                            records,
-                            device,
-                            production_date,
-                            weighing_date,
-                            master_synced_at,
-                            sent_at,
-                            received_at,
-                            problem,
-                            bot_user,
-                        )
-                    )
+                    .create(vals)
                 )
         except IntegrityError:
             existing = self._existing_weighing(device, item.get("local_id"))

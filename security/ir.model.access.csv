@@ -92,3 +92,4 @@ access_wt_shrinkage_tolerance_override_line_admin,access.wt.shrinkage.tolerance.
 access_wt_stock_movement_date_correction_admin,access.wt.stock.movement.date.correction.admin,model_wt_stock_movement_date_correction,group_admin,1,1,1,1
 access_wt_daily_stock_analysis_admin,access.wt.daily.stock.analysis.admin,model_wt_daily_stock_analysis,group_admin,1,0,0,0
 access_wt_daily_stock_analysis_refresh_wizard_admin,access.wt.daily.stock.analysis.refresh.wizard.admin,model_wt_daily_stock_analysis_refresh_wizard,group_admin,1,1,1,1
+access_wt_weighing_manual_log_admin,access.wt.weighing.manual.log.admin,model_wt_weighing_manual_log,group_admin,1,0,0,1
