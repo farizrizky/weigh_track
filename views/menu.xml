@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_wt_root" name="WeighTrack" sequence="10" groups="weightrack.group_admin" web_icon="weightrack,static/description/icon.png"/>
+    <menuitem id="menu_wt_root" name="WeighTrack" sequence="10" groups="weightrack.group_admin,weightrack.group_report_viewer" web_icon="weightrack,static/description/icon.png"/>
         <menuitem id="menu_wt_master_data" name="Master Data" parent="menu_wt_root" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_estate" name="Estates" parent="menu_wt_master_data" action="action_wt_estate" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_weather" name="Weather" parent="menu_wt_master_data" action="action_wt_weather" sequence="20" groups="weightrack.group_admin"/>
@@ -20,24 +20,24 @@
                 <menuitem id="menu_wt_shrinkage_tolerance_override" name="Override Toleransi Susut" parent="menu_wt_operations_correction" action="action_wt_shrinkage_tolerance_override" sequence="10" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_stock_movement_date_correction" name="Stock Movement Date Corrections" parent="menu_wt_operations_correction" action="action_wt_stock_movement_date_correction" sequence="20" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_device" name="Device" parent="menu_wt_root" action="action_wt_device" sequence="12" groups="weightrack.group_admin"/>
-        <menuitem id="menu_wt_reports" name="Reports" parent="menu_wt_root" sequence="13" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_reports" name="Reports" parent="menu_wt_root" sequence="13" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
         <record id="menu_wt_reports" model="ir.ui.menu">
             <field name="action" eval="False"/>
         </record>
-            <menuitem id="menu_wt_report_group" name="Report" parent="menu_wt_reports" sequence="10" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_weighing_production_report" name="Laporan Penimbangan Produksi" parent="menu_wt_report_group" action="action_wt_weighing_production_report" sequence="10" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_weighing_production_detail_report" name="Laporan Penimbangan Produksi Detail" parent="menu_wt_report_group" action="action_wt_weighing_production_detail_report" sequence="20" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_tapper_production_total_report" name="Tapper Production Total Report" parent="menu_wt_report_group" action="action_wt_tapper_production_total_report" sequence="30" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_division_production_total_report" name="Division Production Total Report" parent="menu_wt_report_group" action="action_wt_division_production_total_report" sequence="40" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_foreman_production_total_report" name="Foreman Production Total Report" parent="menu_wt_report_group" action="action_wt_foreman_production_total_report" sequence="50" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_manual_weighing_report" name="Manual Weighing Report" parent="menu_wt_report_group" action="action_wt_manual_weighing_report" sequence="60" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_weighing_reject_slab_report" name="Laporan Reject dan Slab" parent="menu_wt_report_group" action="action_wt_weighing_reject_slab_report" sequence="70" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_storage_shrinkage_report" name="Laporan Susut Penyimpanan" parent="menu_wt_report_group" action="action_wt_storage_shrinkage_report" sequence="80" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_stock_out_report" name="Laporan Stock Keluar" parent="menu_wt_report_group" action="action_wt_stock_out_report" sequence="90" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_shipping_report" name="Laporan Pengiriman" parent="menu_wt_report_group" action="action_wt_shipping_report" sequence="100" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_daily_stock_report" name="Laporan Stock Harian" parent="menu_wt_report_group" action="action_wt_daily_stock_report" sequence="110" groups="weightrack.group_admin"/>
-            <menuitem id="menu_wt_reports_analytics" name="Analytics" parent="menu_wt_reports" sequence="20" groups="weightrack.group_admin"/>
-                <menuitem id="menu_wt_daily_stock_analysis" name="Data Analitik Stock Harian" parent="menu_wt_reports_analytics" action="action_wt_daily_stock_analysis" sequence="10" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_report_group" name="Report" parent="menu_wt_reports" sequence="10" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_weighing_production_report" name="Laporan Penimbangan Produksi" parent="menu_wt_report_group" action="action_wt_weighing_production_report" sequence="10" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_weighing_production_detail_report" name="Laporan Penimbangan Produksi Detail" parent="menu_wt_report_group" action="action_wt_weighing_production_detail_report" sequence="20" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_tapper_production_total_report" name="Tapper Production Total Report" parent="menu_wt_report_group" action="action_wt_tapper_production_total_report" sequence="30" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_division_production_total_report" name="Division Production Total Report" parent="menu_wt_report_group" action="action_wt_division_production_total_report" sequence="40" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_foreman_production_total_report" name="Foreman Production Total Report" parent="menu_wt_report_group" action="action_wt_foreman_production_total_report" sequence="50" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_manual_weighing_report" name="Manual Weighing Report" parent="menu_wt_report_group" action="action_wt_manual_weighing_report" sequence="60" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_weighing_reject_slab_report" name="Laporan Reject dan Slab" parent="menu_wt_report_group" action="action_wt_weighing_reject_slab_report" sequence="70" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_storage_shrinkage_report" name="Laporan Susut Penyimpanan" parent="menu_wt_report_group" action="action_wt_storage_shrinkage_report" sequence="80" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_stock_out_report" name="Laporan Stock Keluar" parent="menu_wt_report_group" action="action_wt_stock_out_report" sequence="90" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_shipping_report" name="Laporan Pengiriman" parent="menu_wt_report_group" action="action_wt_shipping_report" sequence="100" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_daily_stock_report" name="Laporan Stock Harian" parent="menu_wt_report_group" action="action_wt_daily_stock_report" sequence="110" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+            <menuitem id="menu_wt_reports_analytics" name="Analytics" parent="menu_wt_reports" sequence="20" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_daily_stock_analysis" name="Data Analitik Stock Harian" parent="menu_wt_reports_analytics" action="action_wt_daily_stock_analysis" sequence="10" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
             <menuitem id="menu_wt_reports_log" name="Logs" parent="menu_wt_reports" sequence="30" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_api_request_log" name="Log Request API" parent="menu_wt_reports_log" action="action_wt_api_request_log" sequence="10" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_weighing_manual_log" name="Timbang Manual Log" parent="menu_wt_reports_log" action="action_wt_weighing_manual_log" sequence="20" groups="weightrack.group_admin"/>
