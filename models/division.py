@@ -8,7 +8,7 @@ class Division(models.Model):
     _name = "wt.division"
     _description = "Division"
     _inherit = ["mail.thread", "mail.activity.mixin"]
-    _order = "estate_id, code, name"
+    _order = "code, name, estate_id"
 
     active = fields.Boolean(default=True, tracking=True)
     code = fields.Char(string="Code", required=True, index=True, tracking=True)

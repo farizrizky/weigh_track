@@ -2,6 +2,7 @@
 
 import base64
 import io
+import re
 from datetime import datetime, time
 
 from pytz import UTC, timezone
@@ -476,8 +477,8 @@ class ShippingReportWizard(models.TransientModel):
         sorted_summaries = sorted(
             summary_map.values(),
             key=lambda value: (
+                self._natural_sort_key(value["division"].code if value.get("division") else ""),
                 value["warehouse"].display_name or "",
-                value["division"].display_name or "",
             ),
         )
         for sequence, value in enumerate(sorted_summaries, start=1):
@@ -498,6 +499,13 @@ class ShippingReportWizard(models.TransientModel):
             "detail_vals": detail_vals,
             "total_quantity": total_quantity,
         }
+
+    @staticmethod
+    def _natural_sort_key(value):
+        return tuple(
+            int(part) if part.isdigit() else part.casefold()
+            for part in re.split(r"(\d+)", value or "")
+        )
 
     def _append_event(
         self,

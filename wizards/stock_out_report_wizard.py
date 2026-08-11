@@ -2,6 +2,7 @@
 
 import base64
 import io
+import re
 from datetime import datetime, time
 
 from pytz import UTC, timezone
@@ -591,6 +592,7 @@ class StockOutReportWizard(models.TransientModel):
                 summary_map[key] = {
                     "warehouse": warehouse,
                     "division": division,
+                    "division_code": "" if is_transit else (division.code or ""),
                     "division_name": _("Transit") if is_transit else (division.display_name or "-"),
                     "shipping_qty": 0.0,
                     "storage_shrinkage_qty": 0.0,
@@ -656,8 +658,8 @@ class StockOutReportWizard(models.TransientModel):
             sorted(
                 summary_map.values(),
                 key=lambda row: (
+                    self._natural_sort_key(row["division_code"]),
                     row["warehouse"].display_name or "",
-                    row["division_name"],
                 ),
             ),
             start=1,
@@ -696,6 +698,13 @@ class StockOutReportWizard(models.TransientModel):
             "total_storage_shrinkage_qty": totals["storage_shrinkage"],
             "total_transfer_shrinkage_qty": totals["transfer_shrinkage"],
         }
+
+    @staticmethod
+    def _natural_sort_key(value):
+        return tuple(
+            int(part) if part.isdigit() else part.casefold()
+            for part in re.split(r"(\d+)", value or "")
+        )
 
     def _append_report_event(
         self,

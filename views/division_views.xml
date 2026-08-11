@@ -17,7 +17,7 @@
         <field name="name">wt.division.list</field>
         <field name="model">wt.division</field>
         <field name="arch" type="xml">
-            <list string="Divisions">
+            <list string="Divisions" default_order="code asc">
                 <field name="code"/>
                 <field name="name"/>
                 <field name="estate_id"/>

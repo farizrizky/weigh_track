@@ -628,8 +628,8 @@ class ProductionSummaryReportWizard(models.TransientModel):
         rows = sorted(
             grouped.values(),
             key=lambda row: (
-                self._natural_sort_key(row["estate_code"]),
                 self._natural_sort_key(row["division_code"]),
+                self._natural_sort_key(row["estate_code"]),
                 (row["foreman_name"] or "").casefold(),
             ),
         )
