@@ -29,10 +29,10 @@
                             <field name="division_id"/>
                         </group>
                         <group string="Total">
-                            <field name="total_shipping_qty"/>
+                            <field name="total_quantity"/>
                             <field name="total_storage_shrinkage_qty"/>
                             <field name="total_transfer_shrinkage_qty"/>
-                            <field name="total_quantity"/>
+                            <field name="total_shipping_qty"/>
                         </group>
                     </group>
                     <notebook invisible="not is_filtered">
@@ -42,10 +42,10 @@
                                     <field name="sequence"/>
                                     <field name="warehouse_name"/>
                                     <field name="division_name"/>
-                                    <field name="shipping_qty" sum="Total"/>
+                                    <field name="quantity" sum="Total"/>
                                     <field name="storage_shrinkage_qty" sum="Total"/>
                                     <field name="transfer_shrinkage_qty" sum="Total"/>
-                                    <field name="quantity" sum="Total"/>
+                                    <field name="shipping_qty" sum="Total"/>
                                 </list>
                             </field>
                         </page>

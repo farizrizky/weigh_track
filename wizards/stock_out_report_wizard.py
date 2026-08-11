@@ -178,10 +178,10 @@ class StockOutReport(models.TransientModel):
             "No",
             "Gudang",
             "Divisi",
-            "Pengiriman",
+            "Qty Keluar",
             "Susut Penyimpanan",
             "Susut Transfer",
-            "Total",
+            "Pengiriman",
         ]
         summary_widths = [6, 26, 22, 16, 18, 16, 16]
         for column, width in enumerate(summary_widths):
@@ -194,16 +194,16 @@ class StockOutReport(models.TransientModel):
             sheet.write(row_index, 0, line.sequence, text_format)
             sheet.write(row_index, 1, line.warehouse_name or "", text_format)
             sheet.write(row_index, 2, line.division_name or "", text_format)
-            sheet.write(row_index, 3, line.shipping_qty, number_format)
+            sheet.write(row_index, 3, line.quantity, number_format)
             sheet.write(row_index, 4, line.storage_shrinkage_qty, number_format)
             sheet.write(row_index, 5, line.transfer_shrinkage_qty, number_format)
-            sheet.write(row_index, 6, line.quantity, number_format)
+            sheet.write(row_index, 6, line.shipping_qty, number_format)
             row_index += 1
         sheet.merge_range(row_index, 0, row_index, 2, "Total", total_label_format)
-        sheet.write(row_index, 3, self.total_shipping_qty, total_number_format)
+        sheet.write(row_index, 3, self.total_quantity, total_number_format)
         sheet.write(row_index, 4, self.total_storage_shrinkage_qty, total_number_format)
         sheet.write(row_index, 5, self.total_transfer_shrinkage_qty, total_number_format)
-        sheet.write(row_index, 6, self.total_quantity, total_number_format)
+        sheet.write(row_index, 6, self.total_shipping_qty, total_number_format)
 
         row_index += 3
         detail_headers = [

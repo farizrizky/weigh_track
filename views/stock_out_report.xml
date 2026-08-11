@@ -94,10 +94,10 @@
                                 <th style="width: 5%;">No</th>
                                 <th style="width: 25%;">Gudang</th>
                                 <th style="width: 16%;">Divisi</th>
-                                <th style="width: 14%;">Pengiriman</th>
+                                <th style="width: 14%;">Qty Keluar</th>
                                 <th style="width: 16%;">Susut Penyimpanan</th>
                                 <th style="width: 14%;">Susut Transfer</th>
-                                <th style="width: 10%;">Total</th>
+                                <th style="width: 10%;">Pengiriman</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -107,18 +107,18 @@
                                         <td class="text-center" t-esc="line.sequence"/>
                                         <td t-esc="line.warehouse_name"/>
                                         <td t-esc="line.division_name"/>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.shipping_qty or 0.0)"/> kg</td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> kg</td>
                                         <td class="text-right"><span t-esc="'%.2f' % (line.storage_shrinkage_qty or 0.0)"/> kg</td>
                                         <td class="text-right"><span t-esc="'%.2f' % (line.transfer_shrinkage_qty or 0.0)"/> kg</td>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> kg</td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.shipping_qty or 0.0)"/> kg</td>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
                                     <td colspan="3" class="text-right">Total</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_shipping_qty or 0.0)"/> kg</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
                                     <td class="text-right"><span t-esc="'%.2f' % (doc.total_storage_shrinkage_qty or 0.0)"/> kg</td>
                                     <td class="text-right"><span t-esc="'%.2f' % (doc.total_transfer_shrinkage_qty or 0.0)"/> kg</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_shipping_qty or 0.0)"/> kg</td>
                                 </tr>
                             </t>
                             <tr t-if="not doc.summary_line_ids">
