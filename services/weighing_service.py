@@ -350,8 +350,28 @@ class WeighingService(models.AbstractModel):
                 )
                 # Link ke manual log jika ada
                 manual_log_local_id = item.get("manual_log_local_id")
-                if manual_log_local_id and manual_log_map and manual_log_local_id in manual_log_map:
-                    vals["manual_log_id"] = manual_log_map[manual_log_local_id]
+                if manual_log_local_id:
+                    if manual_log_map and manual_log_local_id in manual_log_map:
+                        vals["manual_log_id"] = manual_log_map[manual_log_local_id]
+                    else:
+                        # Fallback: cari ke DB jika log sudah dikirim sebelumnya (misal hari sebelumnya)
+                        existing_log = (
+                            self.env["wt.weighing.manual.log"]
+                            .sudo()
+                            .search([("local_id", "=", manual_log_local_id)], limit=1)
+                        )
+                        if existing_log:
+                            vals["manual_log_id"] = existing_log.id
+                            _logger.info(
+                                "[WeighingItem] manual_log ditemukan via DB fallback: local_id=%s, id=%s",
+                                manual_log_local_id,
+                                existing_log.id,
+                            )
+                        else:
+                            _logger.warning(
+                                "[WeighingItem] manual_log tidak ditemukan: local_id=%s",
+                                manual_log_local_id,
+                            )
                 detail = (
                     self.env["wt.weighing"]
                     .with_user(bot_user)
