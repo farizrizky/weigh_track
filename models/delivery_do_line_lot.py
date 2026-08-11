@@ -210,6 +210,24 @@ class DeliveryDoLineLot(models.Model):
         store=True,
     )
 
+    # ── Cakupan Demand ────────────────────────────────────────────────────────
+    wt_demand_coverage = fields.Selection(
+        [("all", "Semua"), ("partial", "Sebagian")],
+        string="Cakupan Demand",
+        compute="_compute_wt_demand_coverage",
+        help="'Semua' jika demand >= stok bebas (ambil semua stok lot), 'Sebagian' jika hanya sebagian stok yang diambil.",
+    )
+
+
+    @api.depends("qty", "qty_available", "lot_id")
+    def _compute_wt_demand_coverage(self):
+        for rec in self:
+            if not rec.lot_id or rec.qty <= 0:
+                rec.wt_demand_coverage = False
+            elif rec.qty >= rec.qty_available:
+                rec.wt_demand_coverage = "all"
+            else:
+                rec.wt_demand_coverage = "partial"
 
     def _has_weighing_input(self):
         self.ensure_one()

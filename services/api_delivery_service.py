@@ -92,6 +92,7 @@ class ApiDeliveryService(models.AbstractModel):
                     "uom_id": line.product_id.uom_id.id,
                     "uom_name": line.product_id.uom_id.name,
                     "demand_qty": line.qty,
+                    "demand_coverage": line.wt_demand_coverage or False,
                     "location_id": location.id if location else False,
                     "location_name": location.complete_name if location else "",
                     "is_transit": (location.id in transit_loc_ids) if location else False,
@@ -100,6 +101,7 @@ class ApiDeliveryService(models.AbstractModel):
                     "operator_employee_id": line.operator_id.id or line.do_line_id.operator_id.id or False,
                     "operator_name": line.operator_id.name or line.do_line_id.operator_id.name or "",
                 })
+
                 pulled_line_ids.append(line.id)
 
             if pulled_line_ids:

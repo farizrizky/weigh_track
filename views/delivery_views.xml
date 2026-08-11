@@ -342,6 +342,12 @@
                                                         <field name="wt_qty_reserved" readonly="1" string="Reserved (kg)"/>
                                                         <field name="qty_available" readonly="1" string="Available Stock (kg)"/>
                                                         <field name="qty" string="Demand (kg)"/>
+                                                        <field name="wt_demand_coverage"
+                                                                string="Cakupan"
+                                                                readonly="1"
+                                                                widget="badge"
+                                                                decoration-warning="wt_demand_coverage == 'all'"
+                                                                decoration-success="wt_demand_coverage == 'partial'"/>
                                                         <field name="wt_is_pulled" column_invisible="1"/>
                                                         <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1" optional="show"/>
                                                         <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
