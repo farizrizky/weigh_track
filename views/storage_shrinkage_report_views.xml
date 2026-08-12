@@ -29,7 +29,9 @@
                             <field name="division_id"/>
                         </group>
                         <group string="Total">
+                            <field name="total_initial_qty"/>
                             <field name="total_shrinkage_qty"/>
+                            <field name="total_shrinkage_percentage"/>
                         </group>
                     </group>
                     <notebook invisible="not is_filtered">
@@ -54,7 +56,9 @@
                                     <field name="division_name"/>
                                     <field name="source_location_name"/>
                                     <field name="lot_name"/>
-                                    <field name="quantity" sum="Total"/>
+                                    <field name="initial_qty" string="Total Stok" sum="Total"/>
+                                    <field name="quantity" string="Qty Susut" sum="Total"/>
+                                    <field name="shrinkage_percentage" string="% Susut"/>
                                     <field name="uom_name"/>
                                 </list>
                             </field>
