@@ -203,14 +203,16 @@
                         <thead>
                             <tr>
                                 <th style="width: 4%;">No</th>
-                                <th style="width: 8%;">Tanggal</th>
-                                <th style="width: 13%;">Nomor DO</th>
-                                <th style="width: 16%;">Customer Penerima</th>
-                                <th style="width: 15%;">Gudang</th>
-                                <th style="width: 11%;">Divisi</th>
-                                <th style="width: 14%;">Lot Produksi</th>
-                                <th style="width: 10%;">Produk</th>
-                                <th style="width: 6%;">Qty</th>
+                                <th style="width: 7%;">Tanggal</th>
+                                <th style="width: 11%;">Nomor DO</th>
+                                <th style="width: 13%;">Customer Penerima</th>
+                                <th style="width: 12%;">Gudang</th>
+                                <th style="width: 9%;">Divisi</th>
+                                <th style="width: 13%;">Lot Produksi</th>
+                                <th style="width: 9%;">Produk</th>
+                                <th style="width: 7%;">Total Stok</th>
+                                <th style="width: 7%;">Qty Terkirim</th>
+                                <th style="width: 5%;">% Terkirim</th>
                                 <th style="width: 3%;">Sat.</th>
                             </tr>
                         </thead>
@@ -226,18 +228,22 @@
                                         <td t-esc="line.division_name"/>
                                         <td t-esc="line.lot_name"/>
                                         <td t-esc="line.product_name"/>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.initial_qty or 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="line.shipped_percentage or '0.00%'"/></td>
                                         <td class="text-center" t-esc="line.uom_name or 'kg'"/>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
                                     <td colspan="8" class="text-right">Total</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_initial_qty or 0.0)"/></td>
                                     <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/></td>
+                                    <td class="text-right"><span t-esc="doc.total_shipped_percentage or '0.00%'"/></td>
                                     <td class="text-center">kg</td>
                                 </tr>
                             </t>
                             <tr t-if="not doc.detail_line_ids">
-                                <td colspan="10" class="text-center muted">Tidak ada detail pengiriman pada filter ini.</td>
+                                <td colspan="12" class="text-center muted">Tidak ada detail pengiriman pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>

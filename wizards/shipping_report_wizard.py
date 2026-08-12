@@ -57,6 +57,14 @@ class ShippingReport(models.TransientModel):
         string="Total Terkirim",
         readonly=True,
     )
+    total_initial_qty = fields.Float(
+        string="Total Stok",
+        readonly=True,
+    )
+    total_shipped_percentage = fields.Char(
+        string="% Terkirim",
+        readonly=True,
+    )
     summary_line_ids = fields.One2many(
         "wt.shipping.report.summary.line",
         "report_id",
@@ -132,8 +140,8 @@ class ShippingReport(models.TransientModel):
             {"bold": True, "border": 1, "num_format": "#,##0.00"}
         )
 
-        sheet.merge_range("A1:J1", self.company_id.name or "", title_format)
-        sheet.merge_range("A2:J2", "LAPORAN PENGIRIMAN", title_format)
+        sheet.merge_range("A1:L1", self.company_id.name or "", title_format)
+        sheet.merge_range("A2:L2", "LAPORAN PENGIRIMAN", title_format)
         sheet.write("A4", "Rentang Tanggal", label_format)
         sheet.write("B4", "%s s/d %s" % (self.start_date or "", self.end_date or ""))
         sheet.write("A5", "Gudang", label_format)
@@ -177,10 +185,12 @@ class ShippingReport(models.TransientModel):
             "Divisi",
             "Lot Produksi",
             "Produk",
-            "Qty",
+            "Total Stok",
+            "Qty Terkirim",
+            "% Terkirim",
             "Satuan",
         ]
-        detail_widths = [6, 13, 22, 28, 28, 22, 28, 24, 14, 12]
+        detail_widths = [6, 13, 22, 28, 28, 22, 28, 24, 14, 14, 12, 12]
         for column, width in enumerate(detail_widths):
             sheet.set_column(column, column, width)
         sheet.write(row_index, 0, "DETAIL PENGIRIMAN", label_format)
@@ -210,12 +220,16 @@ class ShippingReport(models.TransientModel):
             sheet.write(row_index, 5, line.division_name or "", text_format)
             sheet.write(row_index, 6, line.lot_name or "", text_format)
             sheet.write(row_index, 7, line.product_name or "", text_format)
-            sheet.write(row_index, 8, line.quantity, number_format)
-            sheet.write(row_index, 9, line.uom_name or "", text_format)
+            sheet.write(row_index, 8, line.initial_qty, number_format)
+            sheet.write(row_index, 9, line.quantity, number_format)
+            sheet.write(row_index, 10, line.shipped_percentage or "0.00%", text_format)
+            sheet.write(row_index, 11, line.uom_name or "", text_format)
             row_index += 1
         sheet.merge_range(row_index, 0, row_index, 7, "Total", total_label_format)
-        sheet.write(row_index, 8, self.total_quantity, total_number_format)
-        sheet.write(row_index, 9, "", text_format)
+        sheet.write(row_index, 8, self.total_initial_qty, total_number_format)
+        sheet.write(row_index, 9, self.total_quantity, total_number_format)
+        sheet.write(row_index, 10, self.total_shipped_percentage or "0.00%", total_label_format)
+        sheet.write(row_index, 11, "", text_format)
 
         workbook.close()
         output.seek(0)
@@ -331,6 +345,8 @@ class ShippingReportDetailLine(models.TransientModel):
     )
     product_name = fields.Char(string="Produk", readonly=True)
     quantity = fields.Float(string="Qty Terkirim", readonly=True)
+    initial_qty = fields.Float(string="Total Stok", readonly=True)
+    shipped_percentage = fields.Char(string="% Terkirim", readonly=True)
     uom_name = fields.Char(string="Satuan", readonly=True)
 
 
@@ -397,6 +413,8 @@ class ShippingReportWizard(models.TransientModel):
                 "warehouse_id": self.warehouse_id.id or False,
                 "division_id": self.division_id.id or False,
                 "total_quantity": data["total_quantity"],
+                "total_initial_qty": data["total_initial_qty"],
+                "total_shipped_percentage": data["total_shipped_percentage"],
             }
         )
         if data["summary_vals"]:
@@ -423,6 +441,10 @@ class ShippingReportWizard(models.TransientModel):
         ):
             self._append_event(events, **source_event)
 
+        # Batch query stok awal untuk semua lot yang terlibat
+        lot_ids = list({event["lot"].id for event in events if event.get("lot")})
+        initial_qty_map = self._get_lot_initial_qty_map(lot_ids)
+
         events.sort(
             key=lambda event: (
                 event["movement_date"] or datetime.min,
@@ -434,10 +456,18 @@ class ShippingReportWizard(models.TransientModel):
         summary_map = {}
         detail_vals = []
         total_quantity = 0.0
+        total_initial_qty = 0.0
         for sequence, event in enumerate(events, start=1):
             warehouse = event["warehouse"]
             division = event["division"]
             quantity = event["quantity"]
+            lot = event["lot"]
+            lot_initial_qty = initial_qty_map.get(lot.id, 0.0)
+            shipped_pct = (
+                "%.2f%%" % (quantity / lot_initial_qty * 100.0)
+                if lot_initial_qty
+                else "0.00%"
+            )
             key = (warehouse.id or 0, division.id or 0)
             if key not in summary_map:
                 summary_map[key] = {
@@ -447,10 +477,10 @@ class ShippingReportWizard(models.TransientModel):
                 }
             summary_map[key]["quantity"] += quantity
             total_quantity += quantity
+            total_initial_qty += lot_initial_qty
 
             delivery = event["delivery"]
             customer = delivery.partner_id
-            lot = event["lot"]
             detail_vals.append(
                 {
                     "report_id": self.report_id.id,
@@ -469,6 +499,8 @@ class ShippingReportWizard(models.TransientModel):
                     "product_id": event["product"].id,
                     "product_name": event["product"].display_name or "",
                     "quantity": quantity,
+                    "initial_qty": lot_initial_qty,
+                    "shipped_percentage": shipped_pct,
                     "uom_name": event["uom"].name or "",
                 }
             )
@@ -494,11 +526,41 @@ class ShippingReportWizard(models.TransientModel):
                 }
             )
 
+        total_pct = (
+            "%.2f%%" % (total_quantity / total_initial_qty * 100.0)
+            if total_initial_qty
+            else "0.00%"
+        )
         return {
             "summary_vals": summary_vals,
             "detail_vals": detail_vals,
             "total_quantity": total_quantity,
+            "total_initial_qty": total_initial_qty,
+            "total_shipped_percentage": total_pct,
         }
+
+    def _get_lot_initial_qty_map(self, lot_ids):
+        """Kembalikan dict {lot_id: total_qty_masuk} untuk lot-lot yang diberikan.
+
+        Total stok awal dihitung dari semua stock.move.line yang sudah done
+        dengan lot bersangkutan masuk ke lokasi internal dari sumber non-internal.
+        """
+        if not lot_ids:
+            return {}
+        incoming_lines = self.env["stock.move.line"].search(
+            [
+                ("lot_id", "in", lot_ids),
+                ("move_id.state", "=", "done"),
+                ("location_dest_id.usage", "=", "internal"),
+                ("location_id.usage", "!=", "internal"),
+                ("quantity", ">", 0),
+            ]
+        )
+        result = {}
+        for line in incoming_lines:
+            lid = line.lot_id.id
+            result[lid] = result.get(lid, 0.0) + (line.quantity or 0.0)
+        return result
 
     @staticmethod
     def _natural_sort_key(value):

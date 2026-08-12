@@ -29,7 +29,9 @@
                             <field name="division_id"/>
                         </group>
                         <group string="Total">
+                            <field name="total_initial_qty"/>
                             <field name="total_quantity"/>
+                            <field name="total_shipped_percentage"/>
                         </group>
                     </group>
                     <notebook invisible="not is_filtered">
@@ -54,7 +56,9 @@
                                     <field name="division_name"/>
                                     <field name="lot_name"/>
                                     <field name="product_name"/>
-                                    <field name="quantity" sum="Total"/>
+                                    <field name="initial_qty" string="Total Stok" sum="Total"/>
+                                    <field name="quantity" string="Qty Terkirim" sum="Total"/>
+                                    <field name="shipped_percentage" string="% Terkirim"/>
                                     <field name="uom_name"/>
                                 </list>
                             </field>
