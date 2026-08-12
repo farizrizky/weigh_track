@@ -4,7 +4,7 @@
         <field name="name">Laporan Susut Penyimpanan A4 Portrait</field>
         <field name="default" eval="False"/>
         <field name="format">A4</field>
-        <field name="orientation">Portrait</field>
+        <field name="orientation">Landscape</field>
         <field name="margin_top">10</field>
         <field name="margin_bottom">10</field>
         <field name="margin_left">7</field>
@@ -123,14 +123,16 @@
                             <thead>
                                 <tr>
                                     <th style="width: 5%;">No</th>
-                                    <th style="width: 10%;">Tanggal</th>
-                                    <th style="width: 12%;">Sumber</th>
-                                    <th style="width: 14%;">No Dokumen</th>
-                                    <th style="width: 14%;">Gudang</th>
-                                    <th style="width: 13%;">Divisi</th>
+                                    <th style="width: 8%;">Tanggal</th>
+                                    <th style="width: 9%;">Sumber</th>
+                                    <th style="width: 10%;">No Dokumen</th>
+                                    <th style="width: 11%;">Gudang</th>
+                                    <th style="width: 9%;">Divisi</th>
                                     <th style="width: 14%;">Lokasi Asal</th>
                                     <th style="width: 10%;">Lot</th>
-                                    <th style="width: 8%;">Qty</th>
+                                    <th style="width: 8%;">Total Stok</th>
+                                    <th style="width: 8%;">Qty Susut</th>
+                                    <th style="width: 8%;">% Susut</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -145,16 +147,20 @@
                                             <td t-esc="line.division_name"/>
                                             <td t-esc="line.source_location_name"/>
                                             <td t-esc="line.lot_name"/>
+                                            <td class="text-right"><span t-esc="'%.2f' % (line.initial_qty or 0.0)"/> <span t-esc="line.uom_name or 'kg'"/></td>
                                             <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> <span t-esc="line.uom_name or 'kg'"/></td>
+                                            <td class="text-right"><span t-esc="line.shrinkage_percentage or '0.00%'"/></td>
                                         </tr>
                                     </t>
                                     <tr class="total-row">
                                         <td colspan="8" class="text-right">Total</td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (doc.total_initial_qty or 0.0)"/> kg</td>
                                         <td class="text-right"><span t-esc="'%.2f' % (doc.total_shrinkage_qty or 0.0)"/> kg</td>
+                                        <td class="text-right"><span t-esc="doc.total_shrinkage_percentage or '0.00%'"/></td>
                                     </tr>
                                 </t>
                                 <tr t-if="not doc.detail_line_ids">
-                                    <td colspan="9" class="text-center muted">Tidak ada detail pergerakan susut pada filter ini.</td>
+                                    <td colspan="11" class="text-center muted">Tidak ada detail pergerakan susut pada filter ini.</td>
                                 </tr>
                             </tbody>
                         </table>

@@ -200,8 +200,10 @@ class StorageShrinkageReport(models.TransientModel):
             sheet.write(row_index, 9, line.quantity, number_format)
             sheet.write(row_index, 10, line.shrinkage_percentage or "0.00%", text_format)
             row_index += 1
-        sheet.merge_range(row_index, 0, row_index, 9, "Total", total_label_format)
-        sheet.write(row_index, 10, self.total_shrinkage_qty, total_number_format)
+        sheet.merge_range(row_index, 0, row_index, 7, "Total", total_label_format)
+        sheet.write(row_index, 8, self.total_initial_qty, total_number_format)
+        sheet.write(row_index, 9, self.total_shrinkage_qty, total_number_format)
+        sheet.write(row_index, 10, self.total_shrinkage_percentage or "0.00%", total_label_format)
 
         workbook.close()
         output.seek(0)
