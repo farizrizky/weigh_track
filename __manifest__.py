@@ -66,6 +66,7 @@
         "views/stock_movement_date_correction_views.xml",
         "views/delivery_do_wizard_views.xml",
         "views/delivery_backdate_wizard_views.xml",
+        "views/delivery_customer_correction_wizard_views.xml",
         "views/delivery_manual_weighing_wizard_views.xml",
         "views/delivery_return_wizard_views.xml",
         "views/delivery_line_allocation_views.xml",

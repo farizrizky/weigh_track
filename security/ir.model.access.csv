@@ -51,6 +51,7 @@ access_stock_picking_weightrack_admin,access.stock.picking.weightrack.admin,stoc
 access_stock_move_line_weightrack_admin,access.stock.move.line.weightrack.admin,stock.model_stock_move_line,group_admin,1,1,0,0
 access_wt_delivery_do_line_lot_admin,access.wt.delivery.do.line.lot.admin,model_wt_delivery_do_line_lot,group_admin,1,1,1,1
 access_wt_delivery_return_wizard_admin,access.wt.delivery.return.wizard.admin,model_wt_delivery_return_wizard,group_admin,1,1,1,1
+access_wt_delivery_customer_correction_wizard_admin,access.wt.delivery.customer.correction.wizard.admin,model_wt_delivery_customer_correction_wizard,group_admin,1,1,1,1
 
 
 access_wt_weighing_production_report_admin,access.wt.weighing.production.report.admin,model_wt_weighing_production_report,group_admin,1,1,1,1

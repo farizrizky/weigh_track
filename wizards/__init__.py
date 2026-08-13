@@ -3,6 +3,7 @@ from . import production_receipt_cancel_wizard
 from . import stock_opname_apply_wizard
 from . import delivery_do_wizard
 from . import delivery_backdate_wizard
+from . import delivery_customer_correction_wizard
 from . import delivery_manual_weighing_wizard
 from . import delivery_return_wizard
 from . import weighing_production_report_wizard

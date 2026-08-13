@@ -101,6 +101,12 @@
                             class="btn-secondary"
                             groups="weightrack.group_admin"
                             invisible="state != 'done'"/>
+                    <button name="action_open_customer_correction"
+                            string="Koreksi Customer"
+                            type="object"
+                            class="btn-secondary"
+                            groups="weightrack.group_admin"
+                            invisible="state == 'draft'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,in_progress,done,returned"/>
                 </header>

@@ -625,6 +625,24 @@ class Delivery(models.Model):
             },
         }
 
+    def action_open_customer_correction(self):
+        """Buka wizard koreksi customer sebagai dialog popup."""
+        self.ensure_one()
+        if self.state == "draft":
+            raise ValidationError(
+                _("Koreksi customer hanya dapat dilakukan saat status bukan Draft.")
+            )
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Koreksi Customer"),
+            "res_model": "wt.delivery.customer.correction.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_delivery_id": self.id,
+            },
+        }
+
     # Automatic stock adjustment, including the backward-compatible flow.
 
     def action_print_surat_jalan(self):
