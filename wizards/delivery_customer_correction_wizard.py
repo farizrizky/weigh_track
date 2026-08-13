@@ -71,6 +71,10 @@ class DeliveryCustomerCorrectionWizard(models.TransientModel):
         if delivery.do_line_ids:
             delivery.do_line_ids.write({"partner_id": new_partner.id})
 
+        # Update partner di semua stock.picking yang terhubung
+        if delivery.picking_ids:
+            delivery.picking_ids.write({"partner_id": new_partner.id})
+
         # Catat di chatter
         delivery.message_post(body=Markup(
             "Customer dikoreksi dari <b>%(old)s</b> menjadi <b>%(new)s</b> oleh %(user)s.<br/>"

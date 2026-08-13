@@ -1316,11 +1316,7 @@ class DeliveryDoLine(models.Model):
         if is_transit_merge and self.generated_transit_lot_id:
             self._load_generated_transit_lot_to_next_line(total_physical)
         elif self.picking_type_id.code == "outgoing":
-            delivery.write({
-                "state": "done",
-                "validated_at": fields.Datetime.now(),
-                "validated_by_id": self.env.user.id,
-            })
+            delivery.write({"state": "delivered"})
         elif delivery.state == "confirmed":
             delivery.write({"state": "in_progress"})
         return picking

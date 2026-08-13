@@ -661,6 +661,24 @@ class Delivery(models.Model):
             },
         }
 
+    def action_open_received_qty_correction(self):
+        """Buka wizard koreksi berat diterima customer sebagai dialog popup."""
+        self.ensure_one()
+        if self.state not in ("done", "returned"):
+            raise ValidationError(
+                _("Koreksi berat diterima hanya dapat dilakukan pada delivery dengan status Selesai atau Returned.")
+            )
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Koreksi Berat Diterima Customer"),
+            "res_model": "wt.delivery.received.qty.correction.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_delivery_id": self.id,
+            },
+        }
+
     # Automatic stock adjustment, including the backward-compatible flow.
 
     def action_print_surat_jalan(self):

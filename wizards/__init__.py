@@ -4,6 +4,7 @@ from . import stock_opname_apply_wizard
 from . import delivery_do_wizard
 from . import delivery_backdate_wizard
 from . import delivery_customer_correction_wizard
+from . import delivery_received_qty_correction_wizard
 from . import delivery_manual_weighing_wizard
 from . import delivery_return_wizard
 from . import weighing_production_report_wizard
@@ -16,5 +17,6 @@ from . import storage_shrinkage_report_wizard
 from . import stock_out_report_wizard
 from . import shipping_provenance_mixin
 from . import shipping_report_wizard
+from . import delivery_shrinkage_report_wizard
 from . import daily_stock_report_wizard
 from . import daily_stock_analysis_refresh_wizard

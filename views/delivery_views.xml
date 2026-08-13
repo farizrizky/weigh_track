@@ -113,6 +113,12 @@
                             class="btn-secondary"
                             groups="weightrack.group_admin"
                             invisible="state == 'draft'"/>
+                    <button name="action_open_received_qty_correction"
+                            string="Koreksi Berat Diterima"
+                            type="object"
+                            class="btn-secondary"
+                            groups="weightrack.group_admin"
+                            invisible="state not in ('done', 'returned')"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,in_progress,delivered,done,returned"/>
                 </header>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_delivery_received_qty_correction_wizard_form" model="ir.ui.view">
+        <field name="name">wt.delivery.received.qty.correction.wizard.form</field>
+        <field name="model">wt.delivery.received.qty.correction.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Koreksi Berat Diterima Customer">
+                <sheet>
+                    <group>
+                        <field name="delivery_id" invisible="1"/>
+                        <field name="shipped_qty" readonly="1" string="Berat Terkirim (kg)"/>
+                        <field name="current_received_qty" readonly="1" string="Berat Diterima Saat Ini (kg)"/>
+                        <field name="new_received_qty"
+                               string="Berat Diterima Baru (kg)"
+                               placeholder="Masukkan berat yang benar..."/>
+                        <field name="reason"
+                               string="Alasan Koreksi"
+                               placeholder="Jelaskan alasan koreksi berat diterima..."/>
+                    </group>
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Perhatian:</strong> Koreksi ini akan memperbarui nilai
+                        <strong>Berat Diterima Customer</strong> dan otomatis menghitung ulang
+                        <strong>Selisih Pengiriman</strong>. Perubahan akan dicatat di log aktivitas.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_apply"
+                            string="Terapkan Koreksi"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Batal" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

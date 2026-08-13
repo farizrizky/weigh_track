@@ -52,6 +52,7 @@ access_stock_move_line_weightrack_admin,access.stock.move.line.weightrack.admin,
 access_wt_delivery_do_line_lot_admin,access.wt.delivery.do.line.lot.admin,model_wt_delivery_do_line_lot,group_admin,1,1,1,1
 access_wt_delivery_return_wizard_admin,access.wt.delivery.return.wizard.admin,model_wt_delivery_return_wizard,group_admin,1,1,1,1
 access_wt_delivery_customer_correction_wizard_admin,access.wt.delivery.customer.correction.wizard.admin,model_wt_delivery_customer_correction_wizard,group_admin,1,1,1,1
+access_wt_delivery_received_qty_correction_wizard_admin,access.wt.delivery.received.qty.correction.wizard.admin,model_wt_delivery_received_qty_correction_wizard,group_admin,1,1,1,1
 
 
 access_wt_weighing_production_report_admin,access.wt.weighing.production.report.admin,model_wt_weighing_production_report,group_admin,1,1,1,1
@@ -86,6 +87,10 @@ access_wt_shipping_report_admin,access.wt.shipping.report.admin,model_wt_shippin
 access_wt_shipping_report_summary_line_admin,access.wt.shipping.report.summary.line.admin,model_wt_shipping_report_summary_line,group_admin,1,1,1,1
 access_wt_shipping_report_detail_line_admin,access.wt.shipping.report.detail.line.admin,model_wt_shipping_report_detail_line,group_admin,1,1,1,1
 access_wt_shipping_report_wizard_admin,access.wt.shipping.report.wizard.admin,model_wt_shipping_report_wizard,group_admin,1,1,1,1
+access_wt_delivery_shrinkage_report_admin,access.wt.delivery.shrinkage.report.admin,model_wt_delivery_shrinkage_report,group_admin,1,1,1,1
+access_wt_delivery_shrinkage_report_summary_line_admin,access.wt.delivery.shrinkage.report.summary.line.admin,model_wt_delivery_shrinkage_report_summary_line,group_admin,1,1,1,1
+access_wt_delivery_shrinkage_report_detail_line_admin,access.wt.delivery.shrinkage.report.detail.line.admin,model_wt_delivery_shrinkage_report_detail_line,group_admin,1,1,1,1
+access_wt_delivery_shrinkage_report_wizard_admin,access.wt.delivery.shrinkage.report.wizard.admin,model_wt_delivery_shrinkage_report_wizard,group_admin,1,1,1,1
 access_wt_daily_stock_report_admin,access.wt.daily.stock.report.admin,model_wt_daily_stock_report,group_admin,1,1,1,1
 access_wt_daily_stock_report_wizard_admin,access.wt.daily.stock.report.wizard.admin,model_wt_daily_stock_report_wizard,group_admin,1,1,1,1
 access_wt_shrinkage_tolerance_override_admin,access.wt.shrinkage.tolerance.override.admin,model_wt_shrinkage_tolerance_override,group_admin,1,1,1,1
@@ -141,6 +146,10 @@ access_wt_shipping_report_viewer,access.wt.shipping.report.viewer,model_wt_shipp
 access_wt_shipping_report_summary_line_viewer,access.wt.shipping.report.summary.line.viewer,model_wt_shipping_report_summary_line,group_report_viewer,1,1,1,1
 access_wt_shipping_report_detail_line_viewer,access.wt.shipping.report.detail.line.viewer,model_wt_shipping_report_detail_line,group_report_viewer,1,1,1,1
 access_wt_shipping_report_wizard_viewer,access.wt.shipping.report.wizard.viewer,model_wt_shipping_report_wizard,group_report_viewer,1,1,1,1
+access_wt_delivery_shrinkage_report_viewer,access.wt.delivery.shrinkage.report.viewer,model_wt_delivery_shrinkage_report,group_report_viewer,1,1,1,1
+access_wt_delivery_shrinkage_report_summary_line_viewer,access.wt.delivery.shrinkage.report.summary.line.viewer,model_wt_delivery_shrinkage_report_summary_line,group_report_viewer,1,1,1,1
+access_wt_delivery_shrinkage_report_detail_line_viewer,access.wt.delivery.shrinkage.report.detail.line.viewer,model_wt_delivery_shrinkage_report_detail_line,group_report_viewer,1,1,1,1
+access_wt_delivery_shrinkage_report_wizard_viewer,access.wt.delivery.shrinkage.report.wizard.viewer,model_wt_delivery_shrinkage_report_wizard,group_report_viewer,1,1,1,1
 access_wt_daily_stock_report_viewer,access.wt.daily.stock.report.viewer,model_wt_daily_stock_report,group_report_viewer,1,1,1,1
 access_wt_daily_stock_report_wizard_viewer,access.wt.daily.stock.report.wizard.viewer,model_wt_daily_stock_report_wizard,group_report_viewer,1,1,1,1
 access_hr_employee_report_viewer,access.hr.employee.report.viewer,hr.model_hr_employee,group_report_viewer,1,0,0,0
