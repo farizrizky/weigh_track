@@ -370,8 +370,8 @@ class StorageShrinkageReportWizard(models.TransientModel):
 
         summary_map = {}
         detail_vals = []
+        filtered_lot_ids = set()
         total_shrinkage_qty = 0.0
-        total_initial_qty = 0.0
 
         for line in move_lines:
             move = line.move_id
@@ -393,9 +393,10 @@ class StorageShrinkageReportWizard(models.TransientModel):
                 }
             summary_map[key]["total_qty"] += quantity
             total_shrinkage_qty += quantity
+            if line.lot_id:
+                filtered_lot_ids.add(line.lot_id.id)
 
             lot_initial_qty = initial_qty_map.get(line.lot_id.id, 0.0)
-            total_initial_qty += lot_initial_qty
             shrinkage_pct = (
                 "%.2f%%" % (quantity / lot_initial_qty * 100.0)
                 if lot_initial_qty
@@ -449,6 +450,9 @@ class StorageShrinkageReportWizard(models.TransientModel):
                 }
             )
 
+        total_initial_qty = sum(
+            initial_qty_map.get(lid, 0.0) for lid in filtered_lot_ids
+        )
         total_pct = (
             "%.2f%%" % (total_shrinkage_qty / total_initial_qty * 100.0)
             if total_initial_qty

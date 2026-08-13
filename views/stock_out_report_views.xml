@@ -29,7 +29,9 @@
                             <field name="division_id"/>
                         </group>
                         <group string="Total">
+                            <field name="total_initial_qty"/>
                             <field name="total_quantity"/>
+                            <field name="total_out_percentage"/>
                             <field name="total_storage_shrinkage_qty"/>
                             <field name="total_transfer_shrinkage_qty"/>
                             <field name="total_shipping_qty"/>
@@ -59,7 +61,9 @@
                                     <field name="division_name"/>
                                     <field name="lot_name"/>
                                     <field name="category_label"/>
-                                    <field name="quantity" sum="Total"/>
+                                    <field name="initial_qty" string="Total Stok"/>
+                                    <field name="quantity" string="Qty Keluar" sum="Total"/>
+                                    <field name="out_percentage" string="% Keluar"/>
                                     <field name="uom_name"/>
                                 </list>
                             </field>

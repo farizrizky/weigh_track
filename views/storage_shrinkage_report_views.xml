@@ -56,7 +56,7 @@
                                     <field name="division_name"/>
                                     <field name="source_location_name"/>
                                     <field name="lot_name"/>
-                                    <field name="initial_qty" string="Total Stok" sum="Total"/>
+                                    <field name="initial_qty" string="Total Stok"/>
                                     <field name="quantity" string="Qty Susut" sum="Total"/>
                                     <field name="shrinkage_percentage" string="% Susut"/>
                                     <field name="uom_name"/>

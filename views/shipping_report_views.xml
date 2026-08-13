@@ -56,7 +56,7 @@
                                     <field name="division_name"/>
                                     <field name="lot_name"/>
                                     <field name="product_name"/>
-                                    <field name="initial_qty" string="Total Stok" sum="Total"/>
+                                    <field name="initial_qty" string="Total Stok"/>
                                     <field name="quantity" string="Qty Terkirim" sum="Total"/>
                                     <field name="shipped_percentage" string="% Terkirim"/>
                                     <field name="uom_name"/>

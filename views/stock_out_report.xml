@@ -4,7 +4,7 @@
         <field name="name">Laporan Stock Keluar A4 Portrait</field>
         <field name="default" eval="False"/>
         <field name="format">A4</field>
-        <field name="orientation">Portrait</field>
+        <field name="orientation">Landscape</field>
         <field name="margin_top">10</field>
         <field name="margin_bottom">10</field>
         <field name="margin_left">7</field>
@@ -131,14 +131,17 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width: 5%;">No</th>
-                                <th style="width: 11%;">Tanggal</th>
-                                <th style="width: 17%;">No DO / Referensi</th>
-                                <th style="width: 19%;">Gudang</th>
-                                <th style="width: 12%;">Divisi</th>
-                                <th style="width: 16%;">Lot</th>
-                                <th style="width: 13%;">Kategori</th>
-                                <th style="width: 7%;">Qty</th>
+                                <th style="width: 4%;">No</th>
+                                <th style="width: 7%;">Tanggal</th>
+                                <th style="width: 12%;">No DO / Referensi</th>
+                                <th style="width: 12%;">Gudang</th>
+                                <th style="width: 9%;">Divisi</th>
+                                <th style="width: 12%;">Lot</th>
+                                <th style="width: 11%;">Kategori</th>
+                                <th style="width: 8%;">Total Stok</th>
+                                <th style="width: 8%;">Qty Keluar</th>
+                                <th style="width: 4%;">% Keluar</th>
+                                <th style="width: 3%;">Sat.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -152,16 +155,22 @@
                                         <td t-esc="line.division_name"/>
                                         <td t-esc="line.lot_name"/>
                                         <td t-esc="line.category_label"/>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> <span t-esc="line.uom_name or 'kg'"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.initial_qty or 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="line.out_percentage or '0.00%'"/></td>
+                                        <td class="text-center" t-esc="line.uom_name or 'kg'"/>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
                                     <td colspan="7" class="text-right">Total</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_initial_qty or 0.0)"/></td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/></td>
+                                    <td class="text-right"><span t-esc="doc.total_out_percentage or '0.00%'"/></td>
+                                    <td class="text-center">kg</td>
                                 </tr>
                             </t>
                             <tr t-if="not doc.detail_line_ids">
-                                <td colspan="8" class="text-center muted">Tidak ada detail stock keluar pada filter ini.</td>
+                                <td colspan="11" class="text-center muted">Tidak ada detail stock keluar pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>

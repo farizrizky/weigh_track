@@ -477,7 +477,6 @@ class ShippingReportWizard(models.TransientModel):
                 }
             summary_map[key]["quantity"] += quantity
             total_quantity += quantity
-            total_initial_qty += lot_initial_qty
 
             delivery = event["delivery"]
             customer = delivery.partner_id
@@ -526,6 +525,9 @@ class ShippingReportWizard(models.TransientModel):
                 }
             )
 
+        total_initial_qty = sum(
+            initial_qty_map.get(lid, 0.0) for lid in lot_ids
+        )
         total_pct = (
             "%.2f%%" % (total_quantity / total_initial_qty * 100.0)
             if total_initial_qty
