@@ -19,6 +19,7 @@ class Delivery(models.Model):
         ("draft", "Draft"),
         ("confirmed", "Confirmed"),
         ("in_progress", "In Progress"),
+        ("delivered", "Terkirim"),
         ("done", "Done"),
         ("returned", "Returned"),
         ("cancelled", "Cancelled"),
@@ -200,6 +201,18 @@ class Delivery(models.Model):
         store=True,
         digits="Product Unit of Measure",
     )
+    received_qty = fields.Float(
+        string="Berat Diterima Customer (kg)",
+        digits="Product Unit of Measure",
+        tracking=True,
+        copy=False,
+    )
+    received_difference_qty = fields.Float(
+        string="Selisih Pengiriman (kg)",
+        compute="_compute_received_difference_qty",
+        store=True,
+        digits="Product Unit of Measure",
+    )
     has_adjustable_lines = fields.Boolean(
         string="Has Adjustable Lines",
         compute="_compute_has_adjustable_lines",
@@ -334,6 +347,11 @@ class Delivery(models.Model):
             else:
                 rec.total_physical_qty = sum(active_lots.mapped("wt_physical_qty"))
             rec.total_demand_qty = rec.total_physical_qty - rec.total_difference_qty
+
+    @api.depends("total_physical_qty", "received_qty")
+    def _compute_received_difference_qty(self):
+        for rec in self:
+            rec.received_difference_qty = rec.total_physical_qty - rec.received_qty
 
     @api.depends(
         "do_line_ids.lot_line_ids.wt_difference_qty",
@@ -951,12 +969,8 @@ class Delivery(models.Model):
                 "pada baris Rencana DO transit berikut: %s"
             ) % seqs)
 
-        self.write({
-            "state": "done",
-            "validated_at": fields.Datetime.now(),
-            "validated_by_id": self.env.user.id,
-        })
-        
+        self.write({"state": "delivered"})
+
         # Hitung jumlah picking baru yang digenerate pada langkah akhir ini
         generated_count = len(lines_to_generate)
         if generated_count > 0:
@@ -1036,11 +1050,40 @@ class Delivery(models.Model):
             },
         }
 
+    def action_mark_done(self):
+        """Selesaikan pengiriman dari status Terkirim setelah berat diterima diinput."""
+        for delivery in self:
+            if delivery.state != "delivered":
+                raise ValidationError(_(
+                    "Hanya pengiriman berstatus Terkirim yang dapat diselesaikan."
+                ))
+            if not delivery.received_qty or delivery.received_qty <= 0:
+                raise ValidationError(_(
+                    "Berat Diterima Customer (kg) wajib diisi sebelum menyelesaikan pengiriman."
+                ))
+            delivery.write({
+                "state": "done",
+                "validated_at": fields.Datetime.now(),
+                "validated_by_id": self.env.user.id,
+            })
+            delivery.message_post(body=Markup(_(
+                "<b>Pengiriman Selesai</b> dikonfirmasi oleh %s.<br/>"
+                "Berat Diterima Customer: %s kg | Selisih Pengiriman: %s kg"
+            ) % (
+                self.env.user.name,
+                delivery.received_qty,
+                delivery.received_difference_qty,
+            )))
+
     def action_return_delivery(self):
         """Buka popup wizard untuk memasukkan alasan retur sebelum memproses retur."""
         self.ensure_one()
         if self.wt_is_returned:
             raise ValidationError(_("Pengiriman ini sudah diretur."))
+        if self.state not in ("delivered", "done"):
+            raise ValidationError(_(
+                "Retur hanya dapat dilakukan dari status Terkirim atau Selesai."
+            ))
 
         # Cari picking yang berasosiasi dengan delivery ini yang statusnya 'done'
         pickings = self.picking_ids.filtered(lambda p: p.state == "done")
@@ -1068,9 +1111,9 @@ class Delivery(models.Model):
 
     def action_cancel(self):
         for delivery in self:
-            if delivery.state in ("done", "returned"):
+            if delivery.state in ("delivered", "done", "returned"):
                 raise ValidationError(_(
-                    "Dokumen yang sudah selesai atau diretur tidak dapat dibatalkan."
+                    "Dokumen yang sudah terkirim, selesai, atau diretur tidak dapat dibatalkan."
                 ))
             done_pickings = delivery.picking_ids.filtered(lambda p: p.state == "done")
             if done_pickings:
