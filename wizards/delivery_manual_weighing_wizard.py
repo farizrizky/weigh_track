@@ -45,10 +45,13 @@ class DeliveryManualWeighingWizard(models.TransientModel):
         delivery = self.env["wt.delivery"].browse(delivery_id).exists()
         if not delivery:
             return values
-        effective_datetime = (
-            delivery.backdate_effective_at
-            or delivery._get_planned_movement_datetime()
-        )
+        if delivery.is_backdated:
+            effective_datetime = (
+                delivery.backdate_effective_at
+                or delivery._get_planned_movement_datetime()
+            )
+        else:
+            effective_datetime = fields.Datetime.now()
         commands = []
         for lot_line in delivery._get_manual_weighing_candidates().sorted(
             lambda line: (
@@ -76,10 +79,6 @@ class DeliveryManualWeighingWizard(models.TransientModel):
         if not self.env.user.has_group("weightrack.group_admin"):
             raise ValidationError(_(
                 "Only a WeighTrack Administrator can enter manual delivery weighing data."
-            ))
-        if not delivery.is_backdated:
-            raise ValidationError(_(
-                "Manual weighing input is only available for a backdated delivery."
             ))
         if delivery.state not in ("confirmed", "in_progress"):
             raise ValidationError(_(

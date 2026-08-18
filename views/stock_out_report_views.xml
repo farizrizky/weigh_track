@@ -29,8 +29,11 @@
                             <field name="division_id"/>
                         </group>
                         <group string="Total">
-                            <field name="total_initial_qty"/>
+                            <field name="total_opening_qty"/>
+                            <field name="total_stock_in_qty"/>
+                            <field name="total_stock_qty"/>
                             <field name="total_quantity"/>
+                            <field name="total_balance_qty"/>
                             <field name="total_out_percentage"/>
                             <field name="total_storage_shrinkage_qty"/>
                             <field name="total_transfer_shrinkage_qty"/>
@@ -38,16 +41,21 @@
                         </group>
                     </group>
                     <notebook invisible="not is_filtered">
-                        <page string="Stock Keluar Per Gudang dan Divisi">
+                        <page string="Ringkasan Per Divisi">
                             <field name="summary_line_ids">
                                 <list string="Ringkasan Stock Keluar" create="0" edit="0" delete="0">
                                     <field name="sequence"/>
                                     <field name="warehouse_name"/>
                                     <field name="division_name"/>
+                                    <field name="opening_qty" sum="Total"/>
+                                    <field name="stock_in_qty" sum="Total"/>
+                                    <field name="stock_qty" sum="Total"/>
                                     <field name="quantity" sum="Total"/>
                                     <field name="storage_shrinkage_qty" sum="Total"/>
                                     <field name="transfer_shrinkage_qty" sum="Total"/>
                                     <field name="shipping_qty" sum="Total"/>
+                                    <field name="balance_qty" sum="Total"/>
+                                    <field name="out_percentage"/>
                                 </list>
                             </field>
                         </page>
@@ -55,14 +63,15 @@
                             <field name="detail_line_ids">
                                 <list string="Detail Stock Keluar" create="0" edit="0" delete="0">
                                     <field name="sequence"/>
-                                    <field name="movement_date"/>
-                                    <field name="source_document"/>
+                                    <field name="production_date"/>
                                     <field name="warehouse_name"/>
                                     <field name="division_name"/>
                                     <field name="lot_name"/>
+                                    <field name="product_name"/>
                                     <field name="category_label"/>
-                                    <field name="initial_qty" string="Total Stok"/>
+                                    <field name="stock_qty" string="Stok" sum="Total"/>
                                     <field name="quantity" string="Qty Keluar" sum="Total"/>
+                                    <field name="balance_qty" sum="Total"/>
                                     <field name="out_percentage" string="% Keluar"/>
                                     <field name="uom_name"/>
                                 </list>

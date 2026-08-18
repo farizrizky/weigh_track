@@ -13,9 +13,17 @@
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="step_count" string="Steps" optional="show"/>
                 <field name="picking_count" string="DO Count"/>
-                <field name="total_demand_qty" string="Total Planned Qty (kg)"/>
+                <field name="total_initial_plan_qty" string="Total Initial Plan (kg)"/>
+                <field name="production_weighing_difference_qty"
+                       string="Production Weighing Difference (kg)"
+                       optional="show"/>
+                <field name="transit_weighing_difference_qty"
+                       string="Transit Weighing Difference (kg)"
+                       optional="hide"/>
                 <field name="total_physical_qty" string="Total Delivered Qty (kg)"/>
-                <field name="total_difference_qty" string="Total Difference (kg)"/>
+                <field name="shipping_weighing_difference_qty"
+                       string="Delivery Weighing Difference (kg)"
+                       optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'draft'"
                        decoration-primary="state in ('confirmed','in_progress')"
@@ -84,7 +92,7 @@
                             type="object"
                             class="btn-secondary"
                             groups="weightrack.group_admin"
-                            invisible="not is_backdated or state not in ('confirmed', 'in_progress')"/>
+                            invisible="state not in ('confirmed', 'in_progress')"/>
                     <button name="action_draft"
                             string="Reset to Draft"
                             type="object"
@@ -148,6 +156,7 @@
                     </div>
                     <group>
                         <group>
+                            <separator string="Delivery Information"/>
                             <field name="company_id" groups="base.group_multi_company"
                                    readonly="state != 'draft'"/>
                             <field name="date" readonly="state != 'draft'"/>
@@ -161,15 +170,30 @@
                                    readonly="state != 'draft'"
                                    required="1"/>
                             <field name="product_id" invisible="1"/>
+                            <separator string="Production Weighing"/>
+                            <field name="total_initial_plan_qty" readonly="1"/>
+                            <field name="total_production_weighed_qty" readonly="1"/>
+                            <field name="production_weighing_difference_qty" readonly="1"/>
                         </group>
                         <group>
-                            <field name="total_demand_qty" readonly="1"/>
+                            <field name="has_transit_route" invisible="1"/>
+                            <separator string="Transit Weighing"
+                                       invisible="not has_transit_route"/>
+                            <field name="total_transit_out_qty"
+                                   readonly="1"
+                                   invisible="not has_transit_route"/>
+                            <field name="total_transit_in_qty"
+                                   readonly="1"
+                                   invisible="not has_transit_route"/>
+                            <field name="transit_weighing_difference_qty"
+                                   readonly="1"
+                                   invisible="not has_transit_route"/>
+                            <separator string="Delivery Weighing"/>
                             <field name="total_physical_qty" readonly="1"/>
-                            <field name="total_difference_qty" readonly="1"/>
                             <field name="received_qty"
                                    readonly="state != 'delivered'"
                                    invisible="state not in ('delivered', 'done', 'returned')"/>
-                            <field name="received_difference_qty"
+                            <field name="shipping_weighing_difference_qty"
                                    readonly="1"
                                    invisible="state not in ('delivered', 'done', 'returned')"/>
                         </group>

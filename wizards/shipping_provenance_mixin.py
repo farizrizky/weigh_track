@@ -19,7 +19,7 @@ class ShippingProvenanceMixin(models.AbstractModel):
             ("company_id", "=", self.company_id.id),
             ("move_id.state", "=", "done"),
             ("picking_id.wt_delivery_id", "!=", False),
-            ("picking_id.wt_delivery_id.state", "=", "done"),
+            ("picking_id.wt_delivery_id.state", "in", ("done", "returned")),
             ("move_id.date", ">=", start_dt),
             ("move_id.date", end_operator, end_dt),
             ("location_dest_id.usage", "=", "customer"),

@@ -2823,10 +2823,69 @@ msgid "Total Planned Qty (kg)"
 msgstr "Total Rencana Awal (kg)"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_initial_plan_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Total Initial Plan (kg)"
+msgstr "Total Rencana Awal (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_production_weighed_qty
+msgid "Total Production Weighing (kg)"
+msgstr "Total Timbang Produksi (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__production_weighing_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Production Weighing Difference (kg)"
+msgstr "Selisih Penimbangan Produksi (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_transit_out_qty
+msgid "Transit Out Weight (kg)"
+msgstr "Berat Keluar Gudang Asal (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_transit_in_qty
+msgid "Transit In Weight (kg)"
+msgstr "Berat Masuk Gudang Tujuan (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__transit_weighing_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Transit Weighing Difference (kg)"
+msgstr "Selisih Penimbangan Transit (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__has_transit_route
+msgid "Has Transit Route"
+msgstr "Memiliki Rute Transit"
+
+#. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_physical_qty
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
 msgid "Total Delivered Qty (kg)"
 msgstr "Total Fisik Terkirim (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__shipping_weighing_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Delivery Weighing Difference (kg)"
+msgstr "Selisih Penimbangan Pengiriman (kg)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Production Weighing"
+msgstr "Penimbangan Produksi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Transit Weighing"
+msgstr "Penimbangan Transit"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Delivery Weighing"
+msgstr "Penimbangan Pengiriman"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_difference_qty
@@ -4082,10 +4141,9 @@ msgid "Apply Manual Weighing"
 msgstr "Terapkan Penimbangan Manual"
 
 #. module: weightrack
-#: code:addons/weightrack/models/delivery.py:0
-#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
-msgid "Manual weighing input is only available for a backdated delivery."
-msgstr "Input penimbangan manual hanya tersedia untuk delivery backdate."
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_manual_weighing_wizard_form
+msgid "Manual input only applies to unweighed lots. A reason is required, and the weighing time must use the Delivery Effective Date."
+msgstr "Input manual hanya berlaku untuk lot yang belum ditimbang. Alasan wajib diisi, dan waktu timbang harus menggunakan Tanggal Efektif Delivery."
 
 #. module: weightrack
 #: code:addons/weightrack/models/delivery.py:0

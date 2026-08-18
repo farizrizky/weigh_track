@@ -94,18 +94,18 @@
                         .wt-shipping-report .data-table th {
                             background: #f3f4f6;
                             border: 1px solid #9ca3af;
-                            font-size: 9px;
+                            font-size: 8px;
                             font-weight: 700;
-                            line-height: 1.35;
-                            padding: 7px 8px !important;
+                            line-height: 1.25;
+                            padding: 5px 4px !important;
                             text-align: center;
                             vertical-align: middle;
                         }
                         .wt-shipping-report .data-table td {
                             border: 1px solid #cbd5e1;
-                            font-size: 9px;
-                            line-height: 1.35;
-                            padding: 7px 8px !important;
+                            font-size: 8px;
+                            line-height: 1.25;
+                            padding: 5px 4px !important;
                             vertical-align: middle;
                             word-break: break-word;
                         }
@@ -163,18 +163,17 @@
                             <td class="info-label">Tanggal Sampai</td>
                             <td class="info-value"><span t-field="doc.end_date"/></td>
                             <td class="info-label">Status DO</td>
-                            <td class="info-value">Selesai</td>
+                            <td class="info-value">Selesai / Retur</td>
                         </tr>
                     </table>
 
-                    <div class="section-title">Ringkasan Per Gudang dan Divisi</div>
+                    <div class="section-title">Ringkasan Per Divisi</div>
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width: 6%;">No</th>
-                                <th style="width: 38%;">Gudang</th>
-                                <th style="width: 32%;">Divisi</th>
-                                <th style="width: 24%;">Total Terkirim</th>
+                                <th>No</th><th>Gudang</th><th>Divisi</th>
+                                <th>Stok Awal</th><th>Stok Masuk</th><th>Stok Tersedia</th>
+                                <th>Total Terkirim</th><th>Saldo Akhir</th><th>% Terkirim</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -184,16 +183,26 @@
                                         <td class="text-center" t-esc="line.sequence"/>
                                         <td t-esc="line.warehouse_name"/>
                                         <td t-esc="line.division_name"/>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> kg</td>
+                                        <td class="text-right" t-esc="'%.2f' % (line.opening_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.stock_in_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.stock_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.quantity or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.balance_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="line.shipped_percentage or '0.00%'"/>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
                                     <td colspan="3" class="text-right">Total</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_opening_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_stock_in_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_stock_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_quantity or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_balance_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="doc.total_shipped_percentage or '0.00%'"/>
                                 </tr>
                             </t>
                             <tr t-if="not doc.summary_line_ids">
-                                <td colspan="4" class="text-center muted">Tidak ada pengiriman pada filter ini.</td>
+                                <td colspan="9" class="text-center muted">Tidak ada data pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -202,18 +211,9 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width: 4%;">No</th>
-                                <th style="width: 7%;">Tanggal</th>
-                                <th style="width: 11%;">Nomor DO</th>
-                                <th style="width: 13%;">Customer Penerima</th>
-                                <th style="width: 12%;">Gudang</th>
-                                <th style="width: 9%;">Divisi</th>
-                                <th style="width: 13%;">Lot Produksi</th>
-                                <th style="width: 9%;">Produk</th>
-                                <th style="width: 7%;">Total Stok</th>
-                                <th style="width: 7%;">Qty Terkirim</th>
-                                <th style="width: 5%;">% Terkirim</th>
-                                <th style="width: 3%;">Sat.</th>
+                                <th>No</th><th>Tanggal Produksi</th><th>Gudang</th><th>Divisi</th>
+                                <th>Lot Produksi</th><th>Produk</th><th>Stok</th>
+                                <th>Qty Terkirim</th><th>Saldo Akhir</th><th>% Terkirim</th><th>Sat.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -221,29 +221,29 @@
                                 <t t-foreach="doc.detail_line_ids" t-as="line">
                                     <tr>
                                         <td class="text-center" t-esc="line.sequence"/>
-                                        <td><span t-field="line.movement_date" t-options='{"widget": "date"}'/></td>
-                                        <td t-esc="line.delivery_name"/>
-                                        <td t-esc="line.customer_name"/>
+                                        <td><span t-field="line.production_date"/></td>
                                         <td t-esc="line.warehouse_name"/>
                                         <td t-esc="line.division_name"/>
                                         <td t-esc="line.lot_name"/>
                                         <td t-esc="line.product_name"/>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.initial_qty or 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.stock_qty or 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.balance_qty or 0.0)"/></td>
                                         <td class="text-right"><span t-esc="line.shipped_percentage or '0.00%'"/></td>
                                         <td class="text-center" t-esc="line.uom_name or 'kg'"/>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
-                                    <td colspan="8" class="text-right">Total</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_initial_qty or 0.0)"/></td>
+                                    <td colspan="6" class="text-right">Total</td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_stock_qty or 0.0)"/></td>
                                     <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/></td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_balance_qty or 0.0)"/></td>
                                     <td class="text-right"><span t-esc="doc.total_shipped_percentage or '0.00%'"/></td>
                                     <td class="text-center">kg</td>
                                 </tr>
                             </t>
                             <tr t-if="not doc.detail_line_ids">
-                                <td colspan="12" class="text-center muted">Tidak ada detail pengiriman pada filter ini.</td>
+                                <td colspan="11" class="text-center muted">Tidak ada detail pengiriman pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>

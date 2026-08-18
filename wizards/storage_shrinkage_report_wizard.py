@@ -64,8 +64,12 @@ class StorageShrinkageReport(models.TransientModel):
         string="Total Susut",
         readonly=True,
     )
+    total_opening_qty = fields.Float(string="Total Stok Awal", readonly=True)
+    total_stock_in_qty = fields.Float(string="Total Stok Masuk", readonly=True)
+    total_stock_qty = fields.Float(string="Total Stok Tersedia", readonly=True)
+    total_balance_qty = fields.Float(string="Total Saldo Akhir", readonly=True)
     total_initial_qty = fields.Float(
-        string="Total Stok",
+        string="Total Stok Tersedia",
         readonly=True,
     )
     total_shrinkage_percentage = fields.Char(
@@ -140,11 +144,14 @@ class StorageShrinkageReport(models.TransientModel):
         sheet.write("A6", "Divisi", label_format)
         sheet.write("B6", self.division_id.display_name if self.division_id else "Semua Divisi")
 
-        summary_headers = ["No", "Gudang", "Divisi", "Total Susut"]
-        summary_widths = [6, 22, 22, 16]
+        summary_headers = [
+            "No", "Gudang", "Divisi", "Stok Awal", "Stok Masuk",
+            "Stok Tersedia", "Total Susut", "Saldo Akhir", "% Susut",
+        ]
+        summary_widths = [6, 22, 20, 14, 14, 14, 14, 14, 12]
         for column, width in enumerate(summary_widths):
             sheet.set_column(column, column, width)
-        sheet.write(8, 0, "RINGKASAN PER GUDANG DAN DIVISI", label_format)
+        sheet.write(8, 0, "RINGKASAN PER DIVISI", label_format)
         for column, header in enumerate(summary_headers):
             sheet.write(9, column, header, header_format)
         row_index = 10
@@ -152,26 +159,36 @@ class StorageShrinkageReport(models.TransientModel):
             sheet.write(row_index, 0, line.sequence, text_format)
             sheet.write(row_index, 1, line.warehouse_name or "", text_format)
             sheet.write(row_index, 2, line.division_name or "", text_format)
-            sheet.write(row_index, 3, line.total_qty, number_format)
+            sheet.write(row_index, 3, line.opening_qty, number_format)
+            sheet.write(row_index, 4, line.stock_in_qty, number_format)
+            sheet.write(row_index, 5, line.stock_qty, number_format)
+            sheet.write(row_index, 6, line.total_qty, number_format)
+            sheet.write(row_index, 7, line.balance_qty, number_format)
+            sheet.write(row_index, 8, line.shrinkage_percentage or "0.00%", text_format)
             row_index += 1
         sheet.merge_range(row_index, 0, row_index, 2, "Total", total_label_format)
-        sheet.write(row_index, 3, self.total_shrinkage_qty, total_number_format)
+        sheet.write(row_index, 3, self.total_opening_qty, total_number_format)
+        sheet.write(row_index, 4, self.total_stock_in_qty, total_number_format)
+        sheet.write(row_index, 5, self.total_stock_qty, total_number_format)
+        sheet.write(row_index, 6, self.total_shrinkage_qty, total_number_format)
+        sheet.write(row_index, 7, self.total_balance_qty, total_number_format)
+        sheet.write(row_index, 8, self.total_shrinkage_percentage or "0.00%", total_label_format)
 
         row_index += 3
         detail_headers = [
             "No",
-            "Tanggal",
-            "Sumber",
-            "No Dokumen",
+            "Tanggal Produksi",
             "Gudang",
             "Divisi",
-            "Lokasi Asal",
             "Lot",
-            "Total Stok",
+            "Produk",
+            "Stok",
             "Qty Susut",
+            "Saldo Akhir",
             "% Susut",
+            "Satuan",
         ]
-        detail_widths = [6, 12, 16, 20, 22, 22, 30, 24, 14, 14, 12]
+        detail_widths = [6, 15, 22, 20, 26, 22, 14, 14, 14, 12, 12]
         for column, width in enumerate(detail_widths):
             sheet.set_column(column, column, width)
         sheet.write(row_index, 0, "DETAIL PERGERAKAN SUSUT", label_format)
@@ -181,29 +198,31 @@ class StorageShrinkageReport(models.TransientModel):
         row_index += 1
         for line in self.detail_line_ids:
             sheet.write(row_index, 0, line.sequence, text_format)
-            if line.movement_date:
+            if line.production_date:
                 sheet.write_datetime(
                     row_index,
                     1,
-                    fields.Datetime.to_datetime(line.movement_date),
+                    datetime.combine(line.production_date, time.min),
                     date_format,
                 )
             else:
                 sheet.write(row_index, 1, "", text_format)
-            sheet.write(row_index, 2, line.source_type, text_format)
-            sheet.write(row_index, 3, line.source_document or "", text_format)
-            sheet.write(row_index, 4, line.warehouse_name or "", text_format)
-            sheet.write(row_index, 5, line.division_name or "", text_format)
-            sheet.write(row_index, 6, line.source_location_name or "", text_format)
-            sheet.write(row_index, 7, line.lot_name or "", text_format)
-            sheet.write(row_index, 8, line.initial_qty, number_format)
-            sheet.write(row_index, 9, line.quantity, number_format)
-            sheet.write(row_index, 10, line.shrinkage_percentage or "0.00%", text_format)
+            sheet.write(row_index, 2, line.warehouse_name or "", text_format)
+            sheet.write(row_index, 3, line.division_name or "", text_format)
+            sheet.write(row_index, 4, line.lot_name or "", text_format)
+            sheet.write(row_index, 5, line.product_id.display_name or "", text_format)
+            sheet.write(row_index, 6, line.stock_qty, number_format)
+            sheet.write(row_index, 7, line.quantity, number_format)
+            sheet.write(row_index, 8, line.balance_qty, number_format)
+            sheet.write(row_index, 9, line.shrinkage_percentage or "0.00%", text_format)
+            sheet.write(row_index, 10, line.uom_name or "", text_format)
             row_index += 1
-        sheet.merge_range(row_index, 0, row_index, 7, "Total", total_label_format)
-        sheet.write(row_index, 8, self.total_initial_qty, total_number_format)
-        sheet.write(row_index, 9, self.total_shrinkage_qty, total_number_format)
-        sheet.write(row_index, 10, self.total_shrinkage_percentage or "0.00%", total_label_format)
+        sheet.merge_range(row_index, 0, row_index, 5, "Total", total_label_format)
+        sheet.write(row_index, 6, self.total_stock_qty, total_number_format)
+        sheet.write(row_index, 7, self.total_shrinkage_qty, total_number_format)
+        sheet.write(row_index, 8, self.total_balance_qty, total_number_format)
+        sheet.write(row_index, 9, self.total_shrinkage_percentage or "0.00%", total_label_format)
+        sheet.write(row_index, 10, "", text_format)
 
         workbook.close()
         output.seek(0)
@@ -255,9 +274,14 @@ class StorageShrinkageReportSummaryLine(models.TransientModel):
     warehouse_name = fields.Char(string="Gudang", readonly=True)
     division_id = fields.Many2one("wt.division", string="Divisi", readonly=True)
     division_name = fields.Char(string="Divisi", readonly=True)
+    opening_qty = fields.Float(string="Stok Awal", readonly=True)
+    stock_in_qty = fields.Float(string="Stok Masuk", readonly=True)
+    stock_qty = fields.Float(string="Stok Tersedia", readonly=True)
     stock_opname_qty = fields.Float(string="Stock Opname", readonly=True)
     delivery_qty = fields.Float(string="Pengiriman", readonly=True)
     total_qty = fields.Float(string="Total Susut", readonly=True)
+    balance_qty = fields.Float(string="Saldo Akhir", readonly=True)
+    shrinkage_percentage = fields.Char(string="% Susut", readonly=True)
 
 
 class StorageShrinkageReportDetailLine(models.TransientModel):
@@ -272,6 +296,7 @@ class StorageShrinkageReportDetailLine(models.TransientModel):
         ondelete="cascade",
     )
     sequence = fields.Integer(string="No", readonly=True)
+    production_date = fields.Date(string="Tanggal Produksi", readonly=True)
     movement_date = fields.Datetime(string="Tanggal", readonly=True)
     source_type = fields.Char(string="Sumber", readonly=True)
     source_document = fields.Char(string="No Dokumen", readonly=True)
@@ -285,13 +310,17 @@ class StorageShrinkageReportDetailLine(models.TransientModel):
     lot_name = fields.Char(string="Lot", readonly=True)
     product_id = fields.Many2one("product.product", string="Produk", readonly=True)
     quantity = fields.Float(string="Qty Susut", readonly=True)
-    initial_qty = fields.Float(string="Total Stok", readonly=True)
+    stock_qty = fields.Float(string="Stok", readonly=True)
+    balance_qty = fields.Float(string="Saldo Akhir", readonly=True)
+    movement_count = fields.Integer(string="Jumlah Pergerakan", readonly=True)
+    initial_qty = fields.Float(string="Stok", readonly=True)
     shrinkage_percentage = fields.Char(string="% Susut", readonly=True)
     uom_name = fields.Char(string="Satuan", readonly=True)
 
 
 class StorageShrinkageReportWizard(models.TransientModel):
     _name = "wt.storage.shrinkage.report.wizard"
+    _inherit = ["wt.stock.period.basis.mixin"]
     _description = "Storage Shrinkage Report Wizard"
 
     report_id = fields.Many2one(
@@ -352,6 +381,10 @@ class StorageShrinkageReportWizard(models.TransientModel):
                 "total_stock_opname_qty": data["total_stock_opname_qty"],
                 "total_delivery_qty": data["total_delivery_qty"],
                 "total_shrinkage_qty": data["total_shrinkage_qty"],
+                "total_opening_qty": data["total_opening_qty"],
+                "total_stock_in_qty": data["total_stock_in_qty"],
+                "total_stock_qty": data["total_stock_qty"],
+                "total_balance_qty": data["total_balance_qty"],
                 "total_initial_qty": data["total_initial_qty"],
                 "total_shrinkage_percentage": data["total_shrinkage_percentage"],
             }
@@ -364,18 +397,20 @@ class StorageShrinkageReportWizard(models.TransientModel):
 
     def _prepare_report_data(self):
         move_lines = self._get_move_lines()
-        lot_ids = move_lines.mapped("lot_id").ids
-        initial_qty_map = self._get_lot_initial_qty_map(lot_ids)
         warehouses = self.env["stock.warehouse"].search([("company_id", "=", self.company_id.id)])
-
-        summary_map = {}
-        detail_vals = []
-        filtered_lot_ids = set()
-        total_shrinkage_qty = 0.0
+        division_warehouses = self._basis_division_warehouse_map()
+        start_dt, end_dt = self._get_utc_date_range()
+        rows = self._build_period_stock_basis(start_dt, end_dt, warehouses)
+        if self.division_id:
+            rows = {
+                key: value
+                for key, value in rows.items()
+                if value["division"] == self.division_id
+            }
+        for row in rows.values():
+            row.update(quantity=0.0, movement_count=0, movement_date=False)
 
         for line in move_lines:
-            move = line.move_id
-            source_type = move.inventory_name or _("Stock Movement")
             warehouse = self._resolve_warehouse(line.location_id, warehouses)
             division = line.lot_id.division_id
             if self.warehouse_id and warehouse != self.warehouse_id:
@@ -383,79 +418,135 @@ class StorageShrinkageReportWizard(models.TransientModel):
             if self.division_id and division != self.division_id:
                 continue
 
-            quantity = line.quantity or 0.0
-            key = (warehouse.id or 0, division.id or 0)
-            if key not in summary_map:
-                summary_map[key] = {
-                    "warehouse": warehouse,
+            key = self._stock_basis_key(division, line.lot_id)
+            row = rows.setdefault(
+                key,
+                {
+                    "warehouse": (
+                        self.warehouse_id
+                        or warehouse
+                        or division_warehouses.get(division.id)
+                        or self.env["stock.warehouse"]
+                    ),
                     "division": division,
-                    "total_qty": 0.0,
-                }
-            summary_map[key]["total_qty"] += quantity
-            total_shrinkage_qty += quantity
-            if line.lot_id:
-                filtered_lot_ids.add(line.lot_id.id)
+                    "lot": line.lot_id,
+                    "product": line.product_id,
+                    "uom": line.product_uom_id or line.product_id.uom_id,
+                    "opening_qty": 0.0,
+                    "stock_in_qty": 0.0,
+                    "closing_qty": 0.0,
+                    "quantity": 0.0,
+                    "movement_count": 0,
+                    "movement_date": False,
+                },
+            )
+            row["quantity"] += line.quantity or 0.0
+            row["movement_count"] += 1
+            if not row["movement_date"] or line.move_id.date > row["movement_date"]:
+                row["movement_date"] = line.move_id.date
 
-            lot_initial_qty = initial_qty_map.get(line.lot_id.id, 0.0)
-            shrinkage_pct = (
-                "%.2f%%" % (quantity / lot_initial_qty * 100.0)
-                if lot_initial_qty
+        summary_map = {}
+        detail_vals = []
+        sorted_rows = sorted(
+            rows.values(),
+            key=lambda row: (
+                row["division"].code or "",
+                row["lot"].production_date or fields.Date.today(),
+                row["lot"].name or "",
+            ),
+        )
+        for sequence, row in enumerate(sorted_rows, start=1):
+            stock_qty = row["opening_qty"] + row["stock_in_qty"]
+            percentage = (
+                "%.2f%%" % (row["quantity"] / stock_qty * 100.0)
+                if stock_qty
                 else "0.00%"
             )
+            division = row["division"]
+            warehouse = (
+                row["warehouse"]
+                or division_warehouses.get(division.id)
+                or self.env["stock.warehouse"]
+            )
+            summary = summary_map.setdefault(
+                division.id or 0,
+                {
+                    "division": division,
+                    "warehouse": warehouse,
+                    "opening_qty": 0.0,
+                    "stock_in_qty": 0.0,
+                    "stock_qty": 0.0,
+                    "quantity": 0.0,
+                    "balance_qty": 0.0,
+                },
+            )
+            summary["opening_qty"] += row["opening_qty"]
+            summary["stock_in_qty"] += row["stock_in_qty"]
+            summary["stock_qty"] += stock_qty
+            summary["quantity"] += row["quantity"]
+            summary["balance_qty"] += row["closing_qty"]
             detail_vals.append(
                 {
                     "report_id": self.report_id.id,
-                    "sequence": len(detail_vals) + 1,
-                    "movement_date": move.date,
-                    "source_type": source_type,
-                    "source_document": move.origin or "",
+                    "sequence": sequence,
+                    "production_date": row["lot"].production_date,
+                    "movement_date": row["movement_date"],
                     "warehouse_id": warehouse.id or False,
                     "warehouse_name": warehouse.display_name or "-",
                     "division_id": division.id or False,
                     "division_name": division.display_name or "-",
-                    "source_location_id": line.location_id.id,
-                    "source_location_name": line.location_id.complete_name or line.location_id.display_name,
-                    "lot_id": line.lot_id.id,
-                    "lot_name": line.lot_id.name or "",
-                    "product_id": line.product_id.id,
-                    "quantity": quantity,
-                    "initial_qty": lot_initial_qty,
-                    "shrinkage_percentage": shrinkage_pct,
-                    "uom_name": line.product_uom_id.name or line.product_id.uom_id.name or "",
+                    "lot_id": row["lot"].id,
+                    "lot_name": row["lot"].name or "",
+                    "product_id": row["product"].id,
+                    "quantity": row["quantity"],
+                    "stock_qty": stock_qty,
+                    "initial_qty": stock_qty,
+                    "balance_qty": row["closing_qty"],
+                    "movement_count": row["movement_count"],
+                    "shrinkage_percentage": percentage,
+                    "uom_name": row["uom"].name or "",
                 }
             )
 
         summary_vals = []
-        for number, value in enumerate(
+        for sequence, value in enumerate(
             sorted(
                 summary_map.values(),
-                key=lambda row: (
-                    row["warehouse"].display_name or "",
-                    row["division"].display_name or "",
-                ),
+                key=lambda row: row["division"].code or "",
             ),
             start=1,
         ):
+            percentage = (
+                "%.2f%%" % (value["quantity"] / value["stock_qty"] * 100.0)
+                if value["stock_qty"]
+                else "0.00%"
+            )
             summary_vals.append(
                 {
                     "report_id": self.report_id.id,
-                    "sequence": number,
+                    "sequence": sequence,
                     "warehouse_id": value["warehouse"].id or False,
                     "warehouse_name": value["warehouse"].display_name or "-",
                     "division_id": value["division"].id or False,
                     "division_name": value["division"].display_name or "-",
+                    "opening_qty": value["opening_qty"],
+                    "stock_in_qty": value["stock_in_qty"],
+                    "stock_qty": value["stock_qty"],
                     "stock_opname_qty": 0.0,
                     "delivery_qty": 0.0,
-                    "total_qty": value["total_qty"],
+                    "total_qty": value["quantity"],
+                    "balance_qty": value["balance_qty"],
+                    "shrinkage_percentage": percentage,
                 }
             )
-
-        total_initial_qty = sum(
-            initial_qty_map.get(lid, 0.0) for lid in filtered_lot_ids
-        )
+        total_opening_qty = sum(row["opening_qty"] for row in rows.values())
+        total_stock_in_qty = sum(row["stock_in_qty"] for row in rows.values())
+        total_stock_qty = total_opening_qty + total_stock_in_qty
+        total_shrinkage_qty = sum(row["quantity"] for row in rows.values())
+        total_balance_qty = sum(row["closing_qty"] for row in rows.values())
         total_pct = (
-            "%.2f%%" % (total_shrinkage_qty / total_initial_qty * 100.0)
-            if total_initial_qty
+            "%.2f%%" % (total_shrinkage_qty / total_stock_qty * 100.0)
+            if total_stock_qty
             else "0.00%"
         )
         return {
@@ -464,7 +555,11 @@ class StorageShrinkageReportWizard(models.TransientModel):
             "total_stock_opname_qty": 0.0,
             "total_delivery_qty": 0.0,
             "total_shrinkage_qty": total_shrinkage_qty,
-            "total_initial_qty": total_initial_qty,
+            "total_opening_qty": total_opening_qty,
+            "total_stock_in_qty": total_stock_in_qty,
+            "total_stock_qty": total_stock_qty,
+            "total_balance_qty": total_balance_qty,
+            "total_initial_qty": total_stock_qty,
             "total_shrinkage_percentage": total_pct,
         }
 
