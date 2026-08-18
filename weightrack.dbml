@@ -106,6 +106,15 @@ Table res_company {
   Note: "Odoo core table stub."
 }
 
+Table res_partner {
+  id integer [pk]
+  name varchar
+  display_name varchar
+  company_id integer
+
+  Note: "Odoo contact table stub. wt.customer maps allowed Delivery customers to res.partner."
+}
+
 Table hr_employee {
   id integer [pk]
   name varchar
@@ -294,6 +303,27 @@ Table wt_product {
   }
 
   Note: "Odoo model: wt.product. Company-level mapping to the single active Odoo product.product used by WeighTrack. Product must belong to the same company or be global. Archive supported through active. Business key is unique only for active records."
+}
+
+Table wt_customer {
+  id integer [pk, increment]
+  name varchar [note: "Computed and stored from company and contact"]
+  company_id integer [not null]
+  partner_id integer [not null]
+  active boolean [not null, default: true]
+  create_uid integer
+  create_date timestamp
+  write_uid integer
+  write_date timestamp
+
+  indexes {
+    company_id
+    partner_id
+    // Partial unique index in PostgreSQL: WHERE active
+    (company_id, partner_id) [unique, name: "wt_customer_company_partner_active_uniq"]
+  }
+
+  Note: "Odoo model: wt.customer. Company-level mapping to contacts that may be selected as Delivery customers and receiver contacts. Archive supported through active."
 }
 
 Table wt_shrinkage_tolerance {
@@ -855,6 +885,9 @@ Ref: wt_employee_role.job_id > hr_job.id [delete: restrict]
 Ref: wt_product.company_id > res_company.id
 Ref: wt_product.product_id > product_product.id [delete: restrict]
 
+Ref: wt_customer.company_id > res_company.id
+Ref: wt_customer.partner_id > res_partner.id [delete: restrict]
+
 Ref: wt_shrinkage_tolerance.company_id > res_company.id
 Ref: wt_shrinkage_tolerance.division_id > wt_division.id [delete: restrict]
 
@@ -969,6 +1002,7 @@ Ref: wt_device_state_reason_wizard.device_id > wt_device.id
 Ref: hr_employee.company_id > res_company.id
 Ref: hr_employee.job_id > hr_job.id
 Ref: hr_job.company_id > res_company.id
+Ref: res_partner.company_id > res_company.id
 Ref: stock_warehouse.company_id > res_company.id
 Ref: stock_warehouse.estate_id > wt_estate.id [delete: restrict]
 Ref: stock_location.company_id > res_company.id
@@ -992,6 +1026,8 @@ Ref: wt_employee_role.create_uid > res_users.id
 Ref: wt_employee_role.write_uid > res_users.id
 Ref: wt_product.create_uid > res_users.id
 Ref: wt_product.write_uid > res_users.id
+Ref: wt_customer.create_uid > res_users.id
+Ref: wt_customer.write_uid > res_users.id
 Ref: wt_shrinkage_tolerance.create_uid > res_users.id
 Ref: wt_shrinkage_tolerance.write_uid > res_users.id
 Ref: wt_receipt_rule.create_uid > res_users.id

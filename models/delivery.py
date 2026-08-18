@@ -86,8 +86,14 @@ class Delivery(models.Model):
     partner_id = fields.Many2one(
         "res.partner",
         string="Customer",
+        domain="[('id', 'in', allowed_customer_partner_ids)]",
         tracking=True,
         help="Partner/Customer tujuan pengiriman akhir (untuk Outgoing DO final).",
+    )
+    allowed_customer_partner_ids = fields.Many2many(
+        "res.partner",
+        compute="_compute_allowed_customer_partner_ids",
+        string="Allowed Customer Contacts",
     )
     route_id = fields.Many2one(
         "wt.delivery.route",
@@ -299,10 +305,33 @@ class Delivery(models.Model):
         self.ensure_one()
         return self.env["wt.product"].get_active_product(self.company_id)
 
+    @api.depends("company_id")
+    def _compute_allowed_customer_partner_ids(self):
+        customer_model = self.env["wt.customer"]
+        for delivery in self:
+            delivery.allowed_customer_partner_ids = customer_model.get_allowed_partners(
+                delivery.company_id
+            )
+
+    def _is_allowed_customer_partner(self, partner=False):
+        self.ensure_one()
+        partner = partner or self.partner_id
+        return self.env["wt.customer"].is_allowed_partner(self.company_id, partner)
+
+    @api.constrains("company_id", "partner_id")
+    def _check_customer_partner(self):
+        for delivery in self:
+            if delivery.partner_id and not delivery._is_allowed_customer_partner():
+                raise ValidationError(_(
+                    "Customer must be registered in WeighTrack Customer master."
+                ))
+
     @api.onchange("company_id")
     def _onchange_company_id_set_product(self):
         for delivery in self:
             delivery.product_id = delivery._get_configured_product()
+            if delivery.partner_id and not delivery._is_allowed_customer_partner():
+                delivery.partner_id = False
             delivery.route_id = False
             delivery.do_line_ids = [(5, 0, 0)]
 
@@ -1061,6 +1090,10 @@ class Delivery(models.Model):
             delivery._validate_effective_date()
             if not delivery.partner_id:
                 raise ValidationError(_("Customer wajib diisi sebelum pengiriman dikonfirmasi."))
+            if not delivery._is_allowed_customer_partner():
+                raise ValidationError(_(
+                    "Customer must be registered in WeighTrack Customer master."
+                ))
             if not delivery.route_id:
                 raise ValidationError(_("Rute wajib diisi sebelum pengiriman dikonfirmasi."))
             if delivery.route_id and not delivery.do_line_ids:

@@ -14,6 +14,7 @@ class ShippingProvenanceMixin(models.AbstractModel):
         warehouses,
         end_operator="<",
         product=None,
+        transit_quantity_basis="customer",
     ):
         domain = [
             ("company_id", "=", self.company_id.id),
@@ -59,12 +60,15 @@ class ShippingProvenanceMixin(models.AbstractModel):
 
             remaining = quantity
             for index, source in enumerate(sources):
-                allocated_quantity = (
-                    remaining
-                    if index == len(sources) - 1
-                    else quantity * source["quantity"] / source_total
-                )
-                remaining -= allocated_quantity
+                if transit_quantity_basis == "source":
+                    allocated_quantity = source["quantity"]
+                else:
+                    allocated_quantity = (
+                        remaining
+                        if index == len(sources) - 1
+                        else quantity * source["quantity"] / source_total
+                    )
+                    remaining -= allocated_quantity
                 yield self._prepare_shipping_source_event(
                     line,
                     delivery,

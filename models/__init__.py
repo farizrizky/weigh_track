@@ -3,6 +3,7 @@ from . import employee_role
 from . import api
 from . import api_request_log
 from . import product
+from . import customer
 from . import shrinkage_tolerance
 from . import shrinkage_tolerance_override
 from . import stock_warehouse

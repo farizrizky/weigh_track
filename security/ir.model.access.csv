@@ -2,6 +2,7 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_wt_estate_admin,access.wt.estate.admin,model_wt_estate,group_admin,1,1,1,1
 access_wt_employee_role_admin,access.wt.employee.role.admin,model_wt_employee_role,group_admin,1,1,1,1
 access_wt_product_admin,access.wt.product.admin,model_wt_product,group_admin,1,1,1,1
+access_wt_customer_admin,access.wt.customer.admin,model_wt_customer,group_admin,1,1,1,1
 access_wt_shrinkage_tolerance_admin,access.wt.shrinkage.tolerance.admin,model_wt_shrinkage_tolerance,group_admin,1,1,1,1
 access_wt_receipt_rule_admin,access.wt.receipt.rule.admin,model_wt_receipt_rule,group_admin,1,1,1,1
 access_wt_weighing_admin,access.wt.weighing.admin,model_wt_weighing,group_admin,1,1,1,1
@@ -165,6 +166,7 @@ access_wt_delivery_route_line_report_viewer,access.wt.delivery.route.line.report
 access_wt_delivery_step_report_viewer,access.wt.delivery.step.report.viewer,model_wt_delivery_step,group_report_viewer,1,0,0,0
 access_wt_delivery_line_allocation_report_viewer,access.wt.delivery.line.allocation.report.viewer,model_wt_delivery_line_allocation,group_report_viewer,1,0,0,0
 access_wt_employee_role_report_viewer,access.wt.employee.role.report.viewer,model_wt_employee_role,group_report_viewer,1,0,0,0
+access_wt_customer_report_viewer,access.wt.customer.report.viewer,model_wt_customer,group_report_viewer,1,0,0,0
 access_wt_shrinkage_tolerance_override_report_viewer,access.wt.shrinkage.tolerance.override.report.viewer,model_wt_shrinkage_tolerance_override,group_report_viewer,1,0,0,0
 access_wt_shrinkage_tolerance_override_line_report_viewer,access.wt.shrinkage.tolerance.override.line.report.viewer,model_wt_shrinkage_tolerance_override_line,group_report_viewer,1,0,0,0
 access_wt_stock_movement_date_correction_report_viewer,access.wt.stock.movement.date.correction.report.viewer,model_wt_stock_movement_date_correction,group_report_viewer,1,0,0,0

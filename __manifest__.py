@@ -18,6 +18,7 @@
         "views/weighing_manual_log_views.xml",
         "views/employee_role_views.xml",
         "views/product_views.xml",
+        "views/customer_views.xml",
         "views/shrinkage_tolerance_views.xml",
         "views/stock_warehouse_views.xml",
         "views/stock_picking_views.xml",
