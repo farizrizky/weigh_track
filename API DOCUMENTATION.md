@@ -869,7 +869,7 @@ Content-Type: application/json
 - Odoo hanya mengirim Delivery pada company device.
 - Odoo hanya mengirim lot line yang operatornya sama dengan employee device.
 - Header Delivery yang dikirim hanya status `confirmed` atau `in_progress`.
-- Lot line yang dikirim hanya line dengan `qty > 0` dan `wt_physical_qty = 0`.
+- Lot line yang dikirim hanya line dengan `qty > 0` dan belum memiliki input timbang (`wt_weighing_source` kosong / belum `weighed`).
 
 ### Pull Success Behavior
 
@@ -891,35 +891,37 @@ Jika pull berhasil, Odoo akan:
     "deliveries": [
       {
         "delivery_id": 20,
-        "name": "DO/20260722/0017",
-        "date": "2026-07-22",
+        "name": "DEL/2026/03/0001",
+        "date": "2026-03-24",
         "state": "in_progress",
-        "total_demand_qty": 185.0,
+        "total_demand_qty": 5000.0,
         "pickings": [
           {
-            "picking_id": 11,
-            "picking_name": "Gudang Induk Sebayur: Transfer Internal"
+            "picking_id": 41,
+            "picking_name": "Rencana DO"
           }
         ],
         "lines": [
           {
-            "delivery_lot_line_id": 501,
-            "picking_id": 11,
-            "picking_name": "Gudang Induk Sebayur: Transfer Internal",
-            "product_id": 25,
+            "delivery_lot_line_id": 88,
+            "picking_id": 41,
+            "picking_name": "Rencana DO",
+            "product_id": 12,
             "product_name": "Cup Lump",
-            "lot_id": 80,
-            "lot_name": "LOT/DIV01/20260706/005",
+            "lot_id": 44,
+            "lot_name": "CL/DIV1/20260324/001",
+            "lot_production_date": "2026-03-24",
             "uom_id": 1,
             "uom_name": "kg",
-            "demand_qty": 100.0,
-            "location_id": 15,
-            "location_name": "GISBY/Stock",
+            "demand_qty": 2500.0,
+            "demand_coverage": "all",
+            "location_id": 8,
+            "location_name": "WH/Stock/Divisi 1",
             "is_transit": false,
-            "weighing_location_id": 3,
-            "weighing_location_name": "Gudang Induk",
-            "operator_employee_id": 101,
-            "operator_name": "Budi Operator"
+            "weighing_location_id": 2,
+            "weighing_location_name": "Timbangan Sentral",
+            "operator_employee_id": 5,
+            "operator_name": "Budi Santoso"
           }
         ]
       }
@@ -952,16 +954,18 @@ Jika pull berhasil, Odoo akan:
 | `data.deliveries[].lines[].weighing_location_id` | Lokasi timbang lot line. |
 | `data.deliveries[].lines[].operator_employee_id` | Employee operator yang bertugas. |
 
-### Push Delivery
+## Push Delivery Weighing
 
-Endpoint ini digunakan operator untuk mengirim hasil timbang fisik Delivery.
+Digunakan oleh device operator untuk mengirimkan hasil timbang aktual berat fisik lot rencana DO.
+
+### Endpoint
 
 ```http
 POST /weightrack/api/v1/push/delivery
 Content-Type: application/json
 ```
 
-### Push Request
+### Request Payload
 
 ```json
 {
@@ -973,9 +977,9 @@ Content-Type: application/json
       "delivery_lot_line_id": 501,
       "lot_id": 80,
       "lot_name": "LOT/DIV01/20260706/005",
-      "physical_qty": 98.0,
+      "physical_qty": 0.0,
       "weighed_at": "2026-07-22 18:30:00",
-      "note": "Timbang ulang di gudang transit"
+      "note": "Barang habis / susut total di gudang"
     }
   ]
 }
@@ -993,7 +997,7 @@ Content-Type: application/json
 - `lines` wajib berupa list jika dikirim.
 - Setiap item wajib membawa `delivery_lot_line_id`.
 - `delivery_lot_line_id` harus ditemukan pada `wt.delivery.do.line.lot` milik `delivery_id` tersebut.
-- `physical_qty` wajib dikirim, valid sebagai angka, dan harus lebih besar dari 0.
+- `physical_qty` wajib dikirim, valid sebagai angka, dan tidak boleh kurang dari 0 (`physical_qty >= 0.0`).
 - `weighed_at` wajib dikirim dan harus berupa datetime valid.
 - Jika `lot_id` dikirim, nilainya harus cocok dengan lot pada `delivery_lot_line_id`.
 - Jika `lot_name` dikirim, nilainya harus cocok dengan nama lot pada `delivery_lot_line_id`.

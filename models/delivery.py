@@ -749,7 +749,7 @@ class Delivery(models.Model):
             else self.wt_get_report_used_lot_lines()
         )
         return sum(
-            lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
+            lot_line.wt_physical_qty if lot_line.wt_weighing_source else lot_line.qty
             for lot_line in report_lots
         )
 
@@ -772,7 +772,8 @@ class Delivery(models.Model):
                 continue
             active_lots = line.lot_line_ids
             physical_qty = sum(active_lots.mapped("wt_physical_qty"))
-            qty = physical_qty if physical_qty > 0.0 else line.demand_qty
+            has_weighed_lots = any(l.wt_weighing_source for l in active_lots)
+            qty = physical_qty if has_weighed_lots else line.demand_qty
             key = product.id
             if key not in result:
                 result[key] = {
@@ -1008,7 +1009,7 @@ class Delivery(models.Model):
         self.ensure_one()
         return self.do_lot_line_ids.filtered(
             lambda line: line.qty > 0.0
-            and line.wt_physical_qty <= 0.0
+            and not line.wt_weighing_source
             and not line.wt_adjustment_applied
         )
 

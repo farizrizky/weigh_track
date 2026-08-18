@@ -810,7 +810,7 @@ class DeliveryDoLine(models.Model):
             if not lot:
                 continue
             qty = sum(
-                lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
+                lot_line.wt_physical_qty if lot_line.wt_weighing_source else lot_line.qty
                 for lot_line in source_line.lot_line_ids
             )
             if qty <= 0.0:
@@ -1095,7 +1095,7 @@ class DeliveryDoLine(models.Model):
         # Hitung total physical qty
         if active_lot_lines:
             total_physical = sum(
-                (lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty)
+                (lot_line.wt_physical_qty if lot_line.wt_weighing_source else lot_line.qty)
                 for lot_line in active_lot_lines
             )
         else:
@@ -1226,7 +1226,9 @@ class DeliveryDoLine(models.Model):
 
             # 1. Consume old lots
             for lot_line in active_lot_lines:
-                qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
+                qty_done = lot_line.wt_physical_qty if lot_line.wt_weighing_source else lot_line.qty
+                if qty_done <= 0.0:
+                    continue
                 exact_loc = self._get_lot_line_source_location(lot_line, src_location)
 
                 self.env["stock.move.line"].sudo().create({
@@ -1258,7 +1260,9 @@ class DeliveryDoLine(models.Model):
             move = picking.move_ids[:1]
             if self.lot_line_ids:
                 for lot_line in self.lot_line_ids:
-                    qty_done = lot_line.wt_physical_qty if lot_line.wt_physical_qty > 0.0 else lot_line.qty
+                    qty_done = lot_line.wt_physical_qty if lot_line.wt_weighing_source else lot_line.qty
+                    if qty_done <= 0.0:
+                        continue
                     exact_loc = self._get_lot_line_source_location(lot_line, src_location)
 
                     self.env["stock.move.line"].sudo().create({
@@ -1547,7 +1551,8 @@ class DeliveryDoLine(models.Model):
         product = self.product_id
         if not product:
             return []
-        qty = self.actual_physical_qty if self.actual_physical_qty > 0.0 else self.demand_qty
+        has_weighed_lines = any(l.wt_weighing_source for l in self.lot_line_ids)
+        qty = self.actual_physical_qty if has_weighed_lines else self.demand_qty
         return [{
             "code": product.default_code or "",
             "name": product.display_name,

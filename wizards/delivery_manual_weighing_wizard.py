@@ -103,7 +103,7 @@ class DeliveryManualWeighingWizard(models.TransientModel):
                 raise ValidationError(_(
                     "A selected weighing line no longer belongs to this delivery."
                 ))
-            if target.wt_physical_qty > 0.0 or target.wt_weighing_source:
+            if target.wt_weighing_source:
                 raise ValidationError(_(
                     "Lot %(lot)s already has weighing data and cannot be overwritten manually."
                 ) % {"lot": target.lot_id.display_name})
@@ -111,9 +111,9 @@ class DeliveryManualWeighingWizard(models.TransientModel):
                 raise ValidationError(_(
                     "Lot %(lot)s already has an applied stock adjustment."
                 ) % {"lot": target.lot_id.display_name})
-            if wizard_line.physical_qty <= 0.0:
+            if wizard_line.physical_qty < 0.0:
                 raise ValidationError(_(
-                    "Physical Weight must be greater than zero for lot %(lot)s."
+                    "Physical Weight cannot be negative for lot %(lot)s."
                 ) % {"lot": target.lot_id.display_name})
             if not wizard_line.weighing_location_id:
                 raise ValidationError(_(

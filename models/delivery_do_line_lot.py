@@ -231,7 +231,7 @@ class DeliveryDoLineLot(models.Model):
 
     def _has_weighing_input(self):
         self.ensure_one()
-        return self.wt_is_pulled or self.wt_weighing_source == "manual"
+        return self.wt_is_pulled or bool(self.wt_weighing_source)
 
     @api.depends(
         "wt_is_pulled",
@@ -239,10 +239,11 @@ class DeliveryDoLineLot(models.Model):
         "wt_physical_qty",
         "wt_original_qty",
         "qty",
+        "wt_weighed_at",
     )
     def _compute_wt_difference_qty(self):
         for line in self:
-            if not line._has_weighing_input() or line.wt_physical_qty <= 0.0:
+            if not line.wt_weighing_source or line.qty <= 0.0:
                 line.wt_difference_qty = 0.0
                 continue
             demand = line.wt_original_qty if line.wt_original_qty > 0.0 else line.qty
@@ -253,7 +254,7 @@ class DeliveryDoLineLot(models.Model):
         for line in self:
             if not line._has_weighing_input() or line.qty <= 0.0:
                 line.wt_weighing_status = "not_pulled"
-            elif line.wt_physical_qty > 0.0:
+            elif line.wt_weighing_source:
                 line.wt_weighing_status = "weighed"
             else:
                 line.wt_weighing_status = "unweighed"

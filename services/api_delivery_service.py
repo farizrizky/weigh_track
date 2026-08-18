@@ -77,7 +77,7 @@ class ApiDeliveryService(models.AbstractModel):
                         and lot_line.do_line_id.operator_id == device.employee_id
                     )
                 )
-                and lot_line.wt_physical_qty == 0.0
+                and not lot_line.wt_weighing_source
             ):
                 location = line.location_id
                 lines_data.append({
@@ -238,8 +238,8 @@ class ApiDeliveryService(models.AbstractModel):
             except (ValueError, TypeError):
                 errors.append(_("Nilai physical_qty tidak valid pada line %s.") % delivery_lot_line_id)
                 continue
-            if qty <= 0.0:
-                errors.append(_("Nilai physical_qty harus lebih dari 0 pada line %s.") % delivery_lot_line_id)
+            if qty < 0.0:
+                errors.append(_("Nilai physical_qty tidak boleh kurang dari 0 pada line %s.") % delivery_lot_line_id)
                 continue
 
             if not weighed_at:
