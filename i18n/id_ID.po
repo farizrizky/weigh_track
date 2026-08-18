@@ -4142,8 +4142,13 @@ msgstr "Terapkan Penimbangan Manual"
 
 #. module: weightrack
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_manual_weighing_wizard_form
-msgid "Manual input only applies to unweighed lots. A reason is required, and the weighing time must use the Delivery Effective Date."
-msgstr "Input manual hanya berlaku untuk lot yang belum ditimbang. Alasan wajib diisi, dan waktu timbang harus menggunakan Tanggal Efektif Delivery."
+msgid "Manual input can create weighing data for unweighed lots or correct existing manual weighing before the delivery plan is validated. A reason is required, and the weighing time must use the Delivery Effective Date."
+msgstr "Input manual dapat membuat data timbang untuk lot yang belum ditimbang atau mengoreksi penimbangan manual yang sudah ada sebelum rencana DO divalidasi. Alasan wajib diisi, dan waktu timbang harus menggunakan Tanggal Efektif Delivery."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_manual_weighing_wizard_line__is_existing_manual
+msgid "Existing Manual"
+msgstr "Manual Tersimpan"
 
 #. module: weightrack
 #: code:addons/weightrack/models/delivery.py:0
@@ -4160,6 +4165,31 @@ msgstr "Alasan Input Manual wajib diisi."
 #: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
 msgid "Select at least one weighing line."
 msgstr "Pilih minimal satu baris penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery.py:0
+msgid "No unweighed or manually weighed delivery lot is available for manual input."
+msgstr "Tidak ada lot delivery yang belum ditimbang atau sudah ditimbang manual untuk input manual."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Lot %(lot)s belongs to a validated delivery plan and cannot be changed manually."
+msgstr "Lot %(lot)s berada pada rencana DO yang sudah divalidasi dan tidak dapat diubah manual."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Lot %(lot)s already has device weighing data and cannot be overwritten manually."
+msgstr "Lot %(lot)s sudah memiliki data timbang dari perangkat dan tidak dapat ditimpa manual."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "No manual weighing changes to apply."
+msgstr "Tidak ada perubahan penimbangan manual untuk diterapkan."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Reset difference allocation for:"
+msgstr "Reset alokasi selisih untuk:"
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_stock_movement_date_correction

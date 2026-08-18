@@ -1165,8 +1165,15 @@ class Delivery(models.Model):
         self.ensure_one()
         return self.do_lot_line_ids.filtered(
             lambda line: line.qty > 0.0
-            and line.wt_physical_qty <= 0.0
             and not line.wt_adjustment_applied
+            and line.do_line_id.picking_state != "done"
+            and (
+                line.wt_weighing_source == "manual"
+                or (
+                    line.wt_physical_qty <= 0.0
+                    and line.wt_weighing_source != "device"
+                )
+            )
         )
 
     def action_open_manual_weighing(self):
@@ -1181,7 +1188,7 @@ class Delivery(models.Model):
             ))
         if not self._get_manual_weighing_candidates():
             raise ValidationError(_(
-                "No unweighed delivery lot is available for manual input."
+                "No unweighed or manually weighed delivery lot is available for manual input."
             ))
         return {
             "name": _("Manual Delivery Weighing"),

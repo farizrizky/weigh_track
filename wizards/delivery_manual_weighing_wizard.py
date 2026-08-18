@@ -53,6 +53,10 @@ class DeliveryManualWeighingWizard(models.TransientModel):
         else:
             effective_datetime = fields.Datetime.now()
         commands = []
+        has_existing_manual = any(
+            lot_line.wt_weighing_source == "manual"
+            for lot_line in delivery._get_manual_weighing_candidates()
+        )
         for lot_line in delivery._get_manual_weighing_candidates().sorted(
             lambda line: (
                 line.do_line_id.sequence or 0,
@@ -63,11 +67,15 @@ class DeliveryManualWeighingWizard(models.TransientModel):
             weighing_location = lot_line.weighing_location_id
             if not weighing_location and len(lot_line.allowed_weighing_location_ids) == 1:
                 weighing_location = lot_line.allowed_weighing_location_ids[:1]
+            is_existing_manual = lot_line.wt_weighing_source == "manual"
             commands.append((0, 0, {
-                "selected": True,
+                "selected": not has_existing_manual,
                 "do_lot_line_id": lot_line.id,
+                "is_existing_manual": is_existing_manual,
                 "weighing_location_id": weighing_location.id,
-                "weighed_at": effective_datetime,
+                "physical_qty": lot_line.wt_physical_qty if is_existing_manual else 0.0,
+                "weighed_at": lot_line.wt_weighed_at or effective_datetime,
+                "note": lot_line.wt_note or False,
             }))
         values["delivery_id"] = delivery.id
         values["line_ids"] = commands
@@ -102,7 +110,15 @@ class DeliveryManualWeighingWizard(models.TransientModel):
                 raise ValidationError(_(
                     "A selected weighing line no longer belongs to this delivery."
                 ))
-            if target.wt_physical_qty > 0.0 or target.wt_weighing_source:
+            if target.do_line_id.picking_state == "done":
+                raise ValidationError(_(
+                    "Lot %(lot)s belongs to a validated delivery plan and cannot be changed manually."
+                ) % {"lot": target.lot_id.display_name})
+            if target.wt_weighing_source and target.wt_weighing_source != "manual":
+                raise ValidationError(_(
+                    "Lot %(lot)s already has device weighing data and cannot be overwritten manually."
+                ) % {"lot": target.lot_id.display_name})
+            if target.wt_physical_qty > 0.0 and target.wt_weighing_source != "manual":
                 raise ValidationError(_(
                     "Lot %(lot)s already has weighing data and cannot be overwritten manually."
                 ) % {"lot": target.lot_id.display_name})
@@ -145,12 +161,32 @@ class DeliveryManualWeighingWizard(models.TransientModel):
                     "lot": target.lot_id.display_name,
                     "date": delivery.date,
                 })
-            prepared_values.append((wizard_line, target))
+            note = wizard_line.note or False
+            weighed_at = fields.Datetime.to_datetime(wizard_line.weighed_at)
+            is_existing_manual = target.wt_weighing_source == "manual"
+            is_changed = (
+                not is_existing_manual
+                or abs((target.wt_physical_qty or 0.0) - wizard_line.physical_qty) > 0.001
+                or target.weighing_location_id != wizard_line.weighing_location_id
+                or fields.Datetime.to_datetime(target.wt_weighed_at) != weighed_at
+                or (target.wt_note or False) != note
+            )
+            if is_changed:
+                prepared_values.append((wizard_line, target, is_existing_manual))
+
+        if not prepared_values:
+            raise ValidationError(_("No manual weighing changes to apply."))
 
         input_at = fields.Datetime.now()
         reason = self.reason.strip()
         detail_lines = []
-        for wizard_line, target in prepared_values:
+        reset_allocation_lines = []
+        for wizard_line, target, is_existing_manual in prepared_values:
+            old_qty = target.wt_physical_qty or 0.0
+            weight_changed = abs(old_qty - wizard_line.physical_qty) > 0.001
+            if is_existing_manual and weight_changed and target.wt_allocation_ids:
+                target.wt_allocation_ids.unlink()
+                reset_allocation_lines.append(target.lot_id.display_name)
             target.write({
                 "weighing_location_id": wizard_line.weighing_location_id.id,
                 "wt_physical_qty": wizard_line.physical_qty,
@@ -161,10 +197,27 @@ class DeliveryManualWeighingWizard(models.TransientModel):
                 "wt_manual_input_at": input_at,
                 "wt_manual_reason": reason,
             })
+            if is_existing_manual:
+                detail_lines.append(
+                    "%s: %.4f kg -> %.4f kg" % (
+                        target.lot_id.display_name,
+                        old_qty,
+                        wizard_line.physical_qty,
+                    )
+                )
+            else:
+                detail_lines.append(
+                    "%s: %.4f kg" % (
+                        target.lot_id.display_name,
+                        wizard_line.physical_qty,
+                    )
+                )
+
+        if reset_allocation_lines:
             detail_lines.append(
-                "%s: %.4f kg" % (
-                    target.lot_id.display_name,
-                    wizard_line.physical_qty,
+                "%s %s" % (
+                    _("Reset difference allocation for:"),
+                    ", ".join(reset_allocation_lines),
                 )
             )
 
@@ -199,6 +252,10 @@ class DeliveryManualWeighingWizardLine(models.TransientModel):
     selected = fields.Boolean(
         string="Select",
         default=True,
+    )
+    is_existing_manual = fields.Boolean(
+        string="Existing Manual",
+        readonly=True,
     )
     do_lot_line_id = fields.Many2one(
         "wt.delivery.do.line.lot",
@@ -250,3 +307,8 @@ class DeliveryManualWeighingWizardLine(models.TransientModel):
     note = fields.Char(
         string="Notes",
     )
+
+    @api.onchange("weighing_location_id", "physical_qty", "weighed_at", "note")
+    def _onchange_mark_selected(self):
+        for line in self:
+            line.selected = True
