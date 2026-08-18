@@ -87,6 +87,7 @@ class Delivery(models.Model):
         "res.partner",
         string="Customer",
         tracking=True,
+        domain="[('is_company', '=', True)]",
         help="Partner/Customer tujuan pengiriman akhir (untuk Outgoing DO final).",
     )
     route_id = fields.Many2one(

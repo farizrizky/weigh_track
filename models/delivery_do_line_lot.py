@@ -435,6 +435,10 @@ class DeliveryDoLineLot(models.Model):
                 raise ValidationError(_(
                     "Lot Transit %s wajib dipakai oleh rute pengiriman berikutnya dan tidak dapat dihapus."
                 ) % (rec.lot_id.name or rec.display_name))
+            if rec._has_weighing_input():
+                raise ValidationError(_(
+                    "Baris lot %s tidak dapat dihapus karena statusnya sudah di-pull oleh operator timbang."
+                ) % (rec.lot_id.name or rec.display_name))
             if rec.do_line_id and rec.do_line_id.picking_id:
                 picking = rec.do_line_id.picking_id
                 if picking.state not in ("done", "cancel"):
@@ -454,6 +458,12 @@ class DeliveryDoLineLot(models.Model):
         return records
 
     def write(self, vals):
+        if "do_line_id" in vals and not vals["do_line_id"]:
+            for rec in self:
+                if rec._has_weighing_input():
+                    raise ValidationError(_(
+                        "Baris lot '%s' tidak dapat dihapus karena statusnya sudah di-pull oleh operator timbang."
+                    ) % (rec.lot_id.name or rec.display_name))
         if "qty" in vals and "wt_original_qty" not in vals and not vals.get("wt_adjustment_applied"):
             # Jika qty diubah manual oleh user (bukan dari adjustment),
             # rekam juga ke wt_original_qty untuk record yang belum di-adjust.
@@ -499,6 +509,15 @@ class DeliveryDoLineLot(models.Model):
                 ) % (rec.lot_id.name or rec.display_name, required_qty))
 
 
+
+    def action_remove_line(self):
+        """Hapus baris lot yang belum di-pull."""
+        self.ensure_one()
+        if self._has_weighing_input():
+            raise ValidationError(_(
+                "Baris lot '%s' tidak dapat dihapus karena statusnya sudah di-pull oleh operator timbang."
+            ) % (self.lot_id.name or self.display_name))
+        return self.unlink()
 
     def action_configure_allocation(self):
         """Buka popup alokasi selisih untuk lot rencana DO."""

@@ -1018,7 +1018,7 @@ Dampaknya:
 - Source Location pada route line dibatasi berdasarkan warehouse dari Operation Type.
 - Saat Delivery memilih Route dan dikonfirmasi, sistem membuat baris Rencana DO dari route line.
 - Baris Rencana DO tidak bisa ditambah manual dari form Delivery; struktur mengikuti master Route.
-- Detail Rencana DO hanya bisa diatur saat header Delivery berstatus `confirmed` atau `in_progress`.
+- Detail Rencana DO (lot, demand, operator) sudah dapat diatur sejak status `draft` (New) agar operator Odoo dapat menyelesaikan penataan lot sebelum dikonfirmasi ke operator timbang.
 
 Status header Delivery:
 

@@ -155,7 +155,11 @@
                                    required="is_backdated"
                                    readonly="state != 'draft'"
                                    invisible="not is_backdated or state != 'draft'"/>
-                            <field name="partner_id" readonly="state not in ('draft', 'confirmed')" required="1"/>
+                            <field name="partner_id"
+                                   readonly="state not in ('draft', 'confirmed')"
+                                   options="{'no_create': True}"
+                                   domain="[('is_company', '=', True)]"
+                                   required="1"/>
                             <field name="route_id"
                                    options="{'no_create': True}"
                                    readonly="state != 'draft'"
@@ -194,10 +198,10 @@
                         <!-- Tab 2: Route -->
                         <page string="Route">
 
-                            <!-- ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ SECTION A: Rencana DO (hanya saat Draft & Confirmed) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ -->
+                            <!--  SECTION A: Rencana DO (hanya saat Draft & Confirmed)  -->
                             <!-- Tabel Rencana DO (satu field, perilaku berubah berdasarkan state) -->
                             <field name="do_line_ids"
-                                   readonly="state not in ('confirmed', 'in_progress')"
+                                   readonly="state not in ('draft', 'confirmed', 'in_progress')"
                                    context="{'default_delivery_id': id, 'default_company_id': company_id, 'default_route_id': route_id, 'default_partner_id': partner_id}">
                                 <list string="Delivery Plan"
                                       create="false"
@@ -230,7 +234,7 @@
                                     <field name="scheduled_date"
                                            string="Scheduled Date"
                                            optional="hide"/>
-                                    <!-- Kolom hasil generate ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â hanya tampil setelah done -->
+                                    <!-- Kolom hasil generate — hanya tampil setelah done -->
                                     <field name="picking_id"
                                            string="Created DO"
                                            options="{'no_open': False}"
@@ -271,7 +275,7 @@
                                                  string="Load Lots from Source Location"
                                                  type="object"
                                                  class="btn-secondary"
-                                                 invisible="picking_state == 'done' or parent.state not in ('confirmed', 'in_progress')"
+                                                 invisible="picking_state == 'done' or parent.state != 'draft'"
                                                  confirm="Existing lot details will be replaced based on available stock in the source location and all child locations. Continue?"/>
                                          <button name="action_validate_line"
                                                  string="Validate Delivery Plan"
@@ -337,8 +341,8 @@
                                                        readonly="picking_state == 'done'"/>
                                                 <field name="scheduled_date"
                                                        readonly="picking_state == 'done'"/>
-                                            </group>
-                                            <group string="Stock Information">
+                                             </group>
+                                             <group string="Stock Information">
                                                 <field name="demand_qty" force_save="1"
                                                        string="Demand (kg)"
                                                        readonly="picking_state == 'done'"/>
@@ -350,48 +354,48 @@
                                                        readonly="1"
                                                        options="{'no_open': False}"
                                                        invisible="not generated_transit_lot_id"/>
-                                            </group>
-                                        </group>
-                                        <notebook>
-                                            <page string="Lot Details">
-                                                <field name="lot_line_ids" context="{'default_do_line_id': id}"
-                                                       readonly="picking_state == 'done'">
-                                                    <list string="Lot Details" editable="bottom">
-                                                        <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}"/>
-                                                        <field name="location_id" readonly="1" string="Location"/>
-                                                        <field name="allowed_weighing_location_ids" column_invisible="1"/>
-                                                        <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location"/>
-                                                        <field name="operator_id" readonly="1" string="Operator"/>
-                                                        <field name="wt_qty_on_hand" readonly="1" string="Physical Stock (kg)"/>
-                                                        <field name="wt_qty_reserved" readonly="1" string="Reserved (kg)"/>
-                                                        <field name="qty_available" readonly="1" string="Available Stock (kg)"/>
-                                                        <field name="qty" string="Demand (kg)"/>
-                                                        <field name="wt_demand_coverage"
-                                                                string="Cakupan"
-                                                                readonly="1"
-                                                                widget="badge"
-                                                                decoration-warning="wt_demand_coverage == 'all'"
-                                                                decoration-success="wt_demand_coverage == 'partial'"/>
-                                                        <field name="wt_is_pulled" column_invisible="1"/>
-                                                        <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1" optional="show"/>
-                                                        <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
-                                                        <field name="wt_weighing_source" string="Weighing Source" readonly="1" optional="show"/>
-                                                        <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
-                                                               decoration-success="wt_weighing_status == 'weighed'"
-                                                               decoration-warning="wt_weighing_status == 'unweighed'"
-                                                               decoration-info="wt_weighing_status == 'not_pulled'"
-                                                               optional="show"/>
-                                                        <field name="wt_difference_qty" string="Difference (kg)" readonly="1" optional="show"/>
-                                                        <field name="wt_note" string="Notes" optional="hide"/>
-                                                    </list>
-                                                </field>
-                                            </page>
-                                            <page string="Document Information">
-                                                <group>
-                                                    <group string="Expedition">
-                                                        <field name="driver_name"/>
-                                                        <field name="vehicle_plate"/>
-                                                        <field name="tare_qty"/>
+                                             </group>
+                                         </group>
+                                         <notebook>
+                                             <page string="Lot Details">
+                                                 <field name="lot_line_ids" context="{'default_do_line_id': id}"
+                                                        readonly="picking_state == 'done'">
+                                                     <list string="Lot Details" editable="bottom">
+                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}" readonly="wt_is_pulled"/>
+                                                         <field name="location_id" readonly="1" string="Location"/>
+                                                         <field name="allowed_weighing_location_ids" column_invisible="1"/>
+                                                         <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location" readonly="wt_is_pulled"/>
+                                                         <field name="operator_id" readonly="1" string="Operator"/>
+                                                         <field name="wt_qty_on_hand" readonly="1" string="Physical Stock (kg)"/>
+                                                         <field name="wt_qty_reserved" readonly="1" string="Reserved (kg)"/>
+                                                         <field name="qty_available" readonly="1" string="Available Stock (kg)"/>
+                                                         <field name="qty" string="Demand (kg)"/>
+                                                         <field name="wt_demand_coverage"
+                                                                 string="Cakupan"
+                                                                 readonly="1"
+                                                                 widget="badge"
+                                                                 decoration-warning="wt_demand_coverage == 'all'"
+                                                                 decoration-success="wt_demand_coverage == 'partial'"/>
+                                                         <field name="wt_is_pulled" column_invisible="1"/>
+                                                         <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1" optional="show"/>
+                                                         <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
+                                                         <field name="wt_weighing_source" string="Weighing Source" readonly="1" optional="show"/>
+                                                         <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
+                                                                decoration-success="wt_weighing_status == 'weighed'"
+                                                                decoration-warning="wt_weighing_status == 'unweighed'"
+                                                                decoration-info="wt_weighing_status == 'not_pulled'"
+                                                                optional="show"/>
+                                                         <field name="wt_difference_qty" string="Difference (kg)" readonly="1" optional="show"/>
+                                                         <field name="wt_note" string="Notes" optional="hide"/>
+                                                     </list>
+                                                 </field>
+                                             </page>
+                                             <page string="Document Information">
+                                                 <group>
+                                                     <group string="Expedition">
+                                                         <field name="driver_name"/>
+                                                         <field name="vehicle_plate"/>
+                                                         <field name="tare_qty"/>
                                                         <field name="handover_date"/>
                                                         <field name="actual_physical_qty" readonly="1"/>
                                                         <field name="gross_qty" readonly="1"/>

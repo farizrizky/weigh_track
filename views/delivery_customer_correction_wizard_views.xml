@@ -12,6 +12,7 @@
                         <field name="new_partner_id"
                                string="Customer Baru"
                                options="{'no_create': True}"
+                               domain="[('is_company', '=', True)]"
                                placeholder="Pilih customer baru..."/>
                         <field name="reason"
                                string="Alasan Koreksi"

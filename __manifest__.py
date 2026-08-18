@@ -81,6 +81,11 @@
 
         "views/menu.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "weightrack/static/src/css/delivery.css",
+        ],
+    },
     "application": True,
     "installable": True,
 }

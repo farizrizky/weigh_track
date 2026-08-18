@@ -917,6 +917,24 @@ class DeliveryDoLine(models.Model):
 
     def write(self, vals):
         """Saat do_line di-update, pastikan delivery juga di-touch."""
+        if "lot_line_ids" in vals:
+            for line in self:
+                for cmd in vals["lot_line_ids"]:
+                    if isinstance(cmd, (tuple, list)):
+                        cmd_type = cmd[0]
+                        if cmd_type in (2, 3):
+                            lot_rec = self.env["wt.delivery.do.line.lot"].browse(cmd[1])
+                            if lot_rec.exists() and lot_rec._has_weighing_input():
+                                raise ValidationError(_(
+                                    "Baris lot '%s' tidak dapat dihapus karena statusnya sudah di-pull oleh operator timbang."
+                                ) % (lot_rec.lot_id.name or lot_rec.display_name))
+                        elif cmd_type == 5:
+                            pulled = line.lot_line_ids.filtered(lambda l: l._has_weighing_input())
+                            if pulled:
+                                names = ", ".join(pulled.mapped(lambda l: l.lot_id.name or l.display_name))
+                                raise ValidationError(_(
+                                    "Baris lot (%s) tidak dapat dihapus karena statusnya sudah di-pull oleh operator timbang."
+                                ) % names)
         vals = self._apply_route_line_vals(vals)
         if "delivery_id" in vals and "product_id" not in vals:
             delivery = self.env["wt.delivery"].browse(vals["delivery_id"])
@@ -1444,9 +1462,26 @@ class DeliveryDoLine(models.Model):
 
     @api.onchange("lot_line_ids")
     def _onchange_lot_line_ids(self):
+        # Validasi jika baris lot yang sudah di-pull dihapus secara interaktif di UI
+        warning_result = None
+        if self._origin:
+            persisted_pulled_lots = self._origin.lot_line_ids.filtered(lambda l: l._has_weighing_input())
+            current_origin_ids = {l._origin.id for l in self.lot_line_ids if l._origin}
+            deleted_pulled = persisted_pulled_lots.filtered(lambda p: p.id not in current_origin_ids)
+            if deleted_pulled:
+                # Pulihkan kembali baris lot yang sudah di-pull agar tidak hilang di layar UI
+                self.lot_line_ids = self.lot_line_ids | deleted_pulled
+                names = ", ".join(deleted_pulled.mapped(lambda l: l.lot_id.name or l.display_name))
+                warning_result = {
+                    "title": _("Tidak Dapat Dihapus"),
+                    "message": _(
+                        "Baris lot '%s' tidak dapat dihapus karena statusnya sudah di-pull oleh operator timbang."
+                    ) % names,
+                }
+
         # Validasi interaktif saat user mengedit atau menambah lot di UI (sebelum disave ke DB)
         if not self.lot_line_ids:
-            return
+            return {"warning": warning_result} if warning_result else None
         
         # Kelompokkan baris berdasarkan lot_id
         lot_groups = {}
@@ -1497,6 +1532,9 @@ class DeliveryDoLine(models.Model):
                     f"{total_on_hand:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
                     f"{other_active_qty:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
                 ))
+
+        if warning_result:
+            return {"warning": warning_result}
 
     def action_validate_line(self):
         """Validasi baris DO ini secara mandiri (membuat & memvalidasi stock.picking)."""
