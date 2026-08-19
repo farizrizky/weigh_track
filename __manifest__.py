@@ -84,6 +84,7 @@
     "assets": {
         "web.assets_backend": [
             "weightrack/static/src/css/delivery.css",
+            "weightrack/static/src/js/delivery_auto_save.js",
         ],
     },
     "application": True,

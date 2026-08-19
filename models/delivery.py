@@ -161,7 +161,7 @@ class Delivery(models.Model):
     # â”€â”€ Detail Timbang Rencana DO (alur baru) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     do_lot_line_ids = fields.One2many(
         "wt.delivery.do.line.lot",
-        compute="_compute_do_lot_line_ids",
+        "delivery_id",
         string="All Delivery Plan Lot Details",
     )
     pulled_do_lot_line_ids = fields.One2many(
@@ -291,41 +291,49 @@ class Delivery(models.Model):
     @api.onchange("partner_id")
     def _onchange_partner_id_update_do_lines(self):
         for delivery in self:
+            if not delivery.partner_id:
+                continue
             for line in delivery.do_line_ids:
-                if not line.partner_id:
+                if not line.partner_id or line.partner_id != delivery.partner_id:
                     line.partner_id = delivery.partner_id
 
     @api.onchange("product_id")
     def _onchange_product_id_update_do_lines(self):
         for delivery in self:
+            if not delivery.product_id:
+                continue
             for line in delivery.do_line_ids:
-                if not line.product_id:
+                if not line.product_id or line.product_id != delivery.product_id:
                     line.product_id = delivery.product_id
 
     @api.onchange("date")
     def _onchange_date_update_do_lines(self):
         for delivery in self:
             scheduled_date = delivery._get_planned_movement_datetime()
-            for line in delivery.do_line_ids.filtered(
-                lambda route_line: route_line.picking_state != "done"
-            ):
-                line.scheduled_date = scheduled_date
+            for line in delivery.do_line_ids:
+                if line.picking_state != "done" and line.scheduled_date != scheduled_date:
+                    line.scheduled_date = scheduled_date
 
     @api.depends(
         "do_line_ids.lot_line_ids.wt_is_pulled",
         "do_line_ids.lot_line_ids.wt_weighing_source",
         "do_line_ids.lot_line_ids.qty",
+        "do_line_ids.lot_line_ids.wt_is_cancelled",
     )
     def _compute_do_lot_line_ids(self):
         for delivery in self:
             all_lots = delivery.do_line_ids.mapped("lot_line_ids")
-            delivery.do_lot_line_ids = all_lots
             delivery.pulled_do_lot_line_ids = all_lots.filtered(
-                lambda line: line._has_weighing_input() and line.qty > 0
+                lambda line: line._has_weighing_input() and line.qty > 0 and not line.wt_is_cancelled
             )
             delivery.unpulled_do_lot_line_ids = all_lots.filtered(
-                lambda line: not line._has_weighing_input() and line.qty > 0
+                lambda line: not line._has_weighing_input() and line.qty > 0 and not line.wt_is_cancelled
             )
+
+    @api.onchange("do_line_ids")
+    def _onchange_do_line_ids_sync_lots(self):
+        for delivery in self:
+            delivery._compute_totals()
 
     @api.depends(
         "do_line_ids.lot_line_ids.qty",
@@ -333,11 +341,12 @@ class Delivery(models.Model):
         "do_line_ids.lot_line_ids.wt_physical_qty",
         "do_line_ids.lot_line_ids.wt_is_pulled",
         "do_line_ids.lot_line_ids.wt_weighing_source",
+        "do_line_ids.lot_line_ids.wt_is_cancelled",
     )
     def _compute_totals(self):
         for rec in self:
             active_lots = rec.do_lot_line_ids.filtered(
-                lambda line: line._has_weighing_input()
+                lambda line: line._has_weighing_input() and not line.wt_is_cancelled
             )
             rec.total_difference_qty = sum(active_lots.mapped("wt_difference_qty"))
             outgoing_lots = active_lots.filtered(
@@ -360,6 +369,7 @@ class Delivery(models.Model):
         "do_line_ids.lot_line_ids.wt_adjustment_applied",
         "do_line_ids.lot_line_ids.wt_is_pulled",
         "do_line_ids.lot_line_ids.wt_weighing_source",
+        "do_line_ids.lot_line_ids.wt_is_cancelled",
     )
     def _compute_has_adjustable_lines(self):
         for rec in self:
@@ -368,6 +378,7 @@ class Delivery(models.Model):
                 and l.wt_is_fully_allocated
                 and not l.wt_adjustment_applied
                 and l._has_weighing_input()
+                and not l.wt_is_cancelled
                 for l in rec.do_lot_line_ids
             )
 
@@ -523,11 +534,12 @@ class Delivery(models.Model):
         "do_line_ids.lot_line_ids.wt_is_pulled",
         "do_line_ids.lot_line_ids.wt_weighing_source",
         "do_line_ids.lot_line_ids.qty",
+        "do_line_ids.lot_line_ids.wt_is_cancelled",
     )
     def _compute_wt_has_unpulled_lines(self):
         for rec in self:
             rec.wt_has_unpulled_lines = any(
-                not l._has_weighing_input() and l.qty > 0
+                not l._has_weighing_input() and l.qty > 0 and not l.wt_is_cancelled
                 for l in rec.do_lot_line_ids
             )
 
@@ -549,6 +561,9 @@ class Delivery(models.Model):
                     vals["product_id"] = product.id
         records = super().create(vals_list)
         for record in records:
+            # Invalidate cache ORM agar pembacaan do_line_ids dari DB, bukan cache.
+            # Ini mencegah false-negative saat onchange sudah menyertakan do_line_ids.
+            record.invalidate_recordset(["do_line_ids"])
             if record.route_id and not record.do_line_ids:
                 record.write({
                     "do_line_ids": record._prepare_route_do_line_commands(record.route_id),
@@ -576,8 +591,9 @@ class Delivery(models.Model):
                 vals = dict(vals, product_id=product.id)
         route_changed = "route_id" in vals
         date_changed = "date" in vals
+        do_lines_provided = "do_line_ids" in vals
         result = super().write(vals)
-        if route_changed:
+        if route_changed and not do_lines_provided:
             for record in self.filtered(lambda delivery: delivery.state == "draft"):
                 if record.route_id:
                     record.write({

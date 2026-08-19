@@ -23,6 +23,16 @@ class DeliveryDoLineLot(models.Model):
         readonly=True,
         index=True,
     )
+    delivery_state = fields.Selection(
+        related="delivery_id.state",
+        string="Delivery State",
+        readonly=True,
+    )
+    picking_state = fields.Selection(
+        related="do_line_id.picking_state",
+        string="Picking State",
+        readonly=True,
+    )
     company_id = fields.Many2one(
         "res.company",
         related="do_line_id.company_id",
@@ -133,6 +143,7 @@ class DeliveryDoLineLot(models.Model):
             ("not_pulled", "Not Pulled"),
             ("unweighed", "Unweighed"),
             ("weighed", "Weighed"),
+            ("cancelled", "Dibatalkan"),
         ],
         string="Weighing Status",
         compute="_compute_wt_weighing_status",
@@ -184,6 +195,12 @@ class DeliveryDoLineLot(models.Model):
         string="Pulled",
         default=False,
         copy=False,
+    )
+    wt_is_cancelled = fields.Boolean(
+        string="Cancelled",
+        default=False,
+        copy=False,
+        index=True,
     )
 
     # ── Alokasi Selisih ───────────────────────────────────────────────────────
@@ -249,10 +266,12 @@ class DeliveryDoLineLot(models.Model):
             demand = line.wt_original_qty if line.wt_original_qty > 0.0 else line.qty
             line.wt_difference_qty = line.wt_physical_qty - demand
 
-    @api.depends("wt_is_pulled", "wt_weighing_source", "wt_physical_qty", "qty")
+    @api.depends("wt_is_pulled", "wt_weighing_source", "wt_physical_qty", "qty", "wt_is_cancelled")
     def _compute_wt_weighing_status(self):
         for line in self:
-            if not line._has_weighing_input() or line.qty <= 0.0:
+            if line.wt_is_cancelled:
+                line.wt_weighing_status = "cancelled"
+            elif not line._has_weighing_input() or line.qty <= 0.0:
                 line.wt_weighing_status = "not_pulled"
             elif line.wt_weighing_source:
                 line.wt_weighing_status = "weighed"
@@ -265,6 +284,7 @@ class DeliveryDoLineLot(models.Model):
         "product_id",
         "do_line_id.lot_line_ids.qty",
         "do_line_id.lot_line_ids.lot_id",
+        "do_line_id.lot_line_ids.wt_is_cancelled",
     )
     def _compute_qty_available(self):
         for rec in self:
@@ -285,13 +305,14 @@ class DeliveryDoLineLot(models.Model):
                 # jika ada picking lama yang belum ter-cancel.
 
                 # Hitung demand dari baris-baris LAIN dalam satu Rencana DO yang menggunakan
-                # lot yang sama. Gunakan in-memory lot_line_ids (bukan query DB) agar
+                # lot yang sama (dan tidak berstatus cancel). Gunakan in-memory lot_line_ids (bukan query DB) agar
                 # baris yang sedang dihapus (belum di-commit) tidak ikut dihitung.
                 # Gunakan _origin untuk mendapatkan ID yang sudah tersimpan, agar baris
                 # baru (ID negatif/virtual) tidak salah dikecualikan.
                 origin_id = rec._origin.id if rec._origin else rec.id
                 other_lines = rec.do_line_id.lot_line_ids.filtered(
                     lambda l: l.lot_id == rec.lot_id
+                    and not l.wt_is_cancelled
                     and (l._origin.id if l._origin else l.id) != origin_id
                 )
                 other_planned_qty = sum(other_lines.mapped("qty"))
@@ -316,12 +337,13 @@ class DeliveryDoLineLot(models.Model):
 
                 active_do_lines = self.env["wt.delivery.do.line"].search(active_do_line_domain)
 
-                # Step 2: Cari lot_lines untuk lot ini di do_lines yang ditemukan.
+                # Step 2: Cari lot_lines untuk lot ini di do_lines yang ditemukan (kecualikan lot yang dibatalkan).
                 #         Pakai ("do_line_id", "in", ids) — direct IN clause, pasti reliable.
                 if active_do_lines:
                     other_active_lines = self.env["wt.delivery.do.line.lot"].search([
                         ("lot_id", "=", rec.lot_id.id),
                         ("do_line_id", "in", active_do_lines.ids),
+                        ("wt_is_cancelled", "=", False),
                     ])
                     other_active_qty = sum(other_active_lines.mapped("qty"))
                 else:
@@ -518,6 +540,32 @@ class DeliveryDoLineLot(models.Model):
                 "Baris lot '%s' tidak dapat dihapus karena statusnya sudah di-pull oleh operator timbang."
             ) % (self.lot_id.name or self.display_name))
         return self.unlink()
+
+    def action_cancel_lot(self):
+        """Batalkan baris lot rencana DO yang sudah di-pull."""
+        for rec in self:
+            if rec.do_line_id and rec.do_line_id.picking_id and rec.do_line_id.picking_id.state == "done":
+                raise ValidationError(_("Tidak dapat membatalkan lot karena Rencana DO sudah selesai divalidasi."))
+            rec.write({
+                "wt_is_cancelled": True,
+                "wt_weighing_status": "cancelled",
+            })
+            if rec.delivery_id:
+                rec.delivery_id.modified(["do_lot_line_ids", "total_demand_qty", "total_physical_qty", "total_difference_qty"])
+        return False
+
+    def action_uncancel_lot(self):
+        """Aktifkan kembali baris lot rencana DO yang sebelumnya dibatalkan."""
+        for rec in self:
+            if rec.do_line_id and rec.do_line_id.picking_id and rec.do_line_id.picking_id.state == "done":
+                raise ValidationError(_("Tidak dapat mengaktifkan kembali lot karena Rencana DO sudah selesai divalidasi."))
+            rec.write({
+                "wt_is_cancelled": False,
+            })
+            rec._compute_wt_weighing_status()
+            if rec.delivery_id:
+                rec.delivery_id.modified(["do_lot_line_ids", "total_demand_qty", "total_physical_qty", "total_difference_qty"])
+        return False
 
     def action_configure_allocation(self):
         """Buka popup alokasi selisih untuk lot rencana DO."""

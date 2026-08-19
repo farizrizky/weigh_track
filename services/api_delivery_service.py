@@ -68,16 +68,25 @@ class ApiDeliveryService(models.AbstractModel):
             lines_data = []
             pulled_line_ids = []
 
-            for line in delivery.do_lot_line_ids.filtered(
-                lambda lot_line: lot_line.qty > 0
-                and (
+            def _is_operator_lot(lot_line):
+                """Cek apakah lot ini milik operator device ini."""
+                return (
                     lot_line.operator_id == device.employee_id
                     or (
                         not lot_line.operator_id
                         and lot_line.do_line_id.operator_id == device.employee_id
                     )
                 )
-                and not lot_line.wt_weighing_source
+
+            for line in delivery.do_lot_line_ids.filtered(
+                lambda lot_line: lot_line.qty > 0
+                and _is_operator_lot(lot_line)
+                and (
+                    # Lot belum ditimbang (akan di-pull)
+                    not lot_line.wt_weighing_source
+                    # Atau lot sudah pernah di-pull dan dibatalkan (perlu dikirim agar app tau)
+                    or (lot_line.wt_is_cancelled and lot_line.wt_is_pulled)
+                )
             ):
                 location = line.location_id
                 lines_data.append({
@@ -100,9 +109,12 @@ class ApiDeliveryService(models.AbstractModel):
                     "weighing_location_name": line.weighing_location_id.display_name or "",
                     "operator_employee_id": line.operator_id.id or line.do_line_id.operator_id.id or False,
                     "operator_name": line.operator_id.name or line.do_line_id.operator_id.name or "",
+                    "is_cancelled": bool(line.wt_is_cancelled),
+                    "status": line.wt_weighing_status or "not_pulled",
                 })
 
-                pulled_line_ids.append(line.id)
+                if not line.wt_is_cancelled:
+                    pulled_line_ids.append(line.id)
 
             if pulled_line_ids:
                 lot_line_model.browse(pulled_line_ids).write({
@@ -209,6 +221,12 @@ class ApiDeliveryService(models.AbstractModel):
                 or (not line.operator_id and line.do_line_id.operator_id == device.employee_id)
             ):
                 errors.append(_("Line ID %s bukan milik operator ini.") % delivery_lot_line_id)
+                continue
+
+            if line.wt_is_cancelled:
+                errors.append(_(
+                    "Line ID %s sudah dibatalkan di Odoo dan tidak dapat ditimbang."
+                ) % delivery_lot_line_id)
                 continue
 
             if line.wt_weighing_source == "manual":

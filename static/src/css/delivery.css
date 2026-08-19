@@ -18,8 +18,8 @@ div[name="lot_line_ids"] tr:has([name="wt_weighing_status"] .badge:not(.text-bg-
 .o_field_widget[name="lot_line_ids"] tr:has([data-value="weighed"]) .o_list_record_remove,
 .o_field_widget[name="lot_line_ids"] tr:has([name="wt_weighing_status"] .text-bg-warning) .o_list_record_remove,
 .o_field_widget[name="lot_line_ids"] tr:has([name="wt_weighing_status"] .text-bg-success) .o_list_record_remove,
-.o_field_widget[name="lot_line_ids"] tr:has([name="wt_weighing_status"] .bg-warning) .o_list_record_remove,
-.o_field_widget[name="lot_line_ids"] tr:has([name="wt_weighing_status"] .bg-success) .o_list_record_remove,
+div[name="lot_line_ids"] tr.text-muted .o_list_record_remove,
+.o_field_widget[name="lot_line_ids"] tr.text-muted .o_list_record_remove,
 .o_field_widget[name="lot_line_ids"] tr:has([name="wt_weighing_status"] .badge:not(.text-bg-info):not(.bg-info)) .o_list_record_remove {
     display: none !important;
     visibility: hidden !important;

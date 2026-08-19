@@ -206,14 +206,14 @@
                                 <list string="Delivery Plan"
                                       create="false"
                                       delete="false">
-                                    <field name="sequence" widget="handle"/>
+                                    <field name="sequence" column_invisible="1"/>
                                     <field name="route_id" column_invisible="1"/>
                                     <field name="route_line_id" column_invisible="1"/>
                                     <field name="route_type" string="Route Type" optional="show"/>
                                     <field name="picking_type_id"
                                            options="{'no_create': True, 'no_open': True}"
                                            string="Operation Type"/>
-                                    <field name="product_id" column_invisible="True"/>
+                                    <field name="product_id" column_invisible="1"/>
                                     <field name="location_id"
                                            options="{'no_create': True}"
                                            string="Source Location"/>
@@ -258,6 +258,7 @@
                                            decoration-muted="route_process_status == 'preparation'"
                                            optional="show"
                                            readonly="1"/>
+                                    <field name="delivery_state" column_invisible="1"/>
                                     <field name="picking_state" column_invisible="1"/>
                                     <field name="can_validate_line" column_invisible="1"/>
                                     <button name="action_validate_line"
@@ -265,7 +266,7 @@
                                              type="object"
                                              icon="fa-check"
                                              class="btn-primary"
-                                             invisible="not can_validate_line or parent.state not in ('confirmed', 'in_progress')"/>
+                                             invisible="not can_validate_line or delivery_state not in ('confirmed', 'in_progress')"/>
                                     <field name="company_id" column_invisible="1"/>
                                 </list>
                                 <form string="Delivery Plan Detail">
@@ -275,13 +276,13 @@
                                                  string="Load Lots from Source Location"
                                                  type="object"
                                                  class="btn-secondary"
-                                                 invisible="picking_state == 'done' or parent.state != 'draft'"
+                                                 invisible="picking_state == 'done' or delivery_state != 'draft'"
                                                  confirm="Existing lot details will be replaced based on available stock in the source location and all child locations. Continue?"/>
                                          <button name="action_validate_line"
                                                  string="Validate Delivery Plan"
                                                  type="object"
                                                  class="btn-primary"
-                                                 invisible="not can_validate_line or parent.state not in ('confirmed', 'in_progress')"/>
+                                                 invisible="not can_validate_line or delivery_state not in ('confirmed', 'in_progress')"/>
                                          <button name="action_print_despatch_slip"
                                                  string="Print Despatch Slip"
                                                  type="object"
@@ -310,6 +311,7 @@
                                          <field name="picking_state" widget="statusbar" statusbar_visible="assigned,done" invisible="not picking_id"/>
                                      </header>
                                     <sheet>
+                                         <field name="delivery_state" invisible="1"/>
                                          <field name="picking_state" invisible="1"/>
                                          <field name="picking_id" invisible="1"/>
                                          <group>
@@ -338,38 +340,40 @@
                                                        string="Receiver"
                                                        options="{'no_create': True}"
                                                        required="1"
-                                                       readonly="picking_state == 'done'"/>
+                                                       readonly="picking_state == 'done' or delivery_state != 'draft'"/>
                                                 <field name="scheduled_date"
-                                                       readonly="picking_state == 'done'"/>
+                                                       readonly="picking_state == 'done' or delivery_state != 'draft'"/>
                                              </group>
                                              <group string="Stock Information">
-                                                <field name="demand_qty" force_save="1"
-                                                       string="Demand (kg)"
-                                                       readonly="picking_state == 'done'"/>
-                                                <field name="actual_physical_qty"
-                                                       string="Actual Physical Weight (kg)"
-                                                       readonly="1"/>
-                                                <field name="generated_transit_lot_id"
-                                                       string="Transit Lot"
-                                                       readonly="1"
-                                                       options="{'no_open': False}"
-                                                       invisible="not generated_transit_lot_id"/>
-                                             </group>
+                                                  <field name="demand_qty" force_save="1"
+                                                         string="Demand (kg)"
+                                                         readonly="picking_state == 'done' or delivery_state != 'draft'"/>
+                                                 <field name="actual_physical_qty"
+                                                        string="Actual Physical Weight (kg)"
+                                                        readonly="1"/>
+                                                 <field name="generated_transit_lot_id"
+                                                        string="Transit Lot"
+                                                        readonly="1"
+                                                        options="{'no_open': False}"
+                                                        invisible="not generated_transit_lot_id"/>
+                                              </group>
                                          </group>
                                          <notebook>
                                              <page string="Lot Details">
                                                  <field name="lot_line_ids" context="{'default_do_line_id': id}"
                                                         readonly="picking_state == 'done'">
-                                                     <list string="Lot Details" editable="bottom">
-                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}" readonly="wt_is_pulled"/>
+                                                     <list string="Lot Details"
+                                                           editable="bottom"
+                                                           decoration-muted="wt_is_cancelled">
+                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.quantity', '&gt;', 0)]" readonly="wt_is_pulled or wt_is_cancelled"/>
                                                          <field name="location_id" readonly="1" string="Location"/>
                                                          <field name="allowed_weighing_location_ids" column_invisible="1"/>
-                                                         <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location" readonly="wt_is_pulled"/>
+                                                         <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location" readonly="wt_is_pulled or wt_is_cancelled"/>
                                                          <field name="operator_id" readonly="1" string="Operator"/>
                                                          <field name="wt_qty_on_hand" readonly="1" string="Physical Stock (kg)"/>
                                                          <field name="wt_qty_reserved" readonly="1" string="Reserved (kg)"/>
                                                          <field name="qty_available" readonly="1" string="Available Stock (kg)"/>
-                                                         <field name="qty" string="Demand (kg)"/>
+                                                         <field name="qty" string="Demand (kg)" readonly="wt_is_pulled or wt_is_cancelled"/>
                                                          <field name="wt_demand_coverage"
                                                                  string="Cakupan"
                                                                  readonly="1"
@@ -377,6 +381,7 @@
                                                                  decoration-warning="wt_demand_coverage == 'all'"
                                                                  decoration-success="wt_demand_coverage == 'partial'"/>
                                                          <field name="wt_is_pulled" column_invisible="1"/>
+                                                         <field name="wt_is_cancelled" column_invisible="1"/>
                                                          <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1" optional="show"/>
                                                          <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
                                                          <field name="wt_weighing_source" string="Weighing Source" readonly="1" optional="show"/>
@@ -384,9 +389,28 @@
                                                                 decoration-success="wt_weighing_status == 'weighed'"
                                                                 decoration-warning="wt_weighing_status == 'unweighed'"
                                                                 decoration-info="wt_weighing_status == 'not_pulled'"
+                                                                decoration-danger="wt_weighing_status == 'cancelled'"
                                                                 optional="show"/>
                                                          <field name="wt_difference_qty" string="Difference (kg)" readonly="1" optional="show"/>
                                                          <field name="wt_note" string="Notes" optional="hide"/>
+                                                         <button name="action_remove_line"
+                                                                 string="Hapus"
+                                                                 type="object"
+                                                                 icon="fa-trash-o"
+                                                                 title="Hapus Baris Lot (Belum Di-pull)"
+                                                                 invisible="wt_is_pulled or picking_state == 'done'"/>
+                                                         <button name="action_cancel_lot"
+                                                                 string="Batal"
+                                                                 type="object"
+                                                                 icon="fa-ban"
+                                                                 title="Batalkan Lot yang Sudah Di-pull"
+                                                                 invisible="not wt_is_pulled or wt_is_cancelled or picking_state == 'done'"/>
+                                                         <button name="action_uncancel_lot"
+                                                                 string="Pulihkan"
+                                                                 type="object"
+                                                                 icon="fa-undo"
+                                                                 title="Pulihkan Kembali Lot yang Dibatalkan"
+                                                                 invisible="not wt_is_cancelled or picking_state == 'done'"/>
                                                      </list>
                                                  </field>
                                              </page>
@@ -426,14 +450,14 @@
 
 
                         <!-- Tab 2: Detail Timbang -->
-                        <page string="Weighing Details">
+                        <page name="weighing_details" string="Weighing Details">
                             <field name="do_lot_line_ids"
-                                   invisible="not do_line_ids"
                                    readonly="state in ('done','returned','cancelled')">
                                 <list string="Weighing Details"
                                       create="false"
                                       delete="false"
-                                      edit="false">
+                                      edit="false"
+                                      decoration-muted="wt_is_cancelled">
                                     <field name="route_id" string="Route" readonly="1"/>
                                     <field name="lot_id" readonly="1"/>
                                     <field name="location_id" readonly="1" string="Location"/>
@@ -441,6 +465,7 @@
                                     <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location"/>
                                     <field name="operator_id" readonly="1" string="Operator"/>
                                     <field name="wt_is_pulled" column_invisible="1"/>
+                                    <field name="wt_is_cancelled" column_invisible="1"/>
                                     <field name="wt_original_qty" string="Planned Demand (kg)" readonly="1"/>
                                     <field name="qty" string="DO Demand (kg)" readonly="1" optional="hide"/>
                                     <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1"/>
@@ -453,6 +478,7 @@
                                            decoration-success="wt_weighing_status == 'weighed'"
                                            decoration-warning="wt_weighing_status == 'unweighed'"
                                            decoration-info="wt_weighing_status == 'not_pulled'"
+                                           decoration-danger="wt_weighing_status == 'cancelled'"
                                            optional="show"/>
                                     <field name="wt_difference_qty" string="Difference (kg)" readonly="1"
                                            decoration-danger="wt_difference_qty &lt; -0.001"
@@ -463,11 +489,30 @@
                                            decoration-danger="wt_unallocated_qty &gt; 0.001"
                                            decoration-success="wt_unallocated_qty &lt;= 0.001"/>
                                     <field name="wt_adjustment_applied" column_invisible="1"/>
+                                    <field name="delivery_state" column_invisible="1"/>
                                     <button name="action_configure_allocation"
                                             string="Allocate"
                                             type="object"
                                             icon="fa-sliders"
                                             invisible="wt_difference_qty == 0.0 or wt_adjustment_applied or wt_weighing_status != 'weighed'"/>
+                                    <button name="action_remove_line"
+                                            string="Hapus"
+                                            type="object"
+                                            icon="fa-trash-o"
+                                            title="Hapus Baris Lot (Belum Di-pull)"
+                                            invisible="wt_is_pulled or delivery_state in ('done','returned','cancelled')"/>
+                                    <button name="action_cancel_lot"
+                                            string="Batal"
+                                            type="object"
+                                            icon="fa-ban"
+                                            title="Batalkan Lot yang Sudah Di-pull"
+                                            invisible="not wt_is_pulled or wt_is_cancelled or delivery_state in ('done','returned','cancelled')"/>
+                                    <button name="action_uncancel_lot"
+                                            string="Pulihkan"
+                                            type="object"
+                                            icon="fa-undo"
+                                            title="Pulihkan Kembali Lot yang Dibatalkan"
+                                            invisible="not wt_is_cancelled or delivery_state in ('done','returned','cancelled')"/>
                                     <field name="wt_note" string="Notes" optional="hide"/>
                                 </list>
                             </field>

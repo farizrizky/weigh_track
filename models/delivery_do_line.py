@@ -27,6 +27,12 @@ class DeliveryDoLine(models.Model):
         store=True,
         readonly=True,
     )
+    delivery_state = fields.Selection(
+        related="delivery_id.state",
+        string="Delivery State",
+        store=True,
+        readonly=True,
+    )
 
     # â”€â”€ Konfigurasi DO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     picking_type_id = fields.Many2one(
@@ -277,16 +283,19 @@ class DeliveryDoLine(models.Model):
 
     # â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    @api.depends("lot_line_ids.qty")
+    @api.depends("lot_line_ids.qty", "lot_line_ids.wt_is_cancelled")
     def _compute_demand_qty(self):
         for rec in self:
-            if rec.lot_line_ids:
-                rec.demand_qty = sum(rec.lot_line_ids.mapped("qty"))
+            active_lots = rec.lot_line_ids.filtered(lambda l: not l.wt_is_cancelled)
+            if active_lots:
+                rec.demand_qty = sum(active_lots.mapped("qty"))
+            elif rec.lot_line_ids:
+                rec.demand_qty = 0.0
 
-    @api.depends("tare_qty", "lot_line_ids.wt_physical_qty")
+    @api.depends("tare_qty", "lot_line_ids.wt_physical_qty", "lot_line_ids.wt_is_cancelled")
     def _compute_weight_summary(self):
         for rec in self:
-            active_lots = rec.lot_line_ids
+            active_lots = rec.lot_line_ids.filtered(lambda l: not l.wt_is_cancelled)
             physical_qty = sum(active_lots.mapped("wt_physical_qty"))
             rec.actual_physical_qty = physical_qty
             rec.net_qty = physical_qty
@@ -557,7 +566,7 @@ class DeliveryDoLine(models.Model):
         """Validasi kelengkapan data sebelum generate picking."""
         self.ensure_one()
         missing = []
-        active_lot_lines = self.lot_line_ids
+        active_lot_lines = self.lot_line_ids.filtered(lambda l: not l.wt_is_cancelled)
         if not self.route_line_id:
             missing.append(_("Baris Rute"))
         if not self.picking_type_id:
@@ -809,14 +818,16 @@ class DeliveryDoLine(models.Model):
             lot = source_line.generated_transit_lot_id
             if not lot:
                 continue
+            active_lot_lines = source_line.lot_line_ids.filtered(lambda l: not l.wt_is_cancelled)
             qty = sum(
                 lot_line.wt_physical_qty if lot_line.wt_weighing_source else lot_line.qty
-                for lot_line in source_line.lot_line_ids
+                for lot_line in active_lot_lines
             )
             if qty <= 0.0:
                 qty = source_line.demand_qty
             qty_by_lot[lot.id] = qty_by_lot.get(lot.id, 0.0) + qty
         return qty_by_lot
+
 
     def _prepare_required_transit_lot_values(self):
         """Values for transit lots that must be carried by this route line."""
@@ -882,6 +893,7 @@ class DeliveryDoLine(models.Model):
     def create(self, vals_list):
         """Saat do_line dibuat, auto-save parent delivery agar header ikut tersimpan."""
         new_vals_list = []
+        seen_keys = set()
         for vals in vals_list:
             vals = self._apply_route_line_vals(vals)
             delivery = self.env["wt.delivery"].browse(vals.get("delivery_id")) if vals.get("delivery_id") else False
@@ -890,6 +902,25 @@ class DeliveryDoLine(models.Model):
                     "Baris Rute pada Tugas Pengiriman harus berasal dari master Rute. "
                     "Pilih Rute di header untuk memuat baris rute."
                 ))
+
+            # Dedup: jika do_line dengan route_line_id yang sama sudah ada untuk
+            # delivery ini, jangan buat ulang. Ini mencegah duplikasi saat OWL
+            # mengirim perintah (0,0,...) untuk do_line yang sudah tersimpan di DB
+            # setelah auto-save dipicu oleh tombol type="object" (mis. Muat Lot).
+            route_line_id = vals.get("route_line_id")
+            delivery_id = vals.get("delivery_id")
+            if route_line_id and delivery_id:
+                if (delivery_id, route_line_id) in seen_keys:
+                    continue
+                seen_keys.add((delivery_id, route_line_id))
+                existing = self.search([
+                    ("delivery_id", "=", delivery_id),
+                    ("route_line_id", "=", route_line_id),
+                ], limit=1)
+                if existing:
+                    # Sudah ada → skip, tidak perlu membuat baris baru
+                    continue
+
             if not vals.get("product_id"):
                 company = (
                     delivery.company_id
@@ -907,6 +938,9 @@ class DeliveryDoLine(models.Model):
             ):
                 vals["document_do_number"] = delivery.name
             new_vals_list.append(vals)
+
+        if not new_vals_list:
+            return self.env["wt.delivery.do.line"]
         records = super().create(new_vals_list)
         # Trigger write pada delivery agar frontend tahu record berubah
         # dan agar timestamp write_date diperbarui
@@ -992,7 +1026,7 @@ class DeliveryDoLine(models.Model):
 
     def _is_ready_for_validation_status(self):
         self.ensure_one()
-        active_lots = self.lot_line_ids.filtered(lambda l: l.qty > 0.0)
+        active_lots = self.lot_line_ids.filtered(lambda l: l.qty > 0.0 and not l.wt_is_cancelled)
         if not active_lots:
             return False
         if any(not lot._has_weighing_input() for lot in active_lots):
@@ -1108,7 +1142,7 @@ class DeliveryDoLine(models.Model):
             or False
         )
         product = self.product_id
-        active_lot_lines = self.lot_line_ids
+        active_lot_lines = self.lot_line_ids.filtered(lambda l: not l.wt_is_cancelled)
 
         # Hitung total physical qty
         if active_lot_lines:
@@ -1404,14 +1438,15 @@ class DeliveryDoLine(models.Model):
             "Lot Transit %s otomatis diload ke Rencana DO urutan %s."
         ) % (transit_lot.name, next_line.sequence))
 
-    @api.constrains("lot_line_ids", "lot_line_ids.qty", "lot_line_ids.lot_id")
+    @api.constrains("lot_line_ids", "lot_line_ids.qty", "lot_line_ids.lot_id", "lot_line_ids.wt_is_cancelled")
     def _check_lot_stock_limits(self):
         for line in self:
-            if not line.lot_line_ids:
+            active_lots = line.lot_line_ids.filtered(lambda l: not l.wt_is_cancelled)
+            if not active_lots:
                 continue
             # Kelompokkan baris berdasarkan lot_id
             lot_groups = {}
-            for lot_line in line.lot_line_ids:
+            for lot_line in active_lots:
                 if not lot_line.lot_id:
                     continue
                 lot_groups.setdefault(lot_line.lot_id, []).append(lot_line)
@@ -1430,7 +1465,7 @@ class DeliveryDoLine(models.Model):
 
                 # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
                 # Gunakan 2-step search: (1) cari do_lines aktif dari delivery lain,
-                # (2) cari lot_lines di do_lines tersebut pakai direct IN clause.
+                # (2) cari lot_lines di do_lines tersebut pakai direct IN clause (kecualikan lot yang dibatalkan).
                 current_delivery_id_c = line._get_persisted_delivery_id()
                 active_do_line_domain_c = [
                     ("delivery_id.state", "in", ("draft", "confirmed", "in_progress")),
@@ -1442,6 +1477,7 @@ class DeliveryDoLine(models.Model):
                     other_active_lines = self.env["wt.delivery.do.line.lot"].search([
                         ("lot_id", "=", lot.id),
                         ("do_line_id", "in", active_do_lines_c.ids),
+                        ("wt_is_cancelled", "=", False),
                     ])
                     other_active_qty = sum(other_active_lines.mapped("qty"))
                 else:
@@ -1480,12 +1516,13 @@ class DeliveryDoLine(models.Model):
                 }
 
         # Validasi interaktif saat user mengedit atau menambah lot di UI (sebelum disave ke DB)
-        if not self.lot_line_ids:
+        active_onchange_lots = self.lot_line_ids.filtered(lambda l: not l.wt_is_cancelled)
+        if not active_onchange_lots:
             return {"warning": warning_result} if warning_result else None
         
         # Kelompokkan baris berdasarkan lot_id
         lot_groups = {}
-        for lot_line in self.lot_line_ids:
+        for lot_line in active_onchange_lots:
             if not lot_line.lot_id:
                 continue
             lot_groups.setdefault(lot_line.lot_id, []).append(lot_line)
@@ -1503,7 +1540,7 @@ class DeliveryDoLine(models.Model):
             total_on_hand = sum(quants.mapped("quantity"))
 
             # Hitung demand yang direncanakan di Tugas Pengiriman aktif lainnya.
-            # Gunakan 2-step search yang sama seperti di _compute_qty_available.
+            # Gunakan 2-step search yang sama seperti di _compute_qty_available (kecualikan lot yang dibatalkan).
             current_delivery_id_o = self._get_persisted_delivery_id()
             active_do_line_domain_o = [
                 ("delivery_id.state", "in", ("draft", "confirmed", "in_progress")),
@@ -1515,6 +1552,7 @@ class DeliveryDoLine(models.Model):
                 other_active_lines = self.env["wt.delivery.do.line.lot"].search([
                     ("lot_id", "=", lot.id),
                     ("do_line_id", "in", active_do_lines_o.ids),
+                    ("wt_is_cancelled", "=", False),
                 ])
                 other_active_qty = sum(other_active_lines.mapped("qty"))
             else:
@@ -1673,6 +1711,7 @@ class DeliveryDoLine(models.Model):
                     "sticky": True,
                 }
             }
+
 
     def unlink(self):
         for rec in self:
