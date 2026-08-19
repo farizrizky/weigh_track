@@ -26,7 +26,13 @@ class DeliveryCustomerCorrectionWizard(models.TransientModel):
     new_partner_id = fields.Many2one(
         "res.partner",
         string="Customer Baru",
+        domain="[('id', 'in', allowed_customer_partner_ids)]",
         required=True,
+    )
+    allowed_customer_partner_ids = fields.Many2many(
+        "res.partner",
+        compute="_compute_allowed_customer_partner_ids",
+        string="Allowed Customer Contacts",
     )
     reason = fields.Text(
         string="Alasan Koreksi",
@@ -44,6 +50,14 @@ class DeliveryCustomerCorrectionWizard(models.TransientModel):
             values.setdefault("new_partner_id", delivery.partner_id.id)
         return values
 
+    @api.depends("delivery_id", "delivery_id.company_id")
+    def _compute_allowed_customer_partner_ids(self):
+        customer_model = self.env["wt.customer"]
+        for wizard in self:
+            wizard.allowed_customer_partner_ids = customer_model.get_allowed_partners(
+                wizard.delivery_id.company_id
+            )
+
     def action_apply(self):
         self.ensure_one()
         delivery = self.delivery_id
@@ -55,6 +69,14 @@ class DeliveryCustomerCorrectionWizard(models.TransientModel):
 
         if not self.new_partner_id:
             raise ValidationError(_("Harap pilih customer baru."))
+
+        if not self.env["wt.customer"].is_allowed_partner(
+            delivery.company_id,
+            self.new_partner_id,
+        ):
+            raise ValidationError(_(
+                "Customer must be registered in WeighTrack Customer master."
+            ))
 
         if not (self.reason or "").strip():
             raise ValidationError(_("Alasan Koreksi wajib diisi."))

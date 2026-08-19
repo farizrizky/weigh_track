@@ -655,9 +655,19 @@ class DailyStockReportWizard(models.TransientModel):
             stock_mtd["storage_shrinkage"],
             stock_mtd["transfer_shrinkage"],
         )
+        transfer_shrinkage_out_day = self._negative_values(
+            stock_day["transfer_shrinkage"]
+        )
+        transfer_shrinkage_out_mtd = self._negative_values(
+            stock_mtd["transfer_shrinkage"]
+        )
         stock_out_day = self._sum_values(
-            stock_day["shipping"],
-            stock_day["transfer_shrinkage"],
+            stock_day["shipping_source_out"],
+            transfer_shrinkage_out_day,
+        )
+        stock_out_mtd = self._sum_values(
+            stock_mtd["shipping_source_out"],
+            transfer_shrinkage_out_mtd,
         )
         shrink_base_day = self._sum_values(stock_day["shipping"], stock_shrink_day)
         shrink_base_mtd = self._sum_values(stock_mtd["shipping"], stock_shrink_mtd)
@@ -702,10 +712,10 @@ class DailyStockReportWizard(models.TransientModel):
                     style="total",
                 ),
                 self._subsection_row(_("Penjualan Produksi")),
-                self._data_row(_("Hari ini"), stock_day["shipping"]),
+                self._data_row(_("Hari ini"), stock_day["shipping_source_out"]),
                 self._data_row(
-                    _("Susut Transfer Antar Gudang"),
-                    stock_day["transfer_shrinkage"],
+                    _("Dikurangi Susut Transfer Antar Gudang"),
+                    transfer_shrinkage_out_day,
                 ),
                 self._data_row(
                     _("Jumlah Pengeluaran Hari ini"),
@@ -714,7 +724,7 @@ class DailyStockReportWizard(models.TransientModel):
                 ),
                 self._data_row(
                     _("Sampai dengan hari ini"),
-                    stock_mtd["shipping"],
+                    stock_out_mtd,
                     style="total",
                 ),
                 self._section_row("II", _("Susut Produksi")),
@@ -915,6 +925,7 @@ class DailyStockReportWizard(models.TransientModel):
         result = {
             "production_in": defaultdict(float),
             "shipping": defaultdict(float),
+            "shipping_source_out": defaultdict(float),
             "storage_shrinkage": defaultdict(float),
             "transfer_shrinkage": defaultdict(float),
         }
@@ -982,10 +993,10 @@ class DailyStockReportWizard(models.TransientModel):
             destination_is_shrinkage = line.location_dest_id.id in shrinkage_location_ids
             shrinkage_sign = 0.0
             stock_location = line.location_id
-            if source_usage == "internal" and destination_is_shrinkage:
+            if source_usage in ("internal", "transit") and destination_is_shrinkage:
                 shrinkage_sign = 1.0
                 stock_location = line.location_id
-            elif source_is_shrinkage and destination_usage == "internal":
+            elif source_is_shrinkage and destination_usage in ("internal", "transit"):
                 shrinkage_sign = -1.0
                 stock_location = line.location_dest_id
             if shrinkage_sign:
@@ -1009,6 +1020,15 @@ class DailyStockReportWizard(models.TransientModel):
         )
         for key, value in source_lot_sales.items():
             result["shipping"][key] += value
+        source_lot_sales_out = self._aggregate_delivery_source_lot_sales(
+            product,
+            start_dt,
+            end_dt,
+            warehouses,
+            transit_quantity_basis="source",
+        )
+        for key, value in source_lot_sales_out.items():
+            result["shipping_source_out"][key] += value
         return {
             key: self._clean_values(values)
             for key, values in result.items()
@@ -1020,6 +1040,7 @@ class DailyStockReportWizard(models.TransientModel):
         start_dt,
         end_dt,
         warehouses,
+        transit_quantity_basis="customer",
     ):
         values = defaultdict(float)
         for source_event in self._iter_delivery_shipping_source_events(
@@ -1028,6 +1049,7 @@ class DailyStockReportWizard(models.TransientModel):
             warehouses,
             end_operator="<",
             product=product,
+            transit_quantity_basis=transit_quantity_basis,
         ):
             division = source_event["division"]
             warehouse = source_event["warehouse"]
@@ -1085,6 +1107,11 @@ class DailyStockReportWizard(models.TransientModel):
             for key, value in (values or {}).items():
                 result[key] += value or 0.0
         return self._clean_values(result)
+
+    def _negative_values(self, values):
+        return self._clean_values(
+            {key: -(value or 0.0) for key, value in (values or {}).items()}
+        )
 
     def _percentage_values(self, numerator, denominator):
         result = {}

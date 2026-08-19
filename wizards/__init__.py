@@ -13,6 +13,7 @@ from . import tapper_production_total_report_wizard
 from . import production_summary_report_wizard
 from . import manual_weighing_report_wizard
 from . import weighing_reject_slab_report_wizard
+from . import stock_period_basis_mixin
 from . import storage_shrinkage_report_wizard
 from . import stock_out_report_wizard
 from . import shipping_provenance_mixin

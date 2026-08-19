@@ -132,8 +132,38 @@ class DeliveryDoLine(models.Model):
     partner_id = fields.Many2one(
         "res.partner",
         string="Partner / Destination Address",
+        domain="[('id', 'in', allowed_customer_partner_ids)]",
         help="Alamat tujuan. Kosongkan untuk menggunakan customer di header.",
     )
+    allowed_customer_partner_ids = fields.Many2many(
+        "res.partner",
+        compute="_compute_allowed_customer_partner_ids",
+        string="Allowed Customer Contacts",
+    )
+
+    @api.depends("company_id", "delivery_id.company_id")
+    def _compute_allowed_customer_partner_ids(self):
+        customer_model = self.env["wt.customer"]
+        for line in self:
+            company = line.company_id or line.delivery_id.company_id
+            line.allowed_customer_partner_ids = customer_model.get_allowed_partners(
+                company
+            )
+
+    def _is_allowed_customer_partner(self, partner=False):
+        self.ensure_one()
+        partner = partner or self.partner_id
+        company = self.company_id or self.delivery_id.company_id
+        return self.env["wt.customer"].is_allowed_partner(company, partner)
+
+    @api.constrains("delivery_id", "company_id", "partner_id")
+    def _check_customer_partner(self):
+        for line in self:
+            if line.partner_id and not line._is_allowed_customer_partner():
+                raise ValidationError(_(
+                    "Receiver contact must be registered in WeighTrack Customer master."
+                ))
+
     scheduled_date = fields.Datetime(
         string="Scheduled Date",
         default=fields.Datetime.now,
@@ -427,6 +457,8 @@ class DeliveryDoLine(models.Model):
     def _onchange_delivery_company_set_product(self):
         for line in self:
             line.product_id = line._get_configured_product()
+            if line.partner_id and not line._is_allowed_customer_partner():
+                line.partner_id = False
 
     def _get_configured_product(self):
         self.ensure_one()

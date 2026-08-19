@@ -289,6 +289,60 @@ Only one weighing product is allowed per company.
 Product must belong to the same company or be a global product.
 ```
 
+## Customer
+
+Model teknis:
+
+```text
+wt.customer
+```
+
+Deskripsi:
+
+Customer adalah master customer WeighTrack per company yang mengikat ke contact Odoo `res.partner`. Master ini menjadi sumber pilihan customer pada Delivery dan receiver contact pada Rencana DO.
+
+Field:
+
+| Field | Type | Required | Tracking | Keterangan |
+| --- | --- | --- | --- | --- |
+| `name` | `Char` | Otomatis | Tidak | Computed name dari company dan contact. |
+| `company_id` | `Many2one(res.company)` | Ya | Ya | Company tempat customer berlaku. Default mengikuti company user aktif. |
+| `partner_id` | `Many2one(res.partner)` | Ya | Ya | Contact Odoo yang boleh dipilih sebagai customer Delivery. `ondelete="restrict"`. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Hanya customer aktif yang menjadi pilihan Delivery. |
+
+Urutan data:
+
+```text
+company_id, partner_id
+```
+
+Domain UI:
+
+```text
+partner_id: ['|', ('company_id', '=', False), ('company_id', '=', company_id)]
+```
+
+Validasi:
+
+- Kombinasi company dan contact wajib unik untuk record aktif.
+- Contact harus milik company yang sama atau contact shared/global.
+- Customer pada `wt.delivery.partner_id`, `wt.delivery.do.line.partner_id`, dan koreksi customer wajib berasal dari mapping aktif `wt.customer` sesuai company dokumen.
+
+Constraint database:
+
+```text
+partial unique index (company_id, partner_id) where active
+```
+
+Pesan validasi:
+
+```text
+Customer contact must belong to the same company or be a shared contact.
+Customer contact must be unique per company.
+Customer must be registered in WeighTrack Customer master.
+Receiver contact must be registered in WeighTrack Customer master.
+```
+
 ## Shrinkage Tolerance
 
 Model teknis:
@@ -1770,6 +1824,7 @@ Access CSV:
 | `wt.weather.data` | Ya | Ya | Ya | Ya |
 | `wt.employee.role` | Ya | Ya | Ya | Ya |
 | `wt.product` | Ya | Ya | Ya | Ya |
+| `wt.customer` | Ya | Ya | Ya | Ya |
 | `wt.shrinkage.tolerance` | Ya | Ya | Ya | Ya |
 | `wt.receipt.rule` | Ya | Ya | Ya | Ya |
 | `wt.api` | Ya | Ya | Ya | Ya |

@@ -9,8 +9,10 @@
                     <group>
                         <field name="delivery_id" invisible="1"/>
                         <field name="current_partner_id" readonly="1" string="Customer Saat Ini"/>
+                        <field name="allowed_customer_partner_ids" invisible="1"/>
                         <field name="new_partner_id"
                                string="Customer Baru"
+                               domain="[('id', 'in', allowed_customer_partner_ids)]"
                                options="{'no_create': True}"
                                domain="[('is_company', '=', True)]"
                                placeholder="Pilih customer baru..."/>

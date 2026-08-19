@@ -89,7 +89,7 @@ POST /weightrack/api/v1/push/delivery
   - field penting memakai `tracking=True`
   - form view memakai `<chatter/>`
 - Master dan konfigurasi operasional yang boleh diarsipkan memakai field standar `active`.
-  - Model yang aktif memakai archive: `wt.estate`, `wt.weather`, `wt.employee.role`, `wt.product`, `wt.shrinkage.tolerance`, `wt.receipt.rule`, `wt.division`, `wt.weighing.location`, `wt.foreman`, dan `wt.tapper`.
+  - Model yang aktif memakai archive: `wt.estate`, `wt.weather`, `wt.employee.role`, `wt.product`, `wt.customer`, `wt.shrinkage.tolerance`, `wt.receipt.rule`, `wt.division`, `wt.weighing.location`, `wt.foreman`, dan `wt.tapper`.
   - Model transaksi, log, device assignment, dan konfigurasi API tidak memakai archive untuk saat ini.
   - Unique business key pada model archive dibuat unik hanya untuk record aktif, sehingga record lama bisa diarsipkan lalu kombinasi pengganti dapat dibuat.
 - Field `name` pada form umumnya dibuat sebagai title besar menggunakan `oe_title`.
@@ -127,6 +127,7 @@ Model database:
 - `wt.weather.data`
 - `wt.employee.role`
 - `wt.product`
+- `wt.customer`
 - `wt.shrinkage.tolerance`
 - `wt.receipt.rule`
 - `wt.api`
@@ -178,7 +179,8 @@ WeighTrack
 |   |-- Divisions
 |   |-- Weighing Locations
 |   |-- Foremen
-|   `-- Tappers
+|   |-- Tappers
+|   `-- Customers
 |-- Operations
 |   |-- Weighing
 |   |-- Production Receipt
@@ -241,6 +243,8 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
 - `Division` tidak perlu menampilkan atau mengatur relasi balik ke `Weighing Location`.
 - `wt.product` memetakan satu produk timbang aktif per company ke produk Odoo `product.product`.
 - Konsep `product_type` sudah dilepas; module saat ini hanya mendukung satu product aktif per company untuk alur weighing.
+- `wt.customer` memetakan customer WeighTrack per company ke contact Odoo `res.partner`.
+- Customer pada Delivery dan Rencana DO wajib berasal dari mapping aktif `wt.customer` untuk company dokumen.
 - `wt.shrinkage.tolerance` menentukan batas toleransi penyusutan produksi per company dan division.
 - Batas toleransi penyusutan dipakai saat hari produksi tidak sama dengan hari penimbangan di gudang induk.
 - Kombinasi Company dan Division pada `wt.shrinkage.tolerance` tidak boleh berulang untuk record aktif.

@@ -2823,10 +2823,69 @@ msgid "Total Planned Qty (kg)"
 msgstr "Total Rencana Awal (kg)"
 
 #. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_initial_plan_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Total Initial Plan (kg)"
+msgstr "Total Rencana Awal (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_production_weighed_qty
+msgid "Total Production Weighing (kg)"
+msgstr "Total Timbang Produksi (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__production_weighing_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Production Weighing Difference (kg)"
+msgstr "Selisih Penimbangan Produksi (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_transit_out_qty
+msgid "Transit Out Weight (kg)"
+msgstr "Berat Keluar Gudang Asal (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_transit_in_qty
+msgid "Transit In Weight (kg)"
+msgstr "Berat Masuk Gudang Tujuan (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__transit_weighing_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Transit Weighing Difference (kg)"
+msgstr "Selisih Penimbangan Transit (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__has_transit_route
+msgid "Has Transit Route"
+msgstr "Memiliki Rute Transit"
+
+#. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_physical_qty
 #: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
 msgid "Total Delivered Qty (kg)"
 msgstr "Total Fisik Terkirim (kg)"
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery__shipping_weighing_difference_qty
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_list
+msgid "Delivery Weighing Difference (kg)"
+msgstr "Selisih Penimbangan Pengiriman (kg)"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Production Weighing"
+msgstr "Penimbangan Produksi"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Transit Weighing"
+msgstr "Penimbangan Transit"
+
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_form
+msgid "Delivery Weighing"
+msgstr "Penimbangan Pengiriman"
 
 #. module: weightrack
 #: model:ir.model.fields,field_description:weightrack.field_wt_delivery__total_difference_qty
@@ -4082,10 +4141,14 @@ msgid "Apply Manual Weighing"
 msgstr "Terapkan Penimbangan Manual"
 
 #. module: weightrack
-#: code:addons/weightrack/models/delivery.py:0
-#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
-msgid "Manual weighing input is only available for a backdated delivery."
-msgstr "Input penimbangan manual hanya tersedia untuk delivery backdate."
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_delivery_manual_weighing_wizard_form
+msgid "Manual input can create weighing data for unweighed lots or correct existing manual weighing before the delivery plan is validated. A reason is required, and the weighing time must use the Delivery Effective Date."
+msgstr "Input manual dapat membuat data timbang untuk lot yang belum ditimbang atau mengoreksi penimbangan manual yang sudah ada sebelum rencana DO divalidasi. Alasan wajib diisi, dan waktu timbang harus menggunakan Tanggal Efektif Delivery."
+
+#. module: weightrack
+#: model:ir.model.fields,field_description:weightrack.field_wt_delivery_manual_weighing_wizard_line__is_existing_manual
+msgid "Existing Manual"
+msgstr "Manual Tersimpan"
 
 #. module: weightrack
 #: code:addons/weightrack/models/delivery.py:0
@@ -4102,6 +4165,31 @@ msgstr "Alasan Input Manual wajib diisi."
 #: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
 msgid "Select at least one weighing line."
 msgstr "Pilih minimal satu baris penimbangan."
+
+#. module: weightrack
+#: code:addons/weightrack/models/delivery.py:0
+msgid "No unweighed or manually weighed delivery lot is available for manual input."
+msgstr "Tidak ada lot delivery yang belum ditimbang atau sudah ditimbang manual untuk input manual."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Lot %(lot)s belongs to a validated delivery plan and cannot be changed manually."
+msgstr "Lot %(lot)s berada pada rencana DO yang sudah divalidasi dan tidak dapat diubah manual."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Lot %(lot)s already has device weighing data and cannot be overwritten manually."
+msgstr "Lot %(lot)s sudah memiliki data timbang dari perangkat dan tidak dapat ditimpa manual."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "No manual weighing changes to apply."
+msgstr "Tidak ada perubahan penimbangan manual untuk diterapkan."
+
+#. module: weightrack
+#: code:addons/weightrack/wizards/delivery_manual_weighing_wizard.py:0
+msgid "Reset difference allocation for:"
+msgstr "Reset alokasi selisih untuk:"
 
 #. module: weightrack
 #: model:ir.model,name:weightrack.model_wt_stock_movement_date_correction

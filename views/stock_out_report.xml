@@ -41,8 +41,8 @@
                         .wt-stock-out-report .info-label { background: #f3f4f6; font-weight: 700; width: 18%; }
                         .wt-stock-out-report .info-value { width: 32%; }
                         .wt-stock-out-report .data-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
-                        .wt-stock-out-report .data-table th { background: #f3f4f6; border: 1px solid #9ca3af; font-size: 10px; font-weight: 700; line-height: 1.35; padding: 8px 10px !important; text-align: center; vertical-align: middle; }
-                        .wt-stock-out-report .data-table td { border: 1px solid #cbd5e1; font-size: 10px; line-height: 1.35; padding: 8px 10px !important; vertical-align: middle; word-break: break-word; }
+                        .wt-stock-out-report .data-table th { background: #f3f4f6; border: 1px solid #9ca3af; font-size: 8px; font-weight: 700; line-height: 1.25; padding: 5px 4px !important; text-align: center; vertical-align: middle; }
+                        .wt-stock-out-report .data-table td { border: 1px solid #cbd5e1; font-size: 8px; line-height: 1.25; padding: 5px 4px !important; vertical-align: middle; word-break: break-word; }
                         .wt-stock-out-report .total-row td { background: #f9fafb; font-weight: 700; }
                         .wt-stock-out-report .text-center { text-align: center; }
                         .wt-stock-out-report .text-right { padding-right: 10px !important; text-align: right; white-space: nowrap; }
@@ -83,21 +83,18 @@
                             <td class="info-label">Tanggal Sampai</td>
                             <td class="info-value"><span t-field="doc.end_date"/></td>
                             <td class="info-label">Status DO</td>
-                            <td class="info-value">Selesai</td>
+                            <td class="info-value">Selesai / Retur</td>
                         </tr>
                     </table>
 
-                    <div class="section-title">Stock Keluar Per Gudang dan Divisi</div>
+                    <div class="section-title">Ringkasan Stock Keluar Per Divisi</div>
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width: 5%;">No</th>
-                                <th style="width: 25%;">Gudang</th>
-                                <th style="width: 16%;">Divisi</th>
-                                <th style="width: 14%;">Qty Keluar</th>
-                                <th style="width: 16%;">Susut Penyimpanan</th>
-                                <th style="width: 14%;">Susut Transfer</th>
-                                <th style="width: 10%;">Pengiriman</th>
+                                <th>No</th><th>Gudang</th><th>Divisi</th><th>Stok Awal</th>
+                                <th>Stok Masuk</th><th>Stok Tersedia</th><th>Qty Keluar</th>
+                                <th>Susut Simpan</th><th>Susut Transfer</th><th>Pengiriman</th>
+                                <th>Saldo Akhir</th><th>% Keluar</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -107,22 +104,32 @@
                                         <td class="text-center" t-esc="line.sequence"/>
                                         <td t-esc="line.warehouse_name"/>
                                         <td t-esc="line.division_name"/>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/> kg</td>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.storage_shrinkage_qty or 0.0)"/> kg</td>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.transfer_shrinkage_qty or 0.0)"/> kg</td>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.shipping_qty or 0.0)"/> kg</td>
+                                        <td class="text-right" t-esc="'%.2f' % (line.opening_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.stock_in_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.stock_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.quantity or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.storage_shrinkage_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.transfer_shrinkage_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.shipping_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.balance_qty or 0.0)"/>
+                                        <td class="text-right" t-esc="line.out_percentage or '0.00%'"/>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
                                     <td colspan="3" class="text-right">Total</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/> kg</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_storage_shrinkage_qty or 0.0)"/> kg</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_transfer_shrinkage_qty or 0.0)"/> kg</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_shipping_qty or 0.0)"/> kg</td>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_opening_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_stock_in_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_stock_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_quantity or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_storage_shrinkage_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_transfer_shrinkage_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_shipping_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="'%.2f' % (doc.total_balance_qty or 0.0)"/>
+                                    <td class="text-right" t-esc="doc.total_out_percentage or '0.00%'"/>
                                 </tr>
                             </t>
                             <tr t-if="not doc.summary_line_ids">
-                                <td colspan="7" class="text-center muted">Tidak ada stock keluar gudang pada filter ini.</td>
+                                <td colspan="12" class="text-center muted">Tidak ada data pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -131,17 +138,9 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th style="width: 4%;">No</th>
-                                <th style="width: 7%;">Tanggal</th>
-                                <th style="width: 12%;">No DO / Referensi</th>
-                                <th style="width: 12%;">Gudang</th>
-                                <th style="width: 9%;">Divisi</th>
-                                <th style="width: 12%;">Lot</th>
-                                <th style="width: 11%;">Kategori</th>
-                                <th style="width: 8%;">Total Stok</th>
-                                <th style="width: 8%;">Qty Keluar</th>
-                                <th style="width: 4%;">% Keluar</th>
-                                <th style="width: 3%;">Sat.</th>
+                                <th>No</th><th>Tanggal Produksi</th><th>Gudang</th><th>Divisi</th>
+                                <th>Lot</th><th>Produk</th><th>Kategori</th><th>Stok</th>
+                                <th>Qty Keluar</th><th>Saldo Akhir</th><th>% Keluar</th><th>Sat.</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -149,28 +148,30 @@
                                 <t t-foreach="doc.detail_line_ids" t-as="line">
                                     <tr>
                                         <td class="text-center" t-esc="line.sequence"/>
-                                        <td><span t-field="line.movement_date" t-options='{"widget": "date"}'/></td>
-                                        <td t-esc="line.source_document"/>
+                                        <td><span t-field="line.production_date"/></td>
                                         <td t-esc="line.warehouse_name"/>
                                         <td t-esc="line.division_name"/>
                                         <td t-esc="line.lot_name"/>
+                                        <td t-esc="line.product_name"/>
                                         <td t-esc="line.category_label"/>
-                                        <td class="text-right"><span t-esc="'%.2f' % (line.initial_qty or 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.stock_qty or 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % (line.quantity or 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % (line.balance_qty or 0.0)"/></td>
                                         <td class="text-right"><span t-esc="line.out_percentage or '0.00%'"/></td>
                                         <td class="text-center" t-esc="line.uom_name or 'kg'"/>
                                     </tr>
                                 </t>
                                 <tr class="total-row">
                                     <td colspan="7" class="text-right">Total</td>
-                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_initial_qty or 0.0)"/></td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_stock_qty or 0.0)"/></td>
                                     <td class="text-right"><span t-esc="'%.2f' % (doc.total_quantity or 0.0)"/></td>
+                                    <td class="text-right"><span t-esc="'%.2f' % (doc.total_balance_qty or 0.0)"/></td>
                                     <td class="text-right"><span t-esc="doc.total_out_percentage or '0.00%'"/></td>
                                     <td class="text-center">kg</td>
                                 </tr>
                             </t>
                             <tr t-if="not doc.detail_line_ids">
-                                <td colspan="11" class="text-center muted">Tidak ada detail stock keluar pada filter ini.</td>
+                                <td colspan="12" class="text-center muted">Tidak ada detail stock keluar pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>

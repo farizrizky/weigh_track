@@ -86,9 +86,15 @@ class Delivery(models.Model):
     partner_id = fields.Many2one(
         "res.partner",
         string="Customer",
+        domain="[('id', 'in', allowed_customer_partner_ids)]",
         tracking=True,
         domain="[('is_company', '=', True)]",
         help="Partner/Customer tujuan pengiriman akhir (untuk Outgoing DO final).",
+    )
+    allowed_customer_partner_ids = fields.Many2many(
+        "res.partner",
+        compute="_compute_allowed_customer_partner_ids",
+        string="Allowed Customer Contacts",
     )
     route_id = fields.Many2one(
         "wt.delivery.route",
@@ -202,6 +208,47 @@ class Delivery(models.Model):
         store=True,
         digits="Product Unit of Measure",
     )
+    total_initial_plan_qty = fields.Float(
+        string="Total Initial Plan (kg)",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    total_production_weighed_qty = fields.Float(
+        string="Total Production Weighing (kg)",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    production_weighing_difference_qty = fields.Float(
+        string="Production Weighing Difference (kg)",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    total_transit_out_qty = fields.Float(
+        string="Transit Out Weight (kg)",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    total_transit_in_qty = fields.Float(
+        string="Transit In Weight (kg)",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    transit_weighing_difference_qty = fields.Float(
+        string="Transit Weighing Difference (kg)",
+        compute="_compute_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    has_transit_route = fields.Boolean(
+        string="Has Transit Route",
+        compute="_compute_totals",
+        store=True,
+    )
     received_qty = fields.Float(
         string="Berat Diterima Customer (kg)",
         digits="Product Unit of Measure",
@@ -210,6 +257,12 @@ class Delivery(models.Model):
     )
     received_difference_qty = fields.Float(
         string="Selisih Pengiriman (kg)",
+        compute="_compute_received_difference_qty",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    shipping_weighing_difference_qty = fields.Float(
+        string="Delivery Weighing Difference (kg)",
         compute="_compute_received_difference_qty",
         store=True,
         digits="Product Unit of Measure",
@@ -253,10 +306,33 @@ class Delivery(models.Model):
         self.ensure_one()
         return self.env["wt.product"].get_active_product(self.company_id)
 
+    @api.depends("company_id")
+    def _compute_allowed_customer_partner_ids(self):
+        customer_model = self.env["wt.customer"]
+        for delivery in self:
+            delivery.allowed_customer_partner_ids = customer_model.get_allowed_partners(
+                delivery.company_id
+            )
+
+    def _is_allowed_customer_partner(self, partner=False):
+        self.ensure_one()
+        partner = partner or self.partner_id
+        return self.env["wt.customer"].is_allowed_partner(self.company_id, partner)
+
+    @api.constrains("company_id", "partner_id")
+    def _check_customer_partner(self):
+        for delivery in self:
+            if delivery.partner_id and not delivery._is_allowed_customer_partner():
+                raise ValidationError(_(
+                    "Customer must be registered in WeighTrack Customer master."
+                ))
+
     @api.onchange("company_id")
     def _onchange_company_id_set_product(self):
         for delivery in self:
             delivery.product_id = delivery._get_configured_product()
+            if delivery.partner_id and not delivery._is_allowed_customer_partner():
+                delivery.partner_id = False
             delivery.route_id = False
             delivery.do_line_ids = [(5, 0, 0)]
 
@@ -336,19 +412,45 @@ class Delivery(models.Model):
             delivery._compute_totals()
 
     @api.depends(
+        "do_line_ids.sequence",
+        "do_line_ids.route_type",
+        "do_line_ids.route_line_id.route_type",
+        "do_line_ids.generated_transit_lot_id",
         "do_line_ids.lot_line_ids.qty",
         "do_line_ids.lot_line_ids.wt_original_qty",
         "do_line_ids.lot_line_ids.wt_physical_qty",
         "do_line_ids.lot_line_ids.wt_is_pulled",
         "do_line_ids.lot_line_ids.wt_weighing_source",
+        "do_line_ids.lot_line_ids.lot_id",
+        "do_line_ids.lot_line_ids.lot_id.wt_lot_type",
         "do_line_ids.lot_line_ids.wt_is_cancelled",
     )
     def _compute_totals(self):
         for rec in self:
+            production_lines = rec._get_initial_production_lot_lines()
+            weighed_production_lines = production_lines.filtered(
+                lambda line: line._has_weighing_input()
+                and line.wt_physical_qty > 0.0
+            )
+            initial_plan_qty = sum(
+                line.wt_original_qty if line.wt_original_qty > 0.0 else line.qty
+                for line in production_lines
+            )
+            production_weighed_qty = sum(
+                weighed_production_lines.mapped("wt_physical_qty")
+            )
+            production_difference_qty = sum(
+                (
+                    line.wt_original_qty
+                    if line.wt_original_qty > 0.0
+                    else line.qty
+                ) - line.wt_physical_qty
+                for line in weighed_production_lines
+            )
+
             active_lots = rec.do_lot_line_ids.filtered(
                 lambda line: line._has_weighing_input() and not line.wt_is_cancelled
             )
-            rec.total_difference_qty = sum(active_lots.mapped("wt_difference_qty"))
             outgoing_lots = active_lots.filtered(
                 lambda l: l.do_line_id.picking_type_id.code == "outgoing"
             )
@@ -356,12 +458,96 @@ class Delivery(models.Model):
                 rec.total_physical_qty = sum(outgoing_lots.mapped("wt_physical_qty"))
             else:
                 rec.total_physical_qty = sum(active_lots.mapped("wt_physical_qty"))
-            rec.total_demand_qty = rec.total_physical_qty - rec.total_difference_qty
+
+            transit_out_qty, transit_in_qty, transit_difference_qty = (
+                rec._get_transit_weighing_totals()
+            )
+            rec.total_initial_plan_qty = initial_plan_qty
+            rec.total_production_weighed_qty = production_weighed_qty
+            rec.production_weighing_difference_qty = production_difference_qty
+            rec.total_transit_out_qty = transit_out_qty
+            rec.total_transit_in_qty = transit_in_qty
+            rec.transit_weighing_difference_qty = transit_difference_qty
+            rec.has_transit_route = any(
+                line._is_transit_route() for line in rec.do_line_ids
+            )
+
+            # Legacy totals remain available for API and older report consumers.
+            rec.total_demand_qty = initial_plan_qty
+            rec.total_difference_qty = rec.total_physical_qty - initial_plan_qty
+
+    def _get_initial_production_lot_lines(self):
+        self.ensure_one()
+        result = self.env["wt.delivery.do.line.lot"]
+        first_route_key_by_lot = {}
+        for do_line in self.do_line_ids.sorted(
+            lambda line: (line.sequence or 0, line.id or 0)
+        ):
+            route_key = (do_line.sequence or 0, do_line.id or 0)
+            for lot_line in do_line.lot_line_ids.filtered(
+                lambda line: line.qty > 0.0
+                and line.lot_id.wt_lot_type == "production"
+            ):
+                first_key = first_route_key_by_lot.setdefault(
+                    lot_line.lot_id.id,
+                    route_key,
+                )
+                if route_key == first_key:
+                    result |= lot_line
+        return result
+
+    def _get_transit_weighing_totals(self):
+        self.ensure_one()
+        total_out = 0.0
+        total_in = 0.0
+        total_difference = 0.0
+        ordered_lines = self.do_line_ids.sorted(
+            lambda line: (line.sequence or 0, line.id or 0)
+        )
+        for source_line in ordered_lines.filtered(
+            lambda line: line._is_transit_route()
+        ):
+            weighed_source_lots = source_line.lot_line_ids.filtered(
+                lambda line: line.qty > 0.0
+                and line._has_weighing_input()
+                and line.wt_physical_qty > 0.0
+            )
+            transfer_out_qty = sum(
+                weighed_source_lots.mapped("wt_physical_qty")
+            )
+            total_out += transfer_out_qty
+
+            transit_lot = source_line.generated_transit_lot_id
+            if not transit_lot:
+                continue
+            source_key = (source_line.sequence or 0, source_line.id or 0)
+            destination_line = ordered_lines.filtered(
+                lambda line: (
+                    (line.sequence or 0, line.id or 0) > source_key
+                    and transit_lot in line.lot_line_ids.mapped("lot_id")
+                )
+            )[:1]
+            if not destination_line:
+                continue
+            weighed_destination_lots = destination_line.lot_line_ids.filtered(
+                lambda line: line.lot_id == transit_lot
+                and line._has_weighing_input()
+                and line.wt_physical_qty > 0.0
+            )
+            if not weighed_destination_lots:
+                continue
+            transfer_in_qty = sum(
+                weighed_destination_lots.mapped("wt_physical_qty")
+            )
+            total_in += transfer_in_qty
+            total_difference += transfer_out_qty - transfer_in_qty
+        return total_out, total_in, total_difference
 
     @api.depends("total_physical_qty", "received_qty")
     def _compute_received_difference_qty(self):
         for rec in self:
             rec.received_difference_qty = rec.total_physical_qty - rec.received_qty
+            rec.shipping_weighing_difference_qty = rec.received_difference_qty
 
     @api.depends(
         "do_line_ids.lot_line_ids.wt_difference_qty",
@@ -922,6 +1108,10 @@ class Delivery(models.Model):
             delivery._validate_effective_date()
             if not delivery.partner_id:
                 raise ValidationError(_("Customer wajib diisi sebelum pengiriman dikonfirmasi."))
+            if not delivery._is_allowed_customer_partner():
+                raise ValidationError(_(
+                    "Customer must be registered in WeighTrack Customer master."
+                ))
             if not delivery.route_id:
                 raise ValidationError(_("Rute wajib diisi sebelum pengiriman dikonfirmasi."))
             if delivery.route_id and not delivery.do_line_ids:
@@ -1028,6 +1218,14 @@ class Delivery(models.Model):
             lambda line: line.qty > 0.0
             and not line.wt_weighing_source
             and not line.wt_adjustment_applied
+            and line.do_line_id.picking_state != "done"
+            and (
+                line.wt_weighing_source == "manual"
+                or (
+                    line.wt_physical_qty <= 0.0
+                    and line.wt_weighing_source != "device"
+                )
+            )
         )
 
     def action_open_manual_weighing(self):
@@ -1036,17 +1234,13 @@ class Delivery(models.Model):
             raise ValidationError(_(
                 "Only a WeighTrack Administrator can enter manual delivery weighing data."
             ))
-        if not self.is_backdated:
-            raise ValidationError(_(
-                "Manual weighing input is only available for a backdated delivery."
-            ))
         if self.state not in ("confirmed", "in_progress"):
             raise ValidationError(_(
                 "Manual weighing input is only available while the delivery is Confirmed or In Progress."
             ))
         if not self._get_manual_weighing_candidates():
             raise ValidationError(_(
-                "No unweighed delivery lot is available for manual input."
+                "No unweighed or manually weighed delivery lot is available for manual input."
             ))
         return {
             "name": _("Manual Delivery Weighing"),
