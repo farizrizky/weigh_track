@@ -119,7 +119,6 @@ class DeliveryManualWeighingWizard(models.TransientModel):
                     "Lot %(lot)s already has device weighing data and cannot be overwritten manually."
                 ) % {"lot": target.lot_id.display_name})
             if target.wt_physical_qty > 0.0 and target.wt_weighing_source != "manual":
-            if target.wt_weighing_source:
                 raise ValidationError(_(
                     "Lot %(lot)s already has weighing data and cannot be overwritten manually."
                 ) % {"lot": target.lot_id.display_name})

@@ -88,7 +88,6 @@ class Delivery(models.Model):
         string="Customer",
         domain="[('id', 'in', allowed_customer_partner_ids)]",
         tracking=True,
-        domain="[('is_company', '=', True)]",
         help="Partner/Customer tujuan pengiriman akhir (untuk Outgoing DO final).",
     )
     allowed_customer_partner_ids = fields.Many2many(
