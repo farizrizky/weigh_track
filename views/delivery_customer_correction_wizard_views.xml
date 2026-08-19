@@ -14,7 +14,6 @@
                                string="Customer Baru"
                                domain="[('id', 'in', allowed_customer_partner_ids)]"
                                options="{'no_create': True}"
-                               domain="[('is_company', '=', True)]"
                                placeholder="Pilih customer baru..."/>
                         <field name="reason"
                                string="Alasan Koreksi"
