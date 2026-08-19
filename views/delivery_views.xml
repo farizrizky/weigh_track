@@ -365,7 +365,7 @@
                                                      <list string="Lot Details"
                                                            editable="bottom"
                                                            decoration-muted="wt_is_cancelled">
-                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.quantity', '&gt;', 0)]" readonly="wt_is_pulled or wt_is_cancelled"/>
+                                                         <field name="lot_id" options="{'no_create': True}" domain="[('product_id', '=', product_id), ('quant_ids.location_id', 'child_of', parent.location_id), ('quant_ids.quantity', '&gt;', 0)]" context="{'location_id': parent.location_id, 'default_product_id': product_id}" readonly="wt_is_pulled or wt_is_cancelled"/>
                                                          <field name="location_id" readonly="1" string="Location"/>
                                                          <field name="allowed_weighing_location_ids" column_invisible="1"/>
                                                          <field name="weighing_location_id" options="{'no_create': True}" string="Weighing Location" readonly="wt_is_pulled or wt_is_cancelled"/>
