@@ -85,6 +85,7 @@
         "web.assets_backend": [
             "weightrack/static/src/css/delivery.css",
             "weightrack/static/src/js/delivery_auto_save.js",
+            "weightrack/static/src/js/do_lot_cancel_live.js",
         ],
     },
     "application": True,

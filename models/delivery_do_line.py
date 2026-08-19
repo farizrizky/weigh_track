@@ -209,13 +209,25 @@ class DeliveryDoLine(models.Model):
         digits="Product Unit of Measure",
     )
 
-    # â”€â”€ Rincian Lot (Sub-form/Perincian Lot) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ————————————————————————————————— Rincian Lot (Sub-form/Perincian Lot) —————————————————————————————————
     lot_line_ids = fields.One2many(
         "wt.delivery.do.line.lot",
         "do_line_id",
         string="Lot Details",
         copy=True,
     )
+
+    @api.onchange("lot_line_ids")
+    def _onchange_lot_line_ids_status(self):
+        for line in self.lot_line_ids:
+            if line.wt_is_cancelled:
+                line.wt_weighing_status = "cancelled"
+            elif not line._has_weighing_input() or line.qty <= 0.0:
+                line.wt_weighing_status = "not_pulled"
+            elif line.wt_weighing_source:
+                line.wt_weighing_status = "weighed"
+            else:
+                line.wt_weighing_status = "unweighed"
 
     # â”€â”€ Info Rute â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     route_id = fields.Many2one(

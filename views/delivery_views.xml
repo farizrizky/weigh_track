@@ -381,11 +381,10 @@
                                                                  decoration-warning="wt_demand_coverage == 'all'"
                                                                  decoration-success="wt_demand_coverage == 'partial'"/>
                                                          <field name="wt_is_pulled" column_invisible="1"/>
-                                                         <field name="wt_is_cancelled" column_invisible="1"/>
                                                          <field name="wt_physical_qty" string="Physical Weight (kg)" readonly="1" optional="show"/>
                                                          <field name="wt_weighed_at" string="Weighed At" readonly="1" optional="show"/>
                                                          <field name="wt_weighing_source" string="Weighing Source" readonly="1" optional="show"/>
-                                                         <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
+                                                         <field name="wt_weighing_status" string="Weighing Status" widget="badge"
                                                                 decoration-success="wt_weighing_status == 'weighed'"
                                                                 decoration-warning="wt_weighing_status == 'unweighed'"
                                                                 decoration-info="wt_weighing_status == 'not_pulled'"
@@ -399,18 +398,10 @@
                                                                  icon="fa-trash-o"
                                                                  title="Hapus Baris Lot (Belum Di-pull)"
                                                                  invisible="wt_is_pulled or picking_state == 'done'"/>
-                                                         <button name="action_cancel_lot"
-                                                                 string="Batal"
-                                                                 type="object"
-                                                                 icon="fa-ban"
-                                                                 title="Batalkan Lot yang Sudah Di-pull"
-                                                                 invisible="not wt_is_pulled or wt_is_cancelled or picking_state == 'done'"/>
-                                                         <button name="action_uncancel_lot"
-                                                                 string="Pulihkan"
-                                                                 type="object"
-                                                                 icon="fa-undo"
-                                                                 title="Pulihkan Kembali Lot yang Dibatalkan"
-                                                                 invisible="not wt_is_cancelled or picking_state == 'done'"/>
+                                                         <field name="wt_is_cancelled"
+                                                                string="Batal"
+                                                                widget="boolean_toggle"
+                                                                readonly="not wt_is_pulled or picking_state == 'done'"/>
                                                      </list>
                                                  </field>
                                              </page>
@@ -475,11 +466,11 @@
                                     <field name="wt_manual_input_at" string="Manual Input At" readonly="1" optional="hide"/>
                                     <field name="wt_manual_reason" string="Manual Input Reason" readonly="1" optional="hide"/>
                                     <field name="wt_weighing_status" string="Weighing Status" readonly="1" widget="badge"
-                                           decoration-success="wt_weighing_status == 'weighed'"
-                                           decoration-warning="wt_weighing_status == 'unweighed'"
-                                           decoration-info="wt_weighing_status == 'not_pulled'"
-                                           decoration-danger="wt_weighing_status == 'cancelled'"
-                                           optional="show"/>
+                                            decoration-success="wt_weighing_status == 'weighed'"
+                                            decoration-warning="wt_weighing_status == 'unweighed'"
+                                            decoration-info="wt_weighing_status == 'not_pulled'"
+                                            decoration-danger="wt_weighing_status == 'cancelled'"
+                                            optional="show"/>
                                     <field name="wt_difference_qty" string="Difference (kg)" readonly="1"
                                            decoration-danger="wt_difference_qty &lt; -0.001"
                                            decoration-success="wt_difference_qty &gt;= -0.001"/>
@@ -501,18 +492,6 @@
                                             icon="fa-trash-o"
                                             title="Hapus Baris Lot (Belum Di-pull)"
                                             invisible="wt_is_pulled or delivery_state in ('done','returned','cancelled')"/>
-                                    <button name="action_cancel_lot"
-                                            string="Batal"
-                                            type="object"
-                                            icon="fa-ban"
-                                            title="Batalkan Lot yang Sudah Di-pull"
-                                            invisible="not wt_is_pulled or wt_is_cancelled or delivery_state in ('done','returned','cancelled')"/>
-                                    <button name="action_uncancel_lot"
-                                            string="Pulihkan"
-                                            type="object"
-                                            icon="fa-undo"
-                                            title="Pulihkan Kembali Lot yang Dibatalkan"
-                                            invisible="not wt_is_cancelled or delivery_state in ('done','returned','cancelled')"/>
                                     <field name="wt_note" string="Notes" optional="hide"/>
                                 </list>
                             </field>

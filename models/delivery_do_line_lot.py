@@ -148,6 +148,7 @@ class DeliveryDoLineLot(models.Model):
         string="Weighing Status",
         compute="_compute_wt_weighing_status",
         store=True,
+        readonly=False,
     )
     wt_difference_qty = fields.Float(
         string="Difference (kg)",
@@ -250,6 +251,19 @@ class DeliveryDoLineLot(models.Model):
         self.ensure_one()
         return self.wt_is_pulled or bool(self.wt_weighing_source)
 
+    def _resolve_weighing_status(self):
+        """Hitung nilai wt_weighing_status berdasarkan state record saat ini.
+        Digunakan oleh compute, onchange, dan write() agar logika tetap konsisten."""
+        self.ensure_one()
+        if self.wt_is_cancelled:
+            return "cancelled"
+        elif not self._has_weighing_input() or self.qty <= 0.0:
+            return "not_pulled"
+        elif self.wt_weighing_source:
+            return "weighed"
+        else:
+            return "unweighed"
+
     @api.depends(
         "wt_is_pulled",
         "wt_weighing_source",
@@ -269,14 +283,13 @@ class DeliveryDoLineLot(models.Model):
     @api.depends("wt_is_pulled", "wt_weighing_source", "wt_physical_qty", "qty", "wt_is_cancelled")
     def _compute_wt_weighing_status(self):
         for line in self:
-            if line.wt_is_cancelled:
-                line.wt_weighing_status = "cancelled"
-            elif not line._has_weighing_input() or line.qty <= 0.0:
-                line.wt_weighing_status = "not_pulled"
-            elif line.wt_weighing_source:
-                line.wt_weighing_status = "weighed"
-            else:
-                line.wt_weighing_status = "unweighed"
+            line.wt_weighing_status = line._resolve_weighing_status()
+
+    @api.onchange("wt_is_cancelled")
+    def _onchange_wt_is_cancelled(self):
+        """Live update wt_weighing_status di UI saat toggle Batal diubah (sebelum disimpan)."""
+        for rec in self:
+            rec.wt_weighing_status = rec._resolve_weighing_status()
 
     @api.depends(
         "lot_id",
@@ -492,9 +505,21 @@ class DeliveryDoLineLot(models.Model):
             for rec in self:
                 if not rec.wt_adjustment_applied:
                     super(DeliveryDoLineLot, rec).write({"wt_original_qty": vals["qty"]})
+        if "wt_is_cancelled" in vals:
+            # Pop agar nilai onchange tidak override hasil compute di bawah
+            vals.pop("wt_weighing_status", None)
         res = super().write(vals)
         if any(key in vals for key in ("lot_id", "do_line_id", "weighing_location_id")):
             self._set_default_weighing_location_if_unique()
+        if "wt_is_cancelled" in vals:
+            # wt_weighing_status adalah stored computed dengan readonly=False sehingga
+            # Odoo tidak otomatis recompute via @api.depends saat write().
+            # Tulis langsung ke DB via super().write() agar nilai tersimpan dan
+            # client mendapat nilai terbaru setelah save.
+            for rec in self:
+                new_status = rec._resolve_weighing_status()
+                if rec.wt_weighing_status != new_status:
+                    super(DeliveryDoLineLot, rec).write({"wt_weighing_status": new_status})
         return res
 
     def _set_default_weighing_location_if_unique(self):
@@ -546,12 +571,7 @@ class DeliveryDoLineLot(models.Model):
         for rec in self:
             if rec.do_line_id and rec.do_line_id.picking_id and rec.do_line_id.picking_id.state == "done":
                 raise ValidationError(_("Tidak dapat membatalkan lot karena Rencana DO sudah selesai divalidasi."))
-            rec.write({
-                "wt_is_cancelled": True,
-                "wt_weighing_status": "cancelled",
-            })
-            if rec.delivery_id:
-                rec.delivery_id.modified(["do_lot_line_ids", "total_demand_qty", "total_physical_qty", "total_difference_qty"])
+            rec.write({"wt_is_cancelled": True})
         return False
 
     def action_uncancel_lot(self):
@@ -559,12 +579,7 @@ class DeliveryDoLineLot(models.Model):
         for rec in self:
             if rec.do_line_id and rec.do_line_id.picking_id and rec.do_line_id.picking_id.state == "done":
                 raise ValidationError(_("Tidak dapat mengaktifkan kembali lot karena Rencana DO sudah selesai divalidasi."))
-            rec.write({
-                "wt_is_cancelled": False,
-            })
-            rec._compute_wt_weighing_status()
-            if rec.delivery_id:
-                rec.delivery_id.modified(["do_lot_line_ids", "total_demand_qty", "total_physical_qty", "total_difference_qty"])
+            rec.write({"wt_is_cancelled": False})
         return False
 
     def action_configure_allocation(self):
