@@ -14,6 +14,7 @@
         <menuitem id="menu_wt_operations" name="Operations" parent="menu_wt_root" sequence="11" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_operations_data_entry" name="Data Entry" parent="menu_wt_operations" sequence="10" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_weighing" name="Weighing" parent="menu_wt_operations_data_entry" action="action_wt_weighing" sequence="10" groups="weightrack.group_admin"/>
+                <menuitem id="menu_wt_field_production" name="Produksi Field" parent="menu_wt_operations_data_entry" action="action_wt_field_production" sequence="15" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_operations_stock_management" name="Stock Management" parent="menu_wt_operations" sequence="20" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_production_receipt" name="Production Receipt" parent="menu_wt_operations_stock_management" action="action_wt_production_receipt" sequence="10" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_stock_opname" name="Stock Opname" parent="menu_wt_operations_stock_management" action="action_wt_stock_opname" sequence="20" groups="weightrack.group_admin"/>

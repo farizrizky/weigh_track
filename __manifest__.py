@@ -56,6 +56,7 @@
         "views/weather_data_views.xml",
         "views/division_views.xml",
         "views/field_views.xml",
+        "views/field_production_views.xml",
         "views/weighing_location_views.xml",
         "views/foreman_views.xml",
         "views/tapper_views.xml",

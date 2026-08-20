@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ========== SEARCH VIEW ========== -->
+    <record id="view_wt_field_production_search" model="ir.ui.view">
+        <field name="name">wt.field.production.search</field>
+        <field name="model">wt.field.production</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="division_id"/>
+                <field name="production_date"/>
+                <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <separator/>
+                <filter string="Hari Ini" name="today"
+                    domain="[('production_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- ========== LIST VIEW ========== -->
+    <record id="view_wt_field_production_list" model="ir.ui.view">
+        <field name="name">wt.field.production.list</field>
+        <field name="model">wt.field.production</field>
+        <field name="arch" type="xml">
+            <list string="Produksi Field" default_order="production_date desc">
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="production_date"/>
+                <field name="division_id"/>
+                <field name="total_production_weight"/>
+                <field name="total_field_weight"/>
+                <field name="state" widget="badge"
+                    decoration-info="state == 'draft'"
+                    decoration-success="state == 'selesai'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ========== FORM VIEW ========== -->
+    <record id="view_wt_field_production_form" model="ir.ui.view">
+        <field name="name">wt.field.production.form</field>
+        <field name="model">wt.field.production</field>
+        <field name="arch" type="xml">
+            <form string="Produksi Field">
+                <header>
+                    <button name="action_validate"
+                        string="Validasi"
+                        type="object"
+                        class="btn-primary"
+                        confirm="Apakah Anda yakin ingin memvalidasi data produksi field ini? Pastikan semua berat sudah sesuai."
+                        invisible="state != 'draft'"/>
+                    <button name="action_set_draft"
+                        string="Reset ke Draft"
+                        type="object"
+                        invisible="state != 'selesai'"/>
+                    <field name="state" widget="statusbar"
+                        statusbar_visible="draft,selesai"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group string="INFORMASI PRODUKSI">
+                        <group>
+                            <field name="company_id" readonly="1"/>
+                            <field name="production_date"
+                                readonly="state == 'selesai'"/>
+                            <field name="division_id"
+                                readonly="state == 'selesai'"/>
+                        </group>
+                        <group>
+                            <field name="total_production_weight"
+                                string="Total Berat Penerimaan (kg)"
+                                readonly="1"/>
+                            <field name="total_field_weight"
+                                string="Total Berat Field (kg)"
+                                readonly="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- TAB 1: Field -->
+                        <page string="Field" name="tab_field">
+                            <field name="field_line_ids"
+                                readonly="state == 'selesai'"
+                                widget="one2many">
+                                <list editable="bottom" create="0" delete="0">
+                                    <field name="field_id" width="150px" readonly="1" force_save="1"/>
+                                    <field name="clone" width="120px"/>
+                                    <field name="ha" width="55px"/>
+                                    <field name="today_production_weight"
+                                        string="Produksi Hari Ini (kg)"
+                                        width="250px"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- TAB 2: Detail Produksi -->
+                        <page string="Detail Produksi" name="tab_receipt">
+                            <field name="production_receipt_ids" readonly="1">
+                                <list>
+                                    <field name="name" string="Nomor Penerimaan"/>
+                                    <field name="production_date"/>
+                                    <field name="division_id"/>
+                                    <field name="total_stock_weight"
+                                        string="Total Berat Stok (kg)"/>
+                                    <field name="total_weighing"
+                                        string="Total Penimbangan"/>
+                                    <field name="state" widget="badge"
+                                        decoration-success="state == 'validated'"
+                                        decoration-info="state == 'processed'"
+                                        decoration-warning="state == 'draft'"
+                                        decoration-danger="state == 'cancelled'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+
+                    <field name="note" string="Catatan"
+                        placeholder="Catatan tambahan..."
+                        readonly="state == 'selesai'"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========== ACTION ========== -->
+    <record id="action_wt_field_production" model="ir.actions.act_window">
+        <field name="name">Produksi Field</field>
+        <field name="res_model">wt.field.production</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_field_production_search"/>
+    </record>
+</odoo>
