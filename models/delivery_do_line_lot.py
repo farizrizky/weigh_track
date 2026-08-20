@@ -203,6 +203,11 @@ class DeliveryDoLineLot(models.Model):
         copy=False,
         index=True,
     )
+    lot_type = fields.Selection(
+        related="lot_id.wt_lot_type",
+        string="Tipe Lot",
+        store=False,
+    )
 
     # ── Alokasi Selisih ───────────────────────────────────────────────────────
     wt_allocation_ids = fields.One2many(
@@ -466,9 +471,9 @@ class DeliveryDoLineLot(models.Model):
         """Saat lot line dihapus, pastikan picking parent (jika ada) di-unreserve
         agar reserved_quantity di stock.quant dibebaskan."""
         for rec in self:
-            if rec._is_required_transit_lot():
+            if rec.lot_id and rec.lot_id.wt_lot_type == "transit":
                 raise ValidationError(_(
-                    "Lot Transit %s wajib dipakai oleh rute pengiriman berikutnya dan tidak dapat dihapus."
+                    "Lot Transit '%s' tidak dapat dihapus karena merupakan lot transit pengiriman."
                 ) % (rec.lot_id.name or rec.display_name))
             if rec._has_weighing_input():
                 raise ValidationError(_(
@@ -505,6 +510,13 @@ class DeliveryDoLineLot(models.Model):
             for rec in self:
                 if not rec.wt_adjustment_applied:
                     super(DeliveryDoLineLot, rec).write({"wt_original_qty": vals["qty"]})
+        if "wt_is_cancelled" in vals and vals["wt_is_cancelled"]:
+            # Hanya lot transit yang tidak boleh dibatalkan
+            for rec in self:
+                if rec.lot_id and rec.lot_id.wt_lot_type == "transit":
+                    raise ValidationError(_(
+                        "Lot Transit '%s' tidak dapat dibatalkan karena merupakan lot transit pengiriman."
+                    ) % (rec.lot_id.name or rec.display_name))
         if "wt_is_cancelled" in vals:
             # Pop agar nilai onchange tidak override hasil compute di bawah
             vals.pop("wt_weighing_status", None)

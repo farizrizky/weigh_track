@@ -421,16 +421,22 @@
                                                                 optional="show"/>
                                                          <field name="wt_difference_qty" string="Difference (kg)" readonly="1" optional="show"/>
                                                          <field name="wt_note" string="Notes" optional="hide"/>
+                                                         <field name="lot_type"
+                                                                string="Tipe Lot"
+                                                                widget="badge"
+                                                                decoration-info="lot_type == 'transit'"
+                                                                decoration-success="lot_type == 'production'"
+                                                                optional="show"/>
                                                          <button name="action_remove_line"
                                                                  string="Hapus"
                                                                  type="object"
                                                                  icon="fa-trash-o"
                                                                  title="Hapus Baris Lot (Belum Di-pull)"
-                                                                 invisible="wt_is_pulled or picking_state == 'done'"/>
+                                                                 invisible="wt_is_pulled or picking_state == 'done' or lot_type == 'transit'"/>
                                                          <field name="wt_is_cancelled"
                                                                 string="Batal"
                                                                 widget="boolean_toggle"
-                                                                readonly="not wt_is_pulled or picking_state == 'done'"/>
+                                                                readonly="not wt_is_pulled or picking_state == 'done' or lot_type == 'transit'"/>
                                                      </list>
                                                  </field>
                                              </page>
