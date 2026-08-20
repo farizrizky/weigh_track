@@ -1148,6 +1148,18 @@ class Delivery(models.Model):
                         "dengan Tipe Operasi 'Order Pengiriman' (Outgoing ke Customer)."
                     ))
 
+                # Validasi: Setiap baris DO wajib memiliki lot aktif dan demand > 0
+                zero_demand_lines = delivery.do_line_ids.filtered(
+                    lambda l: l.demand_qty <= 0
+                    or not l.lot_line_ids.filtered(lambda lot: not lot.wt_is_cancelled and lot.qty > 0)
+                )
+                if zero_demand_lines:
+                    seqs = ", ".join(str(l.sequence) for l in zero_demand_lines)
+                    raise ValidationError(_(
+                        "Baris DO urutan %s belum memiliki rincian lot atau Demand (kg) masih 0.\n"
+                        "Pastikan setiap baris DO sudah diatur lot dan demand-nya sebelum dikonfirmasi."
+                    ) % seqs)
+
                 delivery.write({"state": "confirmed"})
                 continue
 

@@ -80,6 +80,7 @@
                             string="Confirm"
                             type="object"
                             class="btn-primary"
+                            confirm="Apakah Anda yakin ingin mengonfirmasi tugas pengiriman ini?"
                             invisible="state != 'draft'"/>
                     <button name="action_cancel"
                              string="Cancel"
