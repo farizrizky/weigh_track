@@ -14,6 +14,7 @@ access_wt_weather_data_admin,access.wt.weather.data.admin,model_wt_weather_data,
 access_wt_api_admin,access.wt.api.admin,model_wt_api,group_admin,1,1,1,1
 access_wt_api_request_log_admin,access.wt.api.request.log.admin,model_wt_api_request_log,group_admin,1,0,0,0
 access_wt_division_admin,access.wt.division.admin,model_wt_division,group_admin,1,1,1,1
+access_wt_field_admin,access.wt.field.admin,model_wt_field,group_admin,1,1,1,1
 access_wt_weighing_location_admin,access.wt.weighing.location.admin,model_wt_weighing_location,group_admin,1,1,1,1
 access_wt_foreman_admin,access.wt.foreman.admin,model_wt_foreman,group_admin,1,1,1,1
 access_wt_tapper_admin,access.wt.tapper.admin,model_wt_tapper,group_admin,1,1,1,1

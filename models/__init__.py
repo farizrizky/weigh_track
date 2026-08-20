@@ -17,6 +17,7 @@ from . import weather
 from . import weather_data
 from . import daily_stock_analysis
 from . import division
+from . import field
 from . import weighing_location
 from . import foreman
 from . import tapper

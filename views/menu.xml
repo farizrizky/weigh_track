@@ -10,6 +10,7 @@
             <menuitem id="menu_wt_foreman" name="Foremen" parent="menu_wt_master_data" action="action_wt_foreman" sequence="50" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_tapper" name="Tappers" parent="menu_wt_master_data" action="action_wt_tapper" sequence="60" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_customer" name="Customers" parent="menu_wt_master_data" action="action_wt_customer" sequence="70" groups="weightrack.group_admin"/>
+            <menuitem id="menu_wt_field" name="Fields" parent="menu_wt_master_data" action="action_wt_field" sequence="75" groups="weightrack.group_admin"/>
         <menuitem id="menu_wt_operations" name="Operations" parent="menu_wt_root" sequence="11" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_operations_data_entry" name="Data Entry" parent="menu_wt_operations" sequence="10" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_weighing" name="Weighing" parent="menu_wt_operations_data_entry" action="action_wt_weighing" sequence="10" groups="weightrack.group_admin"/>
