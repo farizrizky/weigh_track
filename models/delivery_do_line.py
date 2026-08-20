@@ -698,8 +698,11 @@ class DeliveryDoLine(models.Model):
             ) % (self.sequence, lot_names))
 
         # Cek jika ada lot yang memiliki selisih timbang tapi belum teralokasi penuh
+        # Lot yang dibatalkan (wt_is_cancelled) dikecualikan — tidak ada pergerakan stok
         unallocated_lots = self.lot_line_ids.filtered(
-            lambda l: abs(l.wt_difference_qty) > 0.001 and not l.wt_is_fully_allocated
+            lambda l: not l.wt_is_cancelled
+            and abs(l.wt_difference_qty) > 0.001
+            and not l.wt_is_fully_allocated
         )
         if unallocated_lots:
             lot_details = "\n".join(

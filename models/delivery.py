@@ -486,6 +486,7 @@ class Delivery(models.Model):
             for lot_line in do_line.lot_line_ids.filtered(
                 lambda line: line.qty > 0.0
                 and line.lot_id.wt_lot_type == "production"
+                and not line.wt_is_cancelled
             ):
                 first_key = first_route_key_by_lot.setdefault(
                     lot_line.lot_id.id,
@@ -1010,6 +1011,7 @@ class Delivery(models.Model):
             lambda l: abs(l.wt_difference_qty) > 0.001
             and l.wt_is_fully_allocated
             and not l.wt_adjustment_applied
+            and not l.wt_is_cancelled  # lot dibatalkan tidak menghasilkan pergerakan stok
         )
         if not adjustable_lines:
             raise UserError(_(
