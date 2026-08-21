@@ -359,6 +359,7 @@ class FieldProductionLine(models.Model):
             past_lines = Line.search([
                 ("field_id", "=", line.field_id.id),
                 ("production_id.company_id", "=", prod.company_id.id),
+                ("production_id.division_id", "=", prod.division_id.id),
                 ("production_id.production_date", ">=", month_start),
                 ("production_id.production_date", "<=", prod_date),
                 ("production_id.state", "=", "selesai"),

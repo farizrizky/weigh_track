@@ -18,6 +18,10 @@ access_wt_field_admin,access.wt.field.admin,model_wt_field,group_admin,1,1,1,1
 access_wt_field_production_admin,access.wt.field.production.admin,model_wt_field_production,group_admin,1,1,1,1
 access_wt_field_production_line_admin,access.wt.field.production.line.admin,model_wt_field_production_line,group_admin,1,1,1,1
 access_wt_field_production_import_wizard_admin,access.wt.field.production.import.wizard.admin,model_wt_field_production_import_wizard,group_admin,1,1,1,1
+access_wt_field_production_report_admin,access.wt.field.production.report.admin,model_wt_field_production_report,group_admin,1,1,1,1
+access_wt_field_production_report_date_admin,access.wt.field.production.report.date.admin,model_wt_field_production_report_date,group_admin,1,1,1,1
+access_wt_field_production_report_line_admin,access.wt.field.production.report.line.admin,model_wt_field_production_report_line,group_admin,1,1,1,1
+access_wt_field_production_report_wizard_admin,access.wt.field.production.report.wizard.admin,model_wt_field_production_report_wizard,group_admin,1,1,1,1
 access_wt_weighing_location_admin,access.wt.weighing.location.admin,model_wt_weighing_location,group_admin,1,1,1,1
 access_wt_foreman_admin,access.wt.foreman.admin,model_wt_foreman,group_admin,1,1,1,1
 access_wt_tapper_admin,access.wt.tapper.admin,model_wt_tapper,group_admin,1,1,1,1
@@ -107,6 +111,12 @@ access_wt_weighing_manual_log_admin,access.wt.weighing.manual.log.admin,model_wt
 access_wt_weighing_report_viewer,access.wt.weighing.report.viewer,model_wt_weighing,group_report_viewer,1,0,0,0
 access_wt_production_receipt_report_viewer,access.wt.production.receipt.report.viewer,model_wt_production_receipt,group_report_viewer,1,0,0,0
 access_wt_production_receipt_line_report_viewer,access.wt.production.receipt.line.report.viewer,model_wt_production_receipt_line,group_report_viewer,1,0,0,0
+access_wt_field_production_report_viewer,access.wt.field.production.report.viewer,model_wt_field_production,group_report_viewer,1,0,0,0
+access_wt_field_production_line_report_viewer,access.wt.field.production.line.report.viewer,model_wt_field_production_line,group_report_viewer,1,0,0,0
+access_wt_field_production_report_report_viewer,access.wt.field.production.report.report_viewer,model_wt_field_production_report,group_report_viewer,1,1,1,1
+access_wt_field_production_report_date_report_viewer,access.wt.field.production.report.date.report_viewer,model_wt_field_production_report_date,group_report_viewer,1,1,1,1
+access_wt_field_production_report_line_report_viewer,access.wt.field.production.report.line.report_viewer,model_wt_field_production_report_line,group_report_viewer,1,1,1,1
+access_wt_field_production_report_wizard_report_viewer,access.wt.field.production.report.wizard.report_viewer,model_wt_field_production_report_wizard,group_report_viewer,1,1,1,1
 access_wt_division_report_viewer,access.wt.division.report.viewer,model_wt_division,group_report_viewer,1,0,0,0
 access_wt_estate_report_viewer,access.wt.estate.report.viewer,model_wt_estate,group_report_viewer,1,0,0,0
 access_wt_tapper_report_viewer,access.wt.tapper.report.viewer,model_wt_tapper,group_report_viewer,1,0,0,0

@@ -58,6 +58,8 @@
         "views/field_views.xml",
         "views/field_production_import_wizard_views.xml",
         "views/field_production_report.xml",
+        "views/field_production_report_wizard_pdf.xml",
+        "views/field_production_report_wizard_views.xml",
         "views/field_production_views.xml",
         "views/weighing_location_views.xml",
         "views/foreman_views.xml",
