@@ -10,7 +10,7 @@
                 <field name="division_id"/>
                 <field name="production_date"/>
                 <filter string="Draft" name="draft" domain="[('state', '=', 'draft')]"/>
-                <filter string="Done" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="Selesai" name="selesai" domain="[('state', '=', 'selesai')]"/>
                 <separator/>
                 <filter string="Hari Ini" name="today"
                     domain="[('production_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
@@ -54,6 +54,23 @@
                         string="Reset ke Draft"
                         type="object"
                         invisible="state != 'selesai'"/>
+                    <!-- Import Excel: hanya saat Draft -->
+                    <button name="action_import_excel"
+                        string="Import Excel"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="state != 'draft'"/>
+                    <!-- Export: hanya saat Selesai -->
+                    <button name="action_export_excel"
+                        string="Export Excel"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="state != 'selesai'"/>
+                    <button name="action_export_pdf"
+                        string="Export PDF"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="state != 'selesai'"/>
                     <field name="state" widget="statusbar"
                         statusbar_visible="draft,selesai"/>
                 </header>
@@ -95,7 +112,14 @@
                                     <field name="ha" width="55px"/>
                                     <field name="today_production_weight"
                                         string="Produksi Hari Ini (kg)"
-                                        width="250px"/>
+                                        width="200px"/>
+                                    <!-- To Date: hanya muncul saat state == selesai -->
+                                    <field name="to_date_weight"
+                                        string="To Date (kg)"
+                                        width="200px"
+                                        readonly="1"
+                                        optional="show"
+                                        invisible="parent.state != 'selesai'"/>
                                 </list>
                             </field>
                         </page>

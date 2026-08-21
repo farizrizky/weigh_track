@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Paper Format -->
+    <record id="paperformat_field_production_report" model="report.paperformat">
+        <field name="name">Field Production Report A4 Portrait</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- Report Action -->
+    <record id="action_report_field_production_pdf" model="ir.actions.report">
+        <field name="name">Laporan Produksi Field</field>
+        <field name="model">wt.field.production</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_field_production_document</field>
+        <field name="report_file">weightrack.report_field_production_document</field>
+        <field name="paperformat_id" ref="paperformat_field_production_report"/>
+        <field name="print_report_name">'Produksi Field - %s - %s' % (object.name, object.production_date.strftime('%Y%m%d') if object.production_date else '')</field>
+    </record>
+
+    <!-- QWeb Template -->
+    <template id="report_field_production_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <div class="page wt-field-production-report">
+                    <style>
+                        .wt-field-production-report {
+                            color: #111827;
+                            font-family: "Lato", sans-serif;
+                            font-size: 9.5px;
+                            line-height: 1.4;
+                        }
+                        .wt-field-production-report .header-table {
+                            border-collapse: collapse;
+                            margin-bottom: 14px;
+                            width: 100%;
+                        }
+                        .wt-field-production-report .header-table td {
+                            border: 0;
+                            vertical-align: top;
+                        }
+                        .wt-field-production-report .logo {
+                            max-height: 60px;
+                            max-width: 200px;
+                        }
+                        .wt-field-production-report .company-name {
+                            font-size: 16px;
+                            font-weight: 700;
+                            text-align: right;
+                        }
+                        .wt-field-production-report .report-title {
+                            font-size: 14px;
+                            font-weight: 700;
+                            margin: 2px 0 0;
+                            text-align: right;
+                            text-transform: uppercase;
+                        }
+                        .wt-field-production-report .info-table {
+                            border-collapse: collapse;
+                            margin-bottom: 10px;
+                            width: 100%;
+                        }
+                        .wt-field-production-report .info-table td {
+                            border: 1px solid #cbd5e1;
+                            padding: 5px 7px !important;
+                            vertical-align: top;
+                        }
+                        .wt-field-production-report .info-label {
+                            background: #f3f4f6;
+                            font-weight: 700;
+                            width: 18%;
+                            white-space: nowrap;
+                        }
+                        .wt-field-production-report .info-value {
+                            width: 32%;
+                        }
+                        .wt-field-production-report .data-table {
+                            border-collapse: collapse;
+                            table-layout: fixed;
+                            width: 100%;
+                        }
+                        .wt-field-production-report .data-table th,
+                        .wt-field-production-report .data-table td {
+                            border: 1px solid #9ca3af;
+                            font-size: 8.5px;
+                            line-height: 1.25;
+                            padding: 5px 4px !important;
+                            vertical-align: middle;
+                        }
+                        .wt-field-production-report .data-table th {
+                            background: #e5e7eb;
+                            font-weight: 700;
+                            text-align: center;
+                        }
+                        .wt-field-production-report .col-no      { width: 5%; }
+                        .wt-field-production-report .col-field    { width: 16%; }
+                        .wt-field-production-report .col-clone    { width: 15%; }
+                        .wt-field-production-report .col-ha       { width: 10%; }
+                        .wt-field-production-report .col-today    { width: 27%; }
+                        .wt-field-production-report .col-todate   { width: 27%; }
+                        .wt-field-production-report .text-center  { text-align: center; }
+                        .wt-field-production-report .text-right   { text-align: right; white-space: nowrap; }
+                        .wt-field-production-report .total-row td {
+                            background: #f8fafc;
+                            font-weight: 700;
+                        }
+                        .wt-field-production-report .badge-selesai {
+                            background: #d1fae5;
+                            border-radius: 4px;
+                            color: #065f46;
+                            font-weight: 700;
+                            padding: 2px 6px;
+                        }
+                        .wt-field-production-report .badge-draft {
+                            background: #dbeafe;
+                            border-radius: 4px;
+                            color: #1e40af;
+                            font-weight: 700;
+                            padding: 2px 6px;
+                        }
+                    </style>
+
+                    <!-- Document Header -->
+                    <table class="header-table">
+                        <tr>
+                            <td style="width:40%;">
+                                <t t-if="doc.company_id.logo">
+                                    <img class="logo"
+                                         t-att-src="image_data_uri(doc.company_id.logo)"
+                                         alt="Logo"/>
+                                </t>
+                            </td>
+                            <td style="width:60%;">
+                                <div class="company-name" t-esc="doc.company_id.name"/>
+                                <div class="report-title">Laporan Produksi Field</div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Document Info -->
+                    <table class="info-table">
+                        <tr>
+                            <td class="info-label">Nomor</td>
+                            <td class="info-value" t-esc="doc.name"/>
+                            <td class="info-label">Status</td>
+                            <td class="info-value">
+                                <span t-if="doc.state == 'selesai'" class="badge-selesai">Selesai</span>
+                                <span t-if="doc.state == 'draft'" class="badge-draft">Draft</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Tanggal Produksi</td>
+                            <td class="info-value">
+                                <span t-esc="doc.production_date.strftime('%d/%m/%Y') if doc.production_date else '-'"/>
+                            </td>
+                            <td class="info-label">Divisi</td>
+                            <td class="info-value">
+                                <span t-esc="doc.division_id.display_name if doc.division_id else '-'"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Total Penerimaan</td>
+                            <td class="info-value text-right">
+                                <span t-esc="'%.2f kg' % doc.total_production_weight"/>
+                            </td>
+                            <td class="info-label">Total Field</td>
+                            <td class="info-value text-right">
+                                <span t-esc="'%.2f kg' % doc.total_field_weight"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Data Table -->
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="col-no">No.</th>
+                                <th class="col-field">Field</th>
+                                <th class="col-clone">Clone</th>
+                                <th class="col-ha">HA</th>
+                                <th class="col-today">Produksi Hari Ini (kg)</th>
+                                <t t-if="doc.state == 'selesai'">
+                                    <th class="col-todate">To Date (kg)</th>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-if="doc.field_line_ids">
+                                <t t-foreach="doc.field_line_ids" t-as="line">
+                                    <tr>
+                                        <td class="text-center" t-esc="line_index + 1"/>
+                                        <td t-esc="line.field_id.display_name or '-'"/>
+                                        <td t-esc="line.clone or '-'"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.ha or 0.0)"/>
+                                        <td class="text-right" t-esc="'%.2f' % (line.today_production_weight or 0.0)"/>
+                                        <t t-if="doc.state == 'selesai'">
+                                            <td class="text-right" t-esc="'%.2f' % (line.to_date_weight or 0.0)"/>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </t>
+                            <t t-if="not doc.field_line_ids">
+                                <tr>
+                                    <td t-att-colspan="6 if doc.state == 'selesai' else 5"
+                                        class="text-center">
+                                        Tidak ada data field.
+                                    </td>
+                                </tr>
+                            </t>
+                            <!-- Total Row -->
+                            <tr class="total-row">
+                                <td t-att-colspan="4" class="text-right">Total</td>
+                                <td class="text-right">
+                                    <span t-esc="'%.2f' % doc.total_field_weight"/>
+                                </td>
+                                <t t-if="doc.state == 'selesai'">
+                                    <td class="text-right">
+                                        <span t-esc="'%.2f' % sum(doc.field_line_ids.mapped('to_date_weight'))"/>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Notes -->
+                    <t t-if="doc.note">
+                        <div style="margin-top:12px;border:1px solid #cbd5e1;padding:8px;border-radius:4px;">
+                            <strong>Catatan:</strong>
+                            <div t-esc="doc.note"/>
+                        </div>
+                    </t>
+
+                </div>
+            </t>
+        </t>
+    </template>
+
+</odoo>
