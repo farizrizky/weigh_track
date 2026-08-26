@@ -62,6 +62,7 @@ access_wt_delivery_do_line_lot_admin,access.wt.delivery.do.line.lot.admin,model_
 access_wt_delivery_return_wizard_admin,access.wt.delivery.return.wizard.admin,model_wt_delivery_return_wizard,group_admin,1,1,1,1
 access_wt_delivery_customer_correction_wizard_admin,access.wt.delivery.customer.correction.wizard.admin,model_wt_delivery_customer_correction_wizard,group_admin,1,1,1,1
 access_wt_delivery_received_qty_correction_wizard_admin,access.wt.delivery.received.qty.correction.wizard.admin,model_wt_delivery_received_qty_correction_wizard,group_admin,1,1,1,1
+access_wt_delivery_transit_shrinkage_proportion_admin,access.wt.delivery.transit.shrinkage.proportion.admin,model_wt_delivery_transit_shrinkage_proportion,group_admin,1,1,1,1
 
 
 access_wt_weighing_production_report_admin,access.wt.weighing.production.report.admin,model_wt_weighing_production_report,group_admin,1,1,1,1
@@ -179,6 +180,7 @@ access_wt_delivery_route_report_viewer,access.wt.delivery.route.report.viewer,mo
 access_wt_delivery_route_line_report_viewer,access.wt.delivery.route.line.report.viewer,model_wt_delivery_route_line,group_report_viewer,1,0,0,0
 access_wt_delivery_step_report_viewer,access.wt.delivery.step.report.viewer,model_wt_delivery_step,group_report_viewer,1,0,0,0
 access_wt_delivery_line_allocation_report_viewer,access.wt.delivery.line.allocation.report.viewer,model_wt_delivery_line_allocation,group_report_viewer,1,0,0,0
+access_wt_delivery_transit_shrinkage_proportion_report_viewer,access.wt.delivery.transit.shrinkage.proportion.report.viewer,model_wt_delivery_transit_shrinkage_proportion,group_report_viewer,1,0,0,0
 access_wt_employee_role_report_viewer,access.wt.employee.role.report.viewer,model_wt_employee_role,group_report_viewer,1,0,0,0
 access_wt_customer_report_viewer,access.wt.customer.report.viewer,model_wt_customer,group_report_viewer,1,0,0,0
 access_wt_shrinkage_tolerance_override_report_viewer,access.wt.shrinkage.tolerance.override.report.viewer,model_wt_shrinkage_tolerance_override,group_report_viewer,1,0,0,0

@@ -248,6 +248,52 @@ class Delivery(models.Model):
         compute="_compute_totals",
         store=True,
     )
+    wt_is_returned = fields.Boolean(
+        string="Returned",
+        default=False,
+        copy=False,
+        readonly=True,
+    )
+    wt_return_reason = fields.Text(
+        string="Return Reason",
+        readonly=True,
+        copy=False,
+    )
+
+    # ── Proporsi Susut Transit ─────────────────────────────────────────────────
+    transit_shrinkage_proportion_ids = fields.One2many(
+        "wt.delivery.transit.shrinkage.proportion",
+        "delivery_id",
+        string="Proporsi Susut Transit",
+        copy=False,
+    )
+    transit_shrinkage_allocatable_qty = fields.Float(
+        string="Total Susut Transit (kg)",
+        compute="_compute_transit_shrinkage_proportion_totals",
+        store=True,
+        digits="Product Unit of Measure",
+        help="Total susut transit yang dapat diproporsikan (dari alokasi lot transit dengan tipe 'susut').",
+    )
+    transit_shrinkage_proportioned_qty = fields.Float(
+        string="Total Sudah Diproporsikan (kg)",
+        compute="_compute_transit_shrinkage_proportion_totals",
+        store=True,
+        digits="Product Unit of Measure",
+    )
+    transit_shrinkage_proportion_balanced = fields.Boolean(
+        string="Proporsi Seimbang",
+        compute="_compute_transit_shrinkage_proportion_totals",
+        store=True,
+        help="True jika total proporsi sama dengan total susut transit.",
+    )
+    transit_shrinkage_proportion_saved = fields.Boolean(
+        string="Proporsi Tersimpan",
+        default=False,
+        copy=False,
+        tracking=True,
+    )
+
+    # ── Computed ──────────────────────────────────────────────────────────────────────────────────────
     received_qty = fields.Float(
         string="Berat Diterima Customer (kg)",
         digits="Product Unit of Measure",
@@ -286,17 +332,6 @@ class Delivery(models.Model):
         readonly=True,
         copy=False,
         tracking=True,
-    )
-    wt_is_returned = fields.Boolean(
-        string="Returned",
-        default=False,
-        copy=False,
-        readonly=True,
-    )
-    wt_return_reason = fields.Text(
-        string="Return Reason",
-        readonly=True,
-        copy=False,
     )
 
     # â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1304,6 +1339,17 @@ class Delivery(models.Model):
                 raise ValidationError(_(
                     "Berat Diterima Customer (kg) wajib diisi sebelum menyelesaikan pengiriman."
                 ))
+            # Validasi proporsi susut transit wajib disimpan sebelum selesai
+            if (
+                delivery.has_transit_route
+                and delivery.transit_shrinkage_allocatable_qty > 0.001
+                and not delivery.transit_shrinkage_proportion_saved
+            ):
+                raise ValidationError(_(
+                    "Proporsi Susut Transfer belum disimpan.\n"
+                    "Harap selesaikan dan simpan proporsi susut di tab 'Proporsi Susut Transfer' "
+                    "sebelum menyelesaikan pengiriman ini."
+                ))
             delivery.write({
                 "state": "done",
                 "validated_at": fields.Datetime.now(),
@@ -1351,6 +1397,165 @@ class Delivery(models.Model):
                     "Tugas Pengiriman hanya dapat dihapus saat masih berstatus Draft."
                 ))
         return super().unlink()
+
+    # ── Proporsi Susut Transit ─────────────────────────────────────────────────
+
+    def _get_transit_shrinkage_lot_lines(self):
+        """Kembalikan lot-lot transit yang memiliki alokasi dengan difference_type == 'susut'."""
+        self.ensure_one()
+        result = []
+        for do_line in self.do_line_ids:
+            if not do_line._is_transit_route():
+                continue
+            transit_lot = do_line.generated_transit_lot_id
+            if not transit_lot:
+                continue
+            # Cari lot line transit di DO line selanjutnya (destination)
+            ordered = self.do_line_ids.sorted(
+                lambda line: (line.sequence or 0, line.id or 0)
+            )
+            source_key = (do_line.sequence or 0, do_line.id or 0)
+            dest_line = ordered.filtered(
+                lambda line: (
+                    (line.sequence or 0, line.id or 0) > source_key
+                    and transit_lot in line.lot_line_ids.mapped("lot_id")
+                )
+            )[:1]
+            if not dest_line:
+                continue
+            transit_lot_lines = dest_line.lot_line_ids.filtered(
+                lambda l: l.lot_id == transit_lot
+                and not l.wt_is_cancelled
+            )
+            result.extend(transit_lot_lines)
+        return result
+
+    def _get_transit_shrinkage_allocatable_qty(self):
+        """Total qty alokasi dengan difference_type == 'susut' dari lot transit."""
+        self.ensure_one()
+        total = 0.0
+        transit_lot_lines = self._get_transit_shrinkage_lot_lines()
+        for lot_line in transit_lot_lines:
+            susut_allocs = lot_line.wt_allocation_ids.filtered(
+                lambda a: a.reason_id.difference_type == 'susut'
+            )
+            total += sum(susut_allocs.mapped('qty'))
+        return total
+
+    @api.depends(
+        "do_line_ids.lot_line_ids.wt_allocation_ids.qty",
+        "do_line_ids.lot_line_ids.wt_allocation_ids.reason_id",
+        "do_line_ids.lot_line_ids.wt_allocation_ids.reason_id.difference_type",
+        "transit_shrinkage_proportion_ids.proportion_qty",
+        "do_line_ids.generated_transit_lot_id",
+    )
+    def _compute_transit_shrinkage_proportion_totals(self):
+        for rec in self:
+            allocatable = rec._get_transit_shrinkage_allocatable_qty()
+            proportioned = sum(
+                rec.transit_shrinkage_proportion_ids.mapped("proportion_qty")
+            )
+            rec.transit_shrinkage_allocatable_qty = allocatable
+            rec.transit_shrinkage_proportioned_qty = proportioned
+            rec.transit_shrinkage_proportion_balanced = (
+                abs(allocatable - proportioned) <= 0.001
+                and allocatable > 0.0
+            )
+
+    def _prepare_transit_shrinkage_proportion_lines(self):
+        """Generate baris proporsi susut transit untuk semua lot aktif di DO."""
+        self.ensure_one()
+        active_lots = self.do_lot_line_ids.filtered(
+            lambda l: not l.wt_is_cancelled
+            and l.wt_weighing_status == 'weighed'
+            and l.lot_id.wt_lot_type != 'transit'
+        )
+        existing_lot_ids = self.transit_shrinkage_proportion_ids.mapped("do_lot_line_id").ids
+        commands = []
+        for lot_line in active_lots:
+            if lot_line.id not in existing_lot_ids:
+                commands.append((0, 0, {
+                    "delivery_id": self.id,
+                    "do_lot_line_id": lot_line.id,
+                    "proportion_qty": 0.0,
+                }))
+        return commands
+
+    def action_fill_equal_proportion(self):
+        """Distribusikan susut transit secara merata ke semua lot aktif."""
+        self.ensure_one()
+        if self.state not in ('delivered', 'done'):
+            raise ValidationError(_("Proporsi susut hanya bisa diatur saat status DO Terkirim atau Selesai."))
+        allocatable = self._get_transit_shrinkage_allocatable_qty()
+        if allocatable <= 0.0:
+            raise ValidationError(_("Tidak ada susut transit yang dapat diproporsikan.\n"
+                "Pastikan alokasi dengan tipe 'Susut' sudah diisi di tab Detail Timbang."))
+
+        # Pastikan semua lot aktif sudah ada di tabel proporsi
+        new_commands = self._prepare_transit_shrinkage_proportion_lines()
+        if new_commands:
+            self.sudo().write({"transit_shrinkage_proportion_ids": new_commands})
+
+        proportion_lines = self.transit_shrinkage_proportion_ids
+        # Filter hanya lot non-transit yang aktif
+        active_props = proportion_lines.filtered(
+            lambda p: not p.do_lot_line_id.wt_is_cancelled
+            and p.do_lot_line_id.wt_weighing_status == 'weighed'
+        )
+        if not active_props:
+            raise ValidationError(_("Tidak ada lot aktif yang bisa mendapat proporsi susut."))
+
+        count = len(active_props)
+        each_qty = round(allocatable / count, 4)
+        # Koreksi pembulatan di baris terakhir
+        remaining = allocatable
+        for i, prop in enumerate(active_props):
+            if i < count - 1:
+                prop.proportion_qty = each_qty
+                remaining -= each_qty
+            else:
+                prop.proportion_qty = round(remaining, 4)
+        self.transit_shrinkage_proportion_saved = False
+        return True
+
+    def action_sync_proportion_lines(self):
+        """Sinkronisasi baris proporsi dengan lot aktif saat ini."""
+        self.ensure_one()
+        if self.state not in ('delivered', 'done'):
+            return False
+        new_commands = self._prepare_transit_shrinkage_proportion_lines()
+        if new_commands:
+            self.sudo().write({"transit_shrinkage_proportion_ids": new_commands})
+        # Hapus baris yang lotnya sudah tidak aktif
+        to_remove = self.transit_shrinkage_proportion_ids.filtered(
+            lambda p: p.do_lot_line_id.wt_is_cancelled
+            or p.do_lot_line_id.wt_weighing_status != 'weighed'
+        )
+        if to_remove:
+            to_remove.unlink()
+        return True
+
+    def action_save_transit_proportion(self):
+        """Simpan proporsi susut transit setelah validasi keseimbangan."""
+        self.ensure_one()
+        if self.state not in ('delivered', 'done'):
+            raise ValidationError(_("Proporsi susut hanya bisa disimpan saat status DO Terkirim atau Selesai."))
+        allocatable = self._get_transit_shrinkage_allocatable_qty()
+        proportioned = sum(self.transit_shrinkage_proportion_ids.mapped("proportion_qty"))
+        if abs(allocatable - proportioned) > 0.001:
+            raise ValidationError(_(
+                "Total proporsi (%.4f kg) harus sama dengan total susut transit (%.4f kg).\n"
+                "Harap sesuaikan proporsi sebelum menyimpan."
+            ) % (proportioned, allocatable))
+        self.write({"transit_shrinkage_proportion_saved": True})
+        self.message_post(body=Markup(_(
+            "<b>Proporsi Susut Transit</b> disimpan oleh %s.<br/>"
+            "Total susut: %.4f kg | Proporsi tersimpan untuk %d lot."
+        ) % (
+            self.env.user.name,
+            proportioned,
+            len(self.transit_shrinkage_proportion_ids),
+        )))
 
     def action_cancel(self):
         for delivery in self:

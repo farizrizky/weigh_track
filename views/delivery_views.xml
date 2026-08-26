@@ -533,7 +533,121 @@
                             </field>
                         </page>
 
-                        <!-- Tab 3: Notes -->
+                        <!-- Tab 3: Proporsi Susut Transfer -->
+                        <page string="Proporsi Susut Transfer"
+                              name="transit_shrinkage_proportion"
+                              invisible="state not in ('delivered', 'done') or not has_transit_route">
+
+                            <field name="transit_shrinkage_allocatable_qty" invisible="1"/>
+                            <field name="transit_shrinkage_proportioned_qty" invisible="1"/>
+                            <field name="transit_shrinkage_proportion_balanced" invisible="1"/>
+                            <field name="transit_shrinkage_proportion_saved" invisible="1"/>
+
+                            <!-- Info Banner: Belum disimpan -->
+                            <div class="alert alert-warning d-flex align-items-center mb-2" role="alert"
+                                 invisible="transit_shrinkage_proportion_saved">
+                                <i class="fa fa-exclamation-triangle me-2" style="font-size: 1.3em;"/>
+                                <div>
+                                    <strong>Proporsi Susut Transfer belum disimpan.</strong>
+                                    Pastikan total proporsi sesuai sebelum menyimpan.
+                                </div>
+                            </div>
+
+                            <!-- Info Banner: Sudah disimpan -->
+                            <div class="alert alert-success d-flex align-items-center mb-2" role="alert"
+                                 invisible="not transit_shrinkage_proportion_saved">
+                                <i class="fa fa-check-circle me-2" style="font-size: 1.3em;"/>
+                                <div>
+                                    <strong>Proporsi Susut Transfer sudah disimpan.</strong>
+                                </div>
+                            </div>
+
+                            <!-- Ringkasan -->
+                            <group>
+                                <group string="Ringkasan Susut Transit">
+                                    <field name="transit_shrinkage_allocatable_qty"
+                                           string="Total Susut Transit (kg)"
+                                           readonly="1"/>
+                                    <field name="transit_shrinkage_proportioned_qty"
+                                           string="Total Diproporsikan (kg)"
+                                           readonly="1"/>
+                                </group>
+                                <group>
+                                    <!-- Status seimbang -->
+                                    <field name="transit_shrinkage_proportion_balanced"
+                                           string="Proporsi Seimbang"
+                                           readonly="1"
+                                           widget="boolean"/>
+                                </group>
+                            </group>
+
+                            <!-- Tombol aksi -->
+                            <div class="mb-2">
+                                <button name="action_fill_equal_proportion"
+                                        string="⚖ Proporsi Rata-Rata"
+                                        type="object"
+                                        class="btn btn-secondary"
+                                        confirm="Ini akan menimpa semua nilai proporsi saat ini dengan pembagian merata. Lanjutkan?"/>
+                                <button name="action_sync_proportion_lines"
+                                        string="🔄 Sinkronisasi Lot"
+                                        type="object"
+                                        class="btn btn-secondary ms-1"
+                                        title="Tambahkan lot baru yang belum ada dan hapus lot yang sudah tidak aktif"
+                                        confirm="Sinkronisasi akan menambah lot baru dan menghapus lot yang sudah tidak aktif dari daftar proporsi. Lanjutkan?"/>
+                                <button name="action_save_transit_proportion"
+                                        string="💾 Simpan Proporsi"
+                                        type="object"
+                                        class="btn btn-primary ms-1"
+                                        invisible="not transit_shrinkage_proportion_balanced"
+                                        confirm="Simpan proporsi susut transit? Pastikan semua nilai sudah benar."/>
+                            </div>
+
+                            <!-- Peringatan jika tidak seimbang -->
+                            <div class="alert alert-danger d-flex align-items-center mb-2" role="alert"
+                                 invisible="transit_shrinkage_proportion_balanced or transit_shrinkage_allocatable_qty == 0">
+                                <i class="fa fa-times-circle me-2" style="font-size: 1.3em;"/>
+                                <div>
+                                    <strong>Proporsi belum seimbang!</strong>
+                                    Total proporsi harus sama dengan total susut transit.
+                                    Selisih:
+                                    <field name="transit_shrinkage_proportioned_qty" readonly="1" nolabel="1"/>
+                                    kg dari
+                                    <field name="transit_shrinkage_allocatable_qty" readonly="1" nolabel="1"/>
+                                    kg.
+                                </div>
+                            </div>
+
+                            <!-- Info: belum ada susut yang bisa diproporsikan -->
+                            <div class="alert alert-info d-flex align-items-center mb-2" role="alert"
+                                 invisible="transit_shrinkage_allocatable_qty != 0">
+                                <i class="fa fa-info-circle me-2" style="font-size: 1.3em;"/>
+                                <div>
+                                    Belum ada alokasi susut transit.
+                                    Pastikan alokasi dengan tipe <strong>Susut</strong> sudah diisi
+                                    di tab <strong>Detail Timbang</strong> untuk lot transit.
+                                </div>
+                            </div>
+
+                            <!-- Tabel proporsi -->
+                            <field name="transit_shrinkage_proportion_ids">
+                                <list string="Proporsi Susut Transit"
+                                      editable="bottom"
+                                      create="false"
+                                      delete="false">
+                                    <field name="do_lot_line_id" column_invisible="1"/>
+                                    <field name="lot_id" readonly="1" string="Lot" width="180px"/>
+                                    <field name="route_type" readonly="1" string="Tipe Rute"
+                                           widget="badge"
+                                           decoration-info="route_type == 'transit'"
+                                           decoration-success="route_type == 'outgoing'"
+                                           width="90px"/>
+                                    <field name="physical_qty" readonly="1" string="Berat Fisik (kg)" width="140px"/>
+                                    <field name="proportion_qty" string="Proporsi Susut (kg)" width="140px"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <!-- Tab 4: Notes -->
                         <page string="Notes">
                             <group>
                                 <field name="note" placeholder="Add notes here..."/>

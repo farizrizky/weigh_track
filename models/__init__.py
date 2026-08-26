@@ -34,3 +34,4 @@ from . import delivery_step
 from . import delivery_do_line_lot
 from . import delivery_do_line
 from . import delivery_line_allocation
+from . import delivery_transit_shrinkage_proportion
