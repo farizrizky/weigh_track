@@ -532,6 +532,14 @@ class DeliveryDoLineLot(models.Model):
                 new_status = rec._resolve_weighing_status()
                 if rec.wt_weighing_status != new_status:
                     super(DeliveryDoLineLot, rec).write({"wt_weighing_status": new_status})
+                if vals.get("wt_is_cancelled"):
+                    props = self.env["wt.delivery.transit.shrinkage.proportion"].search([
+                        ("do_lot_line_id", "=", rec.id)
+                    ])
+                    if props:
+                        props.unlink()
+                    if rec.delivery_id:
+                        rec.delivery_id.transit_shrinkage_proportion_saved = False
         return res
 
     def _set_default_weighing_location_if_unique(self):

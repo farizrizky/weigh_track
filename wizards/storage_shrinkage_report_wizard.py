@@ -445,6 +445,56 @@ class StorageShrinkageReportWizard(models.TransientModel):
             if not row["movement_date"] or line.move_id.date > row["movement_date"]:
                 row["movement_date"] = line.move_id.date
 
+        proportions = self._get_transit_shrinkage_proportions()
+        for prop in proportions:
+            lot = prop.lot_id
+            if not lot:
+                continue
+            division = lot.division_id
+            warehouse = (
+                self._resolve_warehouse(prop.do_line_id.location_id, warehouses)
+                or division_warehouses.get(division.id)
+                or self.env["stock.warehouse"]
+            )
+            if self.warehouse_id and warehouse != self.warehouse_id:
+                continue
+            if self.division_id and division != self.division_id:
+                continue
+
+            key = self._stock_basis_key(division, lot)
+            row = rows.setdefault(
+                key,
+                {
+                    "warehouse": (
+                        self.warehouse_id
+                        or warehouse
+                        or division_warehouses.get(division.id)
+                        or self.env["stock.warehouse"]
+                    ),
+                    "division": division,
+                    "lot": lot,
+                    "product": lot.product_id,
+                    "uom": lot.product_id.uom_id,
+                    "opening_qty": 0.0,
+                    "stock_in_qty": 0.0,
+                    "closing_qty": 0.0,
+                    "quantity": 0.0,
+                    "movement_count": 0,
+                    "movement_date": False,
+                },
+            )
+            row["quantity"] += prop.proportion_qty or 0.0
+            delivery_dt = (
+                prop.delivery_id.backdate_effective_at
+                or (
+                    datetime.combine(prop.delivery_id.date, time.min)
+                    if prop.delivery_id.date
+                    else False
+                )
+            )
+            if delivery_dt and (not row["movement_date"] or delivery_dt > row["movement_date"]):
+                row["movement_date"] = delivery_dt
+
         summary_map = {}
         detail_vals = []
         sorted_rows = sorted(
@@ -620,6 +670,18 @@ class StorageShrinkageReportWizard(models.TransientModel):
         ]
         move_lines = self.env["stock.move.line"].search(domain, order="id")
         return move_lines.filtered(lambda line: not self._is_transit_merge_move_line(line))
+
+    def _get_transit_shrinkage_proportions(self):
+        self.ensure_one()
+        domain = [
+            ("delivery_id.company_id", "=", self.company_id.id),
+            ("delivery_id.date", ">=", self.start_date),
+            ("delivery_id.date", "<=", self.end_date),
+            ("delivery_id.state", "in", ["delivered", "done"]),
+            ("delivery_id.transit_shrinkage_proportion_saved", "=", True),
+            ("proportion_qty", ">", 0),
+        ]
+        return self.env["wt.delivery.transit.shrinkage.proportion"].search(domain)
 
     def _get_utc_date_range(self):
         self.ensure_one()

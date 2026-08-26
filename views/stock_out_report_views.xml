@@ -36,7 +36,6 @@
                             <field name="total_balance_qty"/>
                             <field name="total_out_percentage"/>
                             <field name="total_storage_shrinkage_qty"/>
-                            <field name="total_transfer_shrinkage_qty"/>
                             <field name="total_shipping_qty"/>
                         </group>
                     </group>
@@ -52,7 +51,6 @@
                                     <field name="stock_qty" sum="Total"/>
                                     <field name="quantity" sum="Total"/>
                                     <field name="storage_shrinkage_qty" sum="Total"/>
-                                    <field name="transfer_shrinkage_qty" sum="Total"/>
                                     <field name="shipping_qty" sum="Total"/>
                                     <field name="balance_qty" sum="Total"/>
                                     <field name="out_percentage"/>

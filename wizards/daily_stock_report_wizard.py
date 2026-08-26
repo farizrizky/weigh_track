@@ -544,21 +544,25 @@ class DailyStockReportWizard(models.TransientModel):
             day_start,
             day_end,
             warehouses,
+            start_date=self.report_date,
+            end_date=self.report_date,
         )
         stock_mtd = self._aggregate_stock_events(
             product,
             mtd_start,
             mtd_end,
             warehouses,
+            start_date=month_start,
+            end_date=self.report_date,
         )
 
         opening_total = month_opening["all"].get("total", 0.0)
         closing_total = closing["all"].get("total", 0.0)
         production_in_total = stock_mtd["production_in"].get("total", 0.0)
-        shipping_total = stock_mtd["shipping"].get("total", 0.0)
+        shipping_total = stock_mtd["shipping_source_out"].get("total", 0.0)
         shrink_total = self._sum_values(
             stock_mtd["storage_shrinkage"],
-            stock_mtd["transfer_shrinkage"],
+            stock_mtd.get("transit_proportions", {}),
         ).get("total", 0.0)
         balance_difference = (
             opening_total
@@ -649,28 +653,16 @@ class DailyStockReportWizard(models.TransientModel):
         )
         stock_shrink_day = self._sum_values(
             stock_day["storage_shrinkage"],
-            stock_day["transfer_shrinkage"],
+            stock_day.get("transit_proportions", {}),
         )
         stock_shrink_mtd = self._sum_values(
             stock_mtd["storage_shrinkage"],
-            stock_mtd["transfer_shrinkage"],
+            stock_mtd.get("transit_proportions", {}),
         )
-        transfer_shrinkage_out_day = self._negative_values(
-            stock_day["transfer_shrinkage"]
-        )
-        transfer_shrinkage_out_mtd = self._negative_values(
-            stock_mtd["transfer_shrinkage"]
-        )
-        stock_out_day = self._sum_values(
-            stock_day["shipping_source_out"],
-            transfer_shrinkage_out_day,
-        )
-        stock_out_mtd = self._sum_values(
-            stock_mtd["shipping_source_out"],
-            transfer_shrinkage_out_mtd,
-        )
-        shrink_base_day = self._sum_values(stock_day["shipping"], stock_shrink_day)
-        shrink_base_mtd = self._sum_values(stock_mtd["shipping"], stock_shrink_mtd)
+        stock_out_day = stock_day["shipping_source_out"]
+        stock_out_mtd = stock_mtd["shipping_source_out"]
+        shrink_base_day = self._sum_values(stock_out_day, stock_shrink_day)
+        shrink_base_mtd = self._sum_values(stock_out_mtd, stock_shrink_mtd)
         stock_shrink_percentage_day = self._percentage_values(
             stock_shrink_day,
             shrink_base_day,
@@ -712,11 +704,7 @@ class DailyStockReportWizard(models.TransientModel):
                     style="total",
                 ),
                 self._subsection_row(_("Penjualan Produksi")),
-                self._data_row(_("Hari ini"), stock_day["shipping_source_out"]),
-                self._data_row(
-                    _("Dikurangi Susut Transfer Antar Gudang"),
-                    transfer_shrinkage_out_day,
-                ),
+                self._data_row(_("Hari ini"), stock_out_day),
                 self._data_row(
                     _("Jumlah Pengeluaran Hari ini"),
                     stock_out_day,
@@ -749,14 +737,6 @@ class DailyStockReportWizard(models.TransientModel):
                 ),
                 self._subsection_row(_("Susut Timbang dari Gudang ke Pengiriman")),
                 self._data_row(
-                    _("Susut Penyimpanan Hari ini"),
-                    stock_day["storage_shrinkage"],
-                ),
-                self._data_row(
-                    _("Susut Transfer Antar Gudang"),
-                    stock_day["transfer_shrinkage"],
-                ),
-                self._data_row(
                     _("Jumlah Susut Hari ini"),
                     stock_shrink_day,
                     style="total",
@@ -766,14 +746,6 @@ class DailyStockReportWizard(models.TransientModel):
                     stock_shrink_percentage_day,
                     unit="%",
                     style="percentage",
-                ),
-                self._data_row(
-                    _("Susut Penyimpanan s.d. Hari ini"),
-                    stock_mtd["storage_shrinkage"],
-                ),
-                self._data_row(
-                    _("Susut Transfer Antar Gudang s.d. Hari ini"),
-                    stock_mtd["transfer_shrinkage"],
                 ),
                 self._data_row(
                     _("Jumlah Susut s.d. Hari ini"),
@@ -789,7 +761,7 @@ class DailyStockReportWizard(models.TransientModel):
                 self._section_row("III", _("Stock Produksi")),
                 self._data_row(_("Saldo Awal"), month_opening["all"]),
                 self._data_row(_("Produksi Masuk"), stock_mtd["production_in"]),
-                self._data_row(_("Produksi Keluar"), stock_mtd["shipping"]),
+                self._data_row(_("Produksi Keluar"), stock_mtd["shipping_source_out"]),
                 self._data_row(
                     _("Penyesuaian Susut Produksi"),
                     stock_shrink_mtd,
@@ -921,7 +893,15 @@ class DailyStockReportWizard(models.TransientModel):
         )
         self._add_scope_value(values, quantity, division, estate)
 
-    def _aggregate_stock_events(self, product, start_dt, end_dt, warehouses):
+    def _aggregate_stock_events(
+        self,
+        product,
+        start_dt,
+        end_dt,
+        warehouses,
+        start_date=None,
+        end_date=None,
+    ):
         result = {
             "production_in": defaultdict(float),
             "shipping": defaultdict(float),
@@ -1029,10 +1009,53 @@ class DailyStockReportWizard(models.TransientModel):
         )
         for key, value in source_lot_sales_out.items():
             result["shipping_source_out"][key] += value
+
+        if start_date and end_date:
+            transit_props = self._aggregate_transit_proportions(
+                start_date,
+                end_date,
+                warehouses,
+            )
+            result["transit_proportions"] = transit_props
+            for key, prop_qty in transit_props.items():
+                result["shipping_source_out"][key] = max(
+                    0.0, result["shipping_source_out"].get(key, 0.0) - prop_qty
+                )
+
         return {
             key: self._clean_values(values)
             for key, values in result.items()
         }
+
+    def _aggregate_transit_proportions(self, start_date, end_date, warehouses):
+        values = defaultdict(float)
+        domain = [
+            ("delivery_id.company_id", "=", self.company_id.id),
+            ("delivery_id.date", ">=", start_date),
+            ("delivery_id.date", "<=", end_date),
+            ("delivery_id.state", "in", ["delivered", "done"]),
+            ("delivery_id.transit_shrinkage_proportion_saved", "=", True),
+            ("proportion_qty", ">", 0),
+        ]
+        proportions = self.env["wt.delivery.transit.shrinkage.proportion"].search(domain)
+        for prop in proportions:
+            lot = prop.lot_id
+            if not lot:
+                continue
+            division = lot.division_id
+            warehouse = self._resolve_warehouse(prop.do_line_id.location_id, warehouses)
+            estate = (
+                division.estate_id
+                if division
+                else (warehouse.estate_id if warehouse else self.env["wt.estate"])
+            )
+            self._add_scope_value(
+                values,
+                prop.proportion_qty or 0.0,
+                division,
+                estate,
+            )
+        return self._clean_values(values)
 
     def _aggregate_delivery_source_lot_sales(
         self,

@@ -93,7 +93,7 @@
                             <tr>
                                 <th>No</th><th>Gudang</th><th>Divisi</th><th>Stok Awal</th>
                                 <th>Stok Masuk</th><th>Stok Tersedia</th><th>Qty Keluar</th>
-                                <th>Susut Simpan</th><th>Susut Transfer</th><th>Pengiriman</th>
+                                <th>Susut Simpan</th><th>Pengiriman</th>
                                 <th>Saldo Akhir</th><th>% Keluar</th>
                             </tr>
                         </thead>
@@ -109,7 +109,6 @@
                                         <td class="text-right" t-esc="'%.2f' % (line.stock_qty or 0.0)"/>
                                         <td class="text-right" t-esc="'%.2f' % (line.quantity or 0.0)"/>
                                         <td class="text-right" t-esc="'%.2f' % (line.storage_shrinkage_qty or 0.0)"/>
-                                        <td class="text-right" t-esc="'%.2f' % (line.transfer_shrinkage_qty or 0.0)"/>
                                         <td class="text-right" t-esc="'%.2f' % (line.shipping_qty or 0.0)"/>
                                         <td class="text-right" t-esc="'%.2f' % (line.balance_qty or 0.0)"/>
                                         <td class="text-right" t-esc="line.out_percentage or '0.00%'"/>
@@ -122,14 +121,13 @@
                                     <td class="text-right" t-esc="'%.2f' % (doc.total_stock_qty or 0.0)"/>
                                     <td class="text-right" t-esc="'%.2f' % (doc.total_quantity or 0.0)"/>
                                     <td class="text-right" t-esc="'%.2f' % (doc.total_storage_shrinkage_qty or 0.0)"/>
-                                    <td class="text-right" t-esc="'%.2f' % (doc.total_transfer_shrinkage_qty or 0.0)"/>
                                     <td class="text-right" t-esc="'%.2f' % (doc.total_shipping_qty or 0.0)"/>
                                     <td class="text-right" t-esc="'%.2f' % (doc.total_balance_qty or 0.0)"/>
                                     <td class="text-right" t-esc="doc.total_out_percentage or '0.00%'"/>
                                 </tr>
                             </t>
                             <tr t-if="not doc.summary_line_ids">
-                                <td colspan="12" class="text-center muted">Tidak ada data pada filter ini.</td>
+                                <td colspan="11" class="text-center muted">Tidak ada data pada filter ini.</td>
                             </tr>
                         </tbody>
                     </table>

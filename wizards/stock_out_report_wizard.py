@@ -175,8 +175,8 @@ class StockOutReport(models.TransientModel):
         total_label_format = workbook.add_format({"bold": True, "align": "right", "border": 1})
         total_number_format = workbook.add_format({"bold": True, "border": 1, "num_format": "#,##0.00"})
 
-        sheet.merge_range("A1:L1", self.company_id.name or "", title_format)
-        sheet.merge_range("A2:L2", "LAPORAN STOCK KELUAR", title_format)
+        sheet.merge_range("A1:K1", self.company_id.name or "", title_format)
+        sheet.merge_range("A2:K2", "LAPORAN STOCK KELUAR", title_format)
         sheet.write("A4", "Rentang Tanggal", label_format)
         sheet.write("B4", "%s s/d %s" % (self.start_date or "", self.end_date or ""))
         sheet.write("A5", "Gudang", label_format)
@@ -195,12 +195,11 @@ class StockOutReport(models.TransientModel):
             "Stok Tersedia",
             "Qty Keluar",
             "Susut Penyimpanan",
-            "Susut Transfer",
             "Pengiriman",
             "Saldo Akhir",
             "% Keluar",
         ]
-        summary_widths = [6, 22, 20, 14, 14, 14, 14, 16, 14, 14, 14, 12]
+        summary_widths = [6, 22, 20, 14, 14, 14, 14, 16, 14, 14, 12]
         for column, width in enumerate(summary_widths):
             sheet.set_column(column, column, width)
         sheet.write(8, 0, "RINGKASAN STOCK KELUAR PER DIVISI", label_format)
@@ -216,10 +215,9 @@ class StockOutReport(models.TransientModel):
             sheet.write(row_index, 5, line.stock_qty, number_format)
             sheet.write(row_index, 6, line.quantity, number_format)
             sheet.write(row_index, 7, line.storage_shrinkage_qty, number_format)
-            sheet.write(row_index, 8, line.transfer_shrinkage_qty, number_format)
-            sheet.write(row_index, 9, line.shipping_qty, number_format)
-            sheet.write(row_index, 10, line.balance_qty, number_format)
-            sheet.write(row_index, 11, line.out_percentage or "0.00%", text_format)
+            sheet.write(row_index, 8, line.shipping_qty, number_format)
+            sheet.write(row_index, 9, line.balance_qty, number_format)
+            sheet.write(row_index, 10, line.out_percentage or "0.00%", text_format)
             row_index += 1
         sheet.merge_range(row_index, 0, row_index, 2, "Total", total_label_format)
         sheet.write(row_index, 3, self.total_opening_qty, total_number_format)
@@ -227,10 +225,9 @@ class StockOutReport(models.TransientModel):
         sheet.write(row_index, 5, self.total_stock_qty, total_number_format)
         sheet.write(row_index, 6, self.total_quantity, total_number_format)
         sheet.write(row_index, 7, self.total_storage_shrinkage_qty, total_number_format)
-        sheet.write(row_index, 8, self.total_transfer_shrinkage_qty, total_number_format)
-        sheet.write(row_index, 9, self.total_shipping_qty, total_number_format)
-        sheet.write(row_index, 10, self.total_balance_qty, total_number_format)
-        sheet.write(row_index, 11, self.total_out_percentage or "0.00%", total_label_format)
+        sheet.write(row_index, 8, self.total_shipping_qty, total_number_format)
+        sheet.write(row_index, 9, self.total_balance_qty, total_number_format)
+        sheet.write(row_index, 10, self.total_out_percentage or "0.00%", total_label_format)
 
         row_index += 3
         detail_headers = [
@@ -540,15 +537,8 @@ class StockOutReportWizard(models.TransientModel):
                     provenance_cache,
                 )
                 if sources:
-                    source_total = sum(source["quantity"] for source in sources)
-                    remaining = quantity
-                    for index, source in enumerate(sources):
-                        allocated_qty = (
-                            remaining
-                            if index == len(sources) - 1
-                            else quantity * source["quantity"] / source_total
-                        )
-                        remaining -= allocated_qty
+                    for source in sources:
+                        allocated_qty = source["quantity"]
                         self._append_report_event(
                             events,
                             line=line,
@@ -594,51 +584,6 @@ class StockOutReportWizard(models.TransientModel):
                 source_location=line.location_id,
                 source_document=line.move_id.origin or "",
             )
-
-        for line in self._get_transfer_shrinkage_move_lines():
-            delivery = completed_delivery_by_name.get(line.move_id.origin)
-            sources = self._get_transit_provenance(
-                line.lot_id,
-                warehouses,
-                provenance_cache,
-            )
-            source_total = sum(source["quantity"] for source in sources)
-            if not source_total:
-                warehouse = self._resolve_warehouse(line.location_id, warehouses)
-                self._append_report_event(
-                    events,
-                    line=line,
-                    category="transfer_shrinkage",
-                    quantity=line.quantity or 0.0,
-                    warehouse=warehouse,
-                    division=self.env["wt.division"],
-                    lot=line.lot_id,
-                    source_location=line.location_id,
-                    source_document=line.move_id.origin or "",
-                    delivery=delivery,
-                    is_transit=True,
-                )
-                continue
-            remaining = line.quantity or 0.0
-            for index, source in enumerate(sources):
-                allocated_qty = (
-                    remaining
-                    if index == len(sources) - 1
-                    else (line.quantity or 0.0) * source["quantity"] / source_total
-                )
-                remaining -= allocated_qty
-                self._append_report_event(
-                    events,
-                    line=line,
-                    category="transfer_shrinkage",
-                    quantity=allocated_qty,
-                    warehouse=source["warehouse"],
-                    division=source["division"],
-                    lot=source["lot"],
-                    source_location=source["source_location"],
-                    source_document=line.move_id.origin or "",
-                    delivery=delivery,
-                )
 
         start_dt, end_dt = self._get_utc_date_range()
         rows = self._build_period_stock_basis(start_dt, end_dt, warehouses)
@@ -708,6 +653,48 @@ class StockOutReportWizard(models.TransientModel):
                 delivery_ids.add(delivery.id)
             if picking:
                 picking_ids.add(picking.id)
+
+        # Terapkan proporsi susut transfer:
+        # Kurangi dari shipping_qty dan tambahkan ke storage_shrinkage_qty (total quantity keluar tetap sama)
+        proportions = self._get_transit_shrinkage_proportions()
+        for prop in proportions:
+            lot = prop.lot_id
+            if not lot:
+                continue
+            division = lot.division_id
+            warehouse = (
+                self._resolve_warehouse(prop.do_line_id.location_id, warehouses)
+                or division_warehouses.get(division.id)
+                or self.env["stock.warehouse"]
+            )
+            if self.warehouse_id and warehouse != self.warehouse_id:
+                continue
+            if self.division_id and division != self.division_id:
+                continue
+
+            key = self._stock_basis_key(division, lot)
+            row = rows.get(key)
+            if not row:
+                continue
+
+            prop_qty = prop.proportion_qty or 0.0
+            row["storage_shrinkage_qty"] += prop_qty
+            row["shipping_qty"] = max(0.0, row["shipping_qty"] - prop_qty)
+            row["category_labels"].add(_("Susut Penyimpanan"))
+            if prop.delivery_id.name:
+                row["source_documents"].add(prop.delivery_id.name)
+            delivery_dt = (
+                prop.delivery_id.backdate_effective_at
+                or (
+                    datetime.combine(prop.delivery_id.date, time.min)
+                    if prop.delivery_id.date
+                    else False
+                )
+            )
+            if delivery_dt and (not row["movement_date"] or delivery_dt > row["movement_date"]):
+                row["movement_date"] = delivery_dt
+            if prop.delivery_id:
+                delivery_ids.add(prop.delivery_id.id)
 
         summary_map = {}
         detail_vals = []
@@ -888,17 +875,21 @@ class StockOutReportWizard(models.TransientModel):
         self,
         events,
         *,
-        line,
+        line=None,
+        movement_date=None,
         category,
         quantity,
         warehouse,
         division,
         lot,
         source_location,
+        destination_location=None,
         source_document,
         delivery=None,
         picking=None,
         customer=None,
+        product=None,
+        uom=None,
         is_transit=False,
     ):
         if quantity <= 0.0 or not source_location:
@@ -911,28 +902,43 @@ class StockOutReportWizard(models.TransientModel):
         category_labels = {
             "shipping": _("Pengiriman"),
             "storage_shrinkage": _("Susut Penyimpanan"),
-            "transfer_shrinkage": _("Susut Transfer"),
         }
+        prod = product or (line.product_id if line else lot.product_id)
+        prod_uom = uom or (line.product_uom_id or line.product_id.uom_id if line else lot.product_id.uom_id)
+        m_date = movement_date or (line.move_id.date if line else False)
+        dest_loc = destination_location or (line.location_dest_id if line else self.env["stock.location"])
         events.append(
             {
-                "movement_date": line.move_id.date,
+                "movement_date": m_date,
                 "source_document": source_document,
                 "category": category,
-                "category_label": category_labels[category],
+                "category_label": category_labels.get(category, _("Susut Penyimpanan")),
                 "quantity": quantity,
                 "warehouse": warehouse,
                 "division": division,
                 "is_transit": is_transit,
                 "lot": lot,
                 "source_location": source_location,
-                "destination_location": line.location_dest_id,
+                "destination_location": dest_loc,
                 "delivery": delivery or self.env["wt.delivery"],
                 "picking": picking or self.env["stock.picking"],
                 "customer": customer or self.env["res.partner"],
-                "product": line.product_id,
-                "uom": line.product_uom_id or line.product_id.uom_id,
+                "product": prod,
+                "uom": prod_uom,
             }
         )
+
+    def _get_transit_shrinkage_proportions(self):
+        self.ensure_one()
+        domain = [
+            ("delivery_id.company_id", "=", self.company_id.id),
+            ("delivery_id.date", ">=", self.start_date),
+            ("delivery_id.date", "<=", self.end_date),
+            ("delivery_id.state", "in", ["delivered", "done"]),
+            ("delivery_id.transit_shrinkage_proportion_saved", "=", True),
+            ("proportion_qty", ">", 0),
+        ]
+        return self.env["wt.delivery.transit.shrinkage.proportion"].search(domain)
 
     def _get_shipping_move_lines(self):
         self.ensure_one()
