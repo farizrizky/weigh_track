@@ -1029,15 +1029,20 @@ class DailyStockReportWizard(models.TransientModel):
 
     def _aggregate_transit_proportions(self, start_date, end_date, warehouses):
         values = defaultdict(float)
-        domain = [
-            ("delivery_id.company_id", "=", self.company_id.id),
-            ("delivery_id.date", ">=", start_date),
-            ("delivery_id.date", "<=", end_date),
-            ("delivery_id.state", "in", ["delivered", "done"]),
-            ("delivery_id.transit_shrinkage_proportion_saved", "=", True),
+        deliveries = self.env["wt.delivery"].search([
+            ("company_id", "=", self.company_id.id),
+            ("state", "in", ["delivered", "done"]),
+            ("transit_shrinkage_proportion_saved", "=", True),
+        ])
+        matched_deliveries = deliveries.filtered(
+            lambda d: start_date <= (d.backdate_effective_at.date() if d.backdate_effective_at else d.date) <= end_date
+        )
+        if not matched_deliveries:
+            return self._clean_values(values)
+        proportions = self.env["wt.delivery.transit.shrinkage.proportion"].search([
+            ("delivery_id", "in", matched_deliveries.ids),
             ("proportion_qty", ">", 0),
-        ]
-        proportions = self.env["wt.delivery.transit.shrinkage.proportion"].search(domain)
+        ])
         for prop in proportions:
             lot = prop.lot_id
             if not lot:

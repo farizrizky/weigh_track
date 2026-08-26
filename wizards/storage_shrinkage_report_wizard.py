@@ -673,15 +673,20 @@ class StorageShrinkageReportWizard(models.TransientModel):
 
     def _get_transit_shrinkage_proportions(self):
         self.ensure_one()
-        domain = [
-            ("delivery_id.company_id", "=", self.company_id.id),
-            ("delivery_id.date", ">=", self.start_date),
-            ("delivery_id.date", "<=", self.end_date),
-            ("delivery_id.state", "in", ["delivered", "done"]),
-            ("delivery_id.transit_shrinkage_proportion_saved", "=", True),
+        deliveries = self.env["wt.delivery"].search([
+            ("company_id", "=", self.company_id.id),
+            ("state", "in", ["delivered", "done"]),
+            ("transit_shrinkage_proportion_saved", "=", True),
+        ])
+        matched_deliveries = deliveries.filtered(
+            lambda d: self.start_date <= (d.backdate_effective_at.date() if d.backdate_effective_at else d.date) <= self.end_date
+        )
+        if not matched_deliveries:
+            return self.env["wt.delivery.transit.shrinkage.proportion"]
+        return self.env["wt.delivery.transit.shrinkage.proportion"].search([
+            ("delivery_id", "in", matched_deliveries.ids),
             ("proportion_qty", ">", 0),
-        ]
-        return self.env["wt.delivery.transit.shrinkage.proportion"].search(domain)
+        ])
 
     def _get_utc_date_range(self):
         self.ensure_one()
