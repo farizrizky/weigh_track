@@ -1264,7 +1264,7 @@ class Delivery(models.Model):
         self.ensure_one()
         return self.do_lot_line_ids.filtered(
             lambda line: line.qty > 0.0
-            and not line.wt_weighing_source
+            and not line.wt_is_cancelled
             and not line.wt_adjustment_applied
             and line.do_line_id.picking_state != "done"
             and (
