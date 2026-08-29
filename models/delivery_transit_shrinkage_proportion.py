@@ -71,13 +71,23 @@ class DeliveryTransitShrinkageProportion(models.Model):
         )
     ]
 
-    @api.constrains("proportion_qty")
-    def _check_proportion_qty_non_negative(self):
+    @api.constrains("proportion_qty", "physical_qty", "do_lot_line_id")
+    def _check_proportion_qty_bounds(self):
         for rec in self:
             if rec.proportion_qty < -0.001:
                 raise ValidationError(_(
                     "Proporsi susut untuk lot %s tidak boleh negatif."
                 ) % (rec.lot_id.name or rec.do_lot_line_id.product_id.display_name))
+            physical_qty = rec.physical_qty or 0.0
+            if rec.proportion_qty > physical_qty + 0.001:
+                raise ValidationError(_(
+                    "Proporsi susut untuk lot %(lot)s (%(proportion).4f kg) tidak boleh melebihi "
+                    "berat fisik lot tersebut (%(physical).4f kg)."
+                ) % {
+                    "lot": rec.lot_id.name or rec.do_lot_line_id.product_id.display_name,
+                    "proportion": rec.proportion_qty,
+                    "physical": physical_qty,
+                })
 
     def write(self, vals):
         res = super().write(vals)

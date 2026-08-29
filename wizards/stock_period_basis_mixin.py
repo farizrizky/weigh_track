@@ -63,6 +63,14 @@ class StockPeriodBasisMixin(models.AbstractModel):
                     and self._basis_is_allowed_stock_in(line, warehouses)
                 ):
                     row["stock_in_qty"] += quantity
+                elif (
+                    movement_date >= start_value
+                    and source_in_scope
+                    and not destination_in_scope
+                    and line.picking_id
+                    and line.picking_id.production_receipt_reverse_id
+                ):
+                    row["stock_in_qty"] -= quantity
 
         return {
             key: value

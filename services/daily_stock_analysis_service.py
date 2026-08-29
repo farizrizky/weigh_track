@@ -186,8 +186,8 @@ class DailyStockAnalysisService(models.AbstractModel):
         weighing_qty = metrics.get("weighing_qty", 0.0)
         sales_qty = metrics.get("sales_qty", 0.0)
         storage_shrinkage_qty = metrics.get("storage_shrinkage_qty", 0.0)
-        transfer_shrinkage_qty = metrics.get("transfer_shrinkage_qty", 0.0)
-        total_shrinkage_qty = storage_shrinkage_qty + transfer_shrinkage_qty
+        transfer_shrinkage_qty = 0.0
+        total_shrinkage_qty = storage_shrinkage_qty
         closing_stock = metrics.get("closing_stock", 0.0)
         return {
             "name": "%s - %s" % (report_date, scope_name),

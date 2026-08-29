@@ -1482,7 +1482,7 @@ class Delivery(models.Model):
         return commands
 
     def action_fill_equal_proportion(self):
-        """Distribusikan susut transit secara merata ke semua lot aktif."""
+        """Distribusikan susut transit proporsional terhadap berat fisik lot."""
         self.ensure_one()
         if self.state not in ('delivered', 'done'):
             raise ValidationError(_("Proporsi susut hanya bisa diatur saat status DO Terkirim atau Selesai."))
@@ -1497,24 +1497,44 @@ class Delivery(models.Model):
             self.sudo().write({"transit_shrinkage_proportion_ids": new_commands})
 
         proportion_lines = self.transit_shrinkage_proportion_ids
-        # Filter hanya lot non-transit yang aktif
         active_props = proportion_lines.filtered(
             lambda p: not p.do_lot_line_id.wt_is_cancelled
             and p.do_lot_line_id.wt_weighing_status == 'weighed'
+            and p.lot_id.wt_lot_type != 'transit'
         )
         if not active_props:
             raise ValidationError(_("Tidak ada lot aktif yang bisa mendapat proporsi susut."))
 
-        count = len(active_props)
-        each_qty = round(allocatable / count, 4)
-        # Koreksi pembulatan di baris terakhir
+        total_physical = sum(active_props.mapped("physical_qty"))
+        if total_physical <= 0.0:
+            raise ValidationError(_("Berat fisik lot aktif harus lebih dari nol untuk menghitung proporsi susut."))
+        if allocatable > total_physical + 0.001:
+            raise ValidationError(_(
+                "Total susut transit (%.4f kg) tidak boleh melebihi total berat fisik lot aktif (%.4f kg)."
+            ) % (allocatable, total_physical))
+
         remaining = allocatable
-        for i, prop in enumerate(active_props):
-            if i < count - 1:
-                prop.proportion_qty = each_qty
-                remaining -= each_qty
+        remaining_physical = total_physical
+        ordered_props = active_props.sorted(lambda p: (p.do_lot_line_id.id or 0, p.id or 0))
+        for index, prop in enumerate(ordered_props):
+            physical_qty = prop.physical_qty or 0.0
+            if index < len(ordered_props) - 1:
+                proportional_qty = (
+                    remaining * physical_qty / remaining_physical
+                    if remaining_physical
+                    else 0.0
+                )
+                allocated_qty = min(physical_qty, round(proportional_qty, 4))
             else:
-                prop.proportion_qty = round(remaining, 4)
+                allocated_qty = round(remaining, 4)
+                if allocated_qty > physical_qty + 0.001:
+                    raise ValidationError(_(
+                        "Proporsi susut untuk lot %s melebihi berat fisiknya. "
+                        "Periksa kembali berat fisik dan total susut transit."
+                    ) % (prop.lot_id.name or prop.do_lot_line_id.product_id.display_name))
+            prop.proportion_qty = allocated_qty
+            remaining -= allocated_qty
+            remaining_physical -= physical_qty
         self.transit_shrinkage_proportion_saved = False
         return True
 
@@ -1542,6 +1562,21 @@ class Delivery(models.Model):
             raise ValidationError(_("Proporsi susut hanya bisa disimpan saat status DO Terkirim atau Selesai."))
         allocatable = self._get_transit_shrinkage_allocatable_qty()
         proportioned = sum(self.transit_shrinkage_proportion_ids.mapped("proportion_qty"))
+        for prop in self.transit_shrinkage_proportion_ids:
+            physical_qty = prop.physical_qty or 0.0
+            if prop.proportion_qty < -0.001:
+                raise ValidationError(_(
+                    "Proporsi susut untuk lot %s tidak boleh negatif."
+                ) % (prop.lot_id.name or prop.do_lot_line_id.product_id.display_name))
+            if prop.proportion_qty > physical_qty + 0.001:
+                raise ValidationError(_(
+                    "Proporsi susut untuk lot %(lot)s (%(proportion).4f kg) tidak boleh melebihi "
+                    "berat fisik lot tersebut (%(physical).4f kg)."
+                ) % {
+                    "lot": prop.lot_id.name or prop.do_lot_line_id.product_id.display_name,
+                    "proportion": prop.proportion_qty,
+                    "physical": physical_qty,
+                })
         if abs(allocatable - proportioned) > 0.001:
             raise ValidationError(_(
                 "Total proporsi (%.4f kg) harus sama dengan total susut transit (%.4f kg).\n"
