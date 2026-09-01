@@ -584,10 +584,10 @@
                             <!-- Tombol aksi -->
                             <div class="mb-2">
                                 <button name="action_fill_equal_proportion"
-                                        string="⚖ Proporsi Rata-Rata"
+                                        string="Proporsi Berat Fisik"
                                         type="object"
                                         class="btn btn-secondary"
-                                        confirm="Ini akan menimpa semua nilai proporsi saat ini dengan pembagian merata. Lanjutkan?"/>
+                                        confirm="Ini akan menimpa semua nilai proporsi saat ini dengan pembagian proporsional berdasarkan berat fisik lot. Lanjutkan?"/>
                                 <button name="action_sync_proportion_lines"
                                         string="🔄 Sinkronisasi Lot"
                                         type="object"

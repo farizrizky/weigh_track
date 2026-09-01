@@ -655,7 +655,7 @@ class StockOutReportWizard(models.TransientModel):
                 picking_ids.add(picking.id)
 
         # Terapkan proporsi susut transfer:
-        # Kurangi dari shipping_qty dan tambahkan ke storage_shrinkage_qty (total quantity keluar tetap sama)
+        # kurangi pengiriman per lot dan pindahkan porsi tersebut ke susut.
         proportions = self._get_transit_shrinkage_proportions()
         for prop in proportions:
             lot = prop.lot_id
@@ -707,6 +707,11 @@ class StockOutReportWizard(models.TransientModel):
             ),
         )
         for sequence, row in enumerate(sorted_rows, start=1):
+            row["quantity"] = (
+                row["shipping_qty"]
+                + row["storage_shrinkage_qty"]
+                + row["transfer_shrinkage_qty"]
+            )
             stock_qty = row["opening_qty"] + row["stock_in_qty"]
             out_pct = (
                 "%.2f%%" % (row["quantity"] / stock_qty * 100.0)

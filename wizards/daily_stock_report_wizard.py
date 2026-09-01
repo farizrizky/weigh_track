@@ -559,11 +559,11 @@ class DailyStockReportWizard(models.TransientModel):
         opening_total = month_opening["all"].get("total", 0.0)
         closing_total = closing["all"].get("total", 0.0)
         production_in_total = stock_mtd["production_in"].get("total", 0.0)
-        shipping_total = stock_mtd["shipping_source_out"].get("total", 0.0)
         shrink_total = self._sum_values(
             stock_mtd["storage_shrinkage"],
             stock_mtd.get("transit_proportions", {}),
         ).get("total", 0.0)
+        shipping_total = stock_mtd["shipping_source_out"].get("total", 0.0)
         balance_difference = (
             opening_total
             + production_in_total
@@ -589,9 +589,12 @@ class DailyStockReportWizard(models.TransientModel):
             "analysis_values": {
                 "opening_stock": day_opening["all"],
                 "weighing_qty": stock_day["production_in"],
-                "sales_qty": stock_day["shipping"],
-                "storage_shrinkage_qty": stock_day["storage_shrinkage"],
-                "transfer_shrinkage_qty": stock_day["transfer_shrinkage"],
+                "sales_qty": stock_day["shipping_source_out"],
+                "storage_shrinkage_qty": self._sum_values(
+                    stock_day["storage_shrinkage"],
+                    stock_day.get("transit_proportions", {}),
+                ),
+                "transfer_shrinkage_qty": {},
                 "closing_stock": closing["all"],
             },
             "opening_stock": opening_total,
@@ -761,7 +764,7 @@ class DailyStockReportWizard(models.TransientModel):
                 self._section_row("III", _("Stock Produksi")),
                 self._data_row(_("Saldo Awal"), month_opening["all"]),
                 self._data_row(_("Produksi Masuk"), stock_mtd["production_in"]),
-                self._data_row(_("Produksi Keluar"), stock_mtd["shipping_source_out"]),
+                self._data_row(_("Produksi Keluar"), stock_out_mtd),
                 self._data_row(
                     _("Penyesuaian Susut Produksi"),
                     stock_shrink_mtd,
@@ -1000,35 +1003,49 @@ class DailyStockReportWizard(models.TransientModel):
         )
         for key, value in source_lot_sales.items():
             result["shipping"][key] += value
-        source_lot_sales_out = self._aggregate_delivery_source_lot_sales(
-            product,
-            start_dt,
-            end_dt,
-            warehouses,
-            transit_quantity_basis="source",
-        )
-        for key, value in source_lot_sales_out.items():
-            result["shipping_source_out"][key] += value
-
         if start_date and end_date:
-            transit_props = self._aggregate_transit_proportions(
+            source_lot_sales_out = self._aggregate_delivery_source_lot_sales_by_lot(
+                product,
+                start_dt,
+                end_dt,
+                warehouses,
+                transit_quantity_basis="source",
+            )
+            transit_props_by_lot = self._aggregate_transit_proportions_by_lot(
                 start_date,
                 end_date,
                 warehouses,
             )
-            result["transit_proportions"] = transit_props
-            for key, prop_qty in transit_props.items():
-                result["shipping_source_out"][key] = max(
-                    0.0, result["shipping_source_out"].get(key, 0.0) - prop_qty
+            result["transit_proportions"] = self._source_lot_values_to_scope(
+                transit_props_by_lot
+            )
+            for key, source in source_lot_sales_out.items():
+                prop_qty = (
+                    transit_props_by_lot.get(key, {}).get("quantity", 0.0)
                 )
+                self._add_source_scope_value(
+                    result["shipping_source_out"],
+                    max(0.0, source["quantity"] - prop_qty),
+                    source,
+                )
+        else:
+            source_lot_sales_out = self._aggregate_delivery_source_lot_sales(
+                product,
+                start_dt,
+                end_dt,
+                warehouses,
+                transit_quantity_basis="source",
+            )
+            for key, value in source_lot_sales_out.items():
+                result["shipping_source_out"][key] += value
 
         return {
             key: self._clean_values(values)
             for key, values in result.items()
         }
 
-    def _aggregate_transit_proportions(self, start_date, end_date, warehouses):
-        values = defaultdict(float)
+    def _aggregate_transit_proportions_by_lot(self, start_date, end_date, warehouses):
+        values = {}
         deliveries = self.env["wt.delivery"].search([
             ("company_id", "=", self.company_id.id),
             ("state", "in", ["delivered", "done"]),
@@ -1038,7 +1055,7 @@ class DailyStockReportWizard(models.TransientModel):
             lambda d: start_date <= (d.backdate_effective_at.date() if d.backdate_effective_at else d.date) <= end_date
         )
         if not matched_deliveries:
-            return self._clean_values(values)
+            return values
         proportions = self.env["wt.delivery.transit.shrinkage.proportion"].search([
             ("delivery_id", "in", matched_deliveries.ids),
             ("proportion_qty", ">", 0),
@@ -1047,20 +1064,24 @@ class DailyStockReportWizard(models.TransientModel):
             lot = prop.lot_id
             if not lot:
                 continue
-            division = lot.division_id
             warehouse = self._resolve_warehouse(prop.do_line_id.location_id, warehouses)
-            estate = (
-                division.estate_id
-                if division
-                else (warehouse.estate_id if warehouse else self.env["wt.estate"])
-            )
-            self._add_scope_value(
+            self._add_source_lot_value(
                 values,
                 prop.proportion_qty or 0.0,
-                division,
-                estate,
+                lot.division_id,
+                lot,
+                warehouse,
             )
-        return self._clean_values(values)
+        return values
+
+    def _aggregate_transit_proportions(self, start_date, end_date, warehouses):
+        return self._source_lot_values_to_scope(
+            self._aggregate_transit_proportions_by_lot(
+                start_date,
+                end_date,
+                warehouses,
+            )
+        )
 
     def _aggregate_delivery_source_lot_sales(
         self,
@@ -1097,6 +1118,63 @@ class DailyStockReportWizard(models.TransientModel):
                 estate,
             )
         return self._clean_values(values)
+
+    def _aggregate_delivery_source_lot_sales_by_lot(
+        self,
+        product,
+        start_dt,
+        end_dt,
+        warehouses,
+        transit_quantity_basis="customer",
+    ):
+        values = {}
+        for source_event in self._iter_delivery_shipping_source_events(
+            fields.Datetime.to_string(start_dt),
+            fields.Datetime.to_string(end_dt),
+            warehouses,
+            end_operator="<",
+            product=product,
+            transit_quantity_basis=transit_quantity_basis,
+        ):
+            self._add_source_lot_value(
+                values,
+                source_event["quantity"],
+                source_event["division"],
+                source_event["lot"],
+                source_event["warehouse"],
+            )
+        return values
+
+    def _add_source_lot_value(self, values, quantity, division, lot, warehouse=False):
+        if abs(quantity or 0.0) <= 0.000001 or not lot:
+            return
+        key = (division.id or 0, lot.id)
+        if key not in values:
+            values[key] = {
+                "division": division,
+                "lot": lot,
+                "warehouse": warehouse or self.env["stock.warehouse"],
+                "quantity": 0.0,
+            }
+        values[key]["quantity"] += quantity or 0.0
+
+    def _source_lot_values_to_scope(self, values):
+        result = defaultdict(float)
+        for source in (values or {}).values():
+            self._add_source_scope_value(result, source["quantity"], source)
+        return self._clean_values(result)
+
+    def _add_source_scope_value(self, values, quantity, source):
+        if abs(quantity or 0.0) <= 0.000001:
+            return
+        division = source["division"]
+        warehouse = source.get("warehouse")
+        estate = (
+            division.estate_id
+            if division
+            else (warehouse.estate_id if warehouse else self.env["wt.estate"])
+        )
+        self._add_scope_value(values, quantity, division, estate)
 
     def _add_event_value(self, values, line, location, warehouses, quantity):
         lot = line.lot_id

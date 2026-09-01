@@ -467,6 +467,7 @@ class ShippingReportWizard(models.TransientModel):
             fields.Datetime.to_string(end_dt),
             warehouses,
             end_operator="<=",
+            transit_quantity_basis="source",
         ):
             self._append_event(events, **source_event)
         rows = self._build_period_stock_basis(start_dt, end_dt, warehouses)
@@ -506,6 +507,12 @@ class ShippingReportWizard(models.TransientModel):
             row["movement_count"] += 1
             if not row["movement_date"] or event["movement_date"] > row["movement_date"]:
                 row["movement_date"] = event["movement_date"]
+
+        transit_proportions = self._get_transit_shrinkage_proportion_map(warehouses)
+        for key, proportion_qty in transit_proportions.items():
+            row = rows.get(key)
+            if row:
+                row["quantity"] = max(0.0, row["quantity"] - proportion_qty)
 
         summary_map = {}
         detail_vals = []
@@ -699,6 +706,48 @@ class ShippingReportWizard(models.TransientModel):
             ("lot_id", "!=", False),
         ]
         return self.env["stock.move.line"].search(domain, order="id")
+
+    def _get_transit_shrinkage_proportion_map(self, warehouses):
+        self.ensure_one()
+        values = {}
+        deliveries = self.env["wt.delivery"].search([
+            ("company_id", "=", self.company_id.id),
+            ("state", "in", ["delivered", "done"]),
+            ("transit_shrinkage_proportion_saved", "=", True),
+        ])
+        matched_deliveries = deliveries.filtered(
+            lambda delivery: self.start_date
+            <= (
+                delivery.backdate_effective_at.date()
+                if delivery.backdate_effective_at
+                else delivery.date
+            )
+            <= self.end_date
+        )
+        if not matched_deliveries:
+            return values
+        proportions = self.env["wt.delivery.transit.shrinkage.proportion"].search([
+            ("delivery_id", "in", matched_deliveries.ids),
+            ("proportion_qty", ">", 0),
+        ])
+        division_warehouses = self._basis_division_warehouse_map()
+        for prop in proportions:
+            lot = prop.lot_id
+            if not lot:
+                continue
+            division = lot.division_id
+            warehouse = (
+                self._resolve_warehouse(prop.do_line_id.location_id, warehouses)
+                or division_warehouses.get(division.id)
+                or self.env["stock.warehouse"]
+            )
+            if self.warehouse_id and warehouse != self.warehouse_id:
+                continue
+            if self.division_id and division != self.division_id:
+                continue
+            key = self._stock_basis_key(division, lot)
+            values[key] = values.get(key, 0.0) + (prop.proportion_qty or 0.0)
+        return values
 
     def _get_utc_date_range(self):
         user_tz = timezone(self.env.user.tz or "UTC")
