@@ -63,6 +63,7 @@ access_wt_delivery_return_wizard_admin,access.wt.delivery.return.wizard.admin,mo
 access_wt_delivery_customer_correction_wizard_admin,access.wt.delivery.customer.correction.wizard.admin,model_wt_delivery_customer_correction_wizard,group_admin,1,1,1,1
 access_wt_delivery_received_qty_correction_wizard_admin,access.wt.delivery.received.qty.correction.wizard.admin,model_wt_delivery_received_qty_correction_wizard,group_admin,1,1,1,1
 access_wt_delivery_transit_shrinkage_proportion_admin,access.wt.delivery.transit.shrinkage.proportion.admin,model_wt_delivery_transit_shrinkage_proportion,group_admin,1,1,1,1
+access_wt_drc_admin,access.wt.drc.admin,model_wt_drc,group_admin,1,1,1,1
 
 
 access_wt_weighing_production_report_admin,access.wt.weighing.production.report.admin,model_wt_weighing_production_report,group_admin,1,1,1,1

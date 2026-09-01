@@ -55,6 +55,7 @@
         "views/weather_views.xml",
         "views/weather_data_views.xml",
         "views/division_views.xml",
+        "views/drc_views.xml",
         "views/field_views.xml",
         "views/field_production_import_wizard_views.xml",
         "views/field_production_report.xml",

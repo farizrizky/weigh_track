@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- =========================================================== -->
+    <!-- Search View                                                   -->
+    <!-- =========================================================== -->
+    <record id="view_wt_drc_search" model="ir.ui.view">
+        <field name="name">wt.drc.search</field>
+        <field name="model">wt.drc</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="division_id"/>
+                <filter name="filter_active" string="Aktif" domain="[('state', '=', 'active')]"/>
+                <filter name="filter_expired" string="Kadaluarsa" domain="[('state', '=', 'expired')]"/>
+                <filter name="groupby_division" string="Divisi" context="{'group_by': 'division_id'}"/>
+                <filter name="groupby_state" string="Status" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- =========================================================== -->
+    <!-- List View                                                     -->
+    <!-- =========================================================== -->
+    <record id="view_wt_drc_list" model="ir.ui.view">
+        <field name="name">wt.drc.list</field>
+        <field name="model">wt.drc</field>
+        <field name="arch" type="xml">
+            <list string="DRC" default_order="state asc, valid_from desc">
+                <field name="name"/>
+                <field name="division_id"/>
+                <field name="percentage" string="DRC (%)"/>
+                <field name="valid_from"/>
+                <field name="valid_until"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'active'"
+                       decoration-muted="state == 'expired'"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- =========================================================== -->
+    <!-- Form View                                                     -->
+    <!-- =========================================================== -->
+    <record id="view_wt_drc_form" model="ir.ui.view">
+        <field name="name">wt.drc.form</field>
+        <field name="model">wt.drc</field>
+        <field name="arch" type="xml">
+            <form string="DRC">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="active,expired"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Divisi">
+                            <field name="division_id"/>
+                        </group>
+                        <group string="DRC">
+                            <field name="percentage" string="Persentase DRC (%)"/>
+                            <field name="valid_from"/>
+                            <field name="valid_until"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="notes" placeholder="Catatan (opsional)..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- =========================================================== -->
+    <!-- Action                                                        -->
+    <!-- =========================================================== -->
+    <record id="action_wt_drc" model="ir.actions.act_window">
+        <field name="name">DRC</field>
+        <field name="res_model">wt.drc</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wt_drc_search"/>
+        <field name="context">{}</field>
+    </record>
+</odoo>

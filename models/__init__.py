@@ -17,6 +17,7 @@ from . import weather
 from . import weather_data
 from . import daily_stock_analysis
 from . import division
+from . import drc
 from . import field
 from . import field_production
 from . import weighing_location
