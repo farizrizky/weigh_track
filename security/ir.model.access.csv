@@ -64,6 +64,15 @@ access_wt_delivery_customer_correction_wizard_admin,access.wt.delivery.customer.
 access_wt_delivery_received_qty_correction_wizard_admin,access.wt.delivery.received.qty.correction.wizard.admin,model_wt_delivery_received_qty_correction_wizard,group_admin,1,1,1,1
 access_wt_delivery_transit_shrinkage_proportion_admin,access.wt.delivery.transit.shrinkage.proportion.admin,model_wt_delivery_transit_shrinkage_proportion,group_admin,1,1,1,1
 access_wt_drc_admin,access.wt.drc.admin,model_wt_drc,group_admin,1,1,1,1
+access_wt_drc_report_admin,access.wt.drc.report.admin,model_wt_drc_report,group_admin,1,1,1,1
+access_wt_drc_report_date_admin,access.wt.drc.report.date.admin,model_wt_drc_report_date,group_admin,1,1,1,1
+access_wt_drc_report_line_admin,access.wt.drc.report.line.admin,model_wt_drc_report_line,group_admin,1,1,1,1
+access_wt_drc_report_wizard_admin,access.wt.drc.report.wizard.admin,model_wt_drc_report_wizard,group_admin,1,1,1,1
+access_wt_drc_report_viewer,access.wt.drc.report.viewer,model_wt_drc_report,group_report_viewer,1,1,1,1
+access_wt_drc_report_date_viewer,access.wt.drc.report.date.viewer,model_wt_drc_report_date,group_report_viewer,1,1,1,1
+access_wt_drc_report_line_viewer,access.wt.drc.report.line.viewer,model_wt_drc_report_line,group_report_viewer,1,1,1,1
+access_wt_drc_report_wizard_viewer,access.wt.drc.report.wizard.viewer,model_wt_drc_report_wizard,group_report_viewer,1,1,1,1
+access_wt_drc_report_viewer_master,access.wt.drc.report.viewer.master,model_wt_drc,group_report_viewer,1,0,0,0
 
 
 access_wt_weighing_production_report_admin,access.wt.weighing.production.report.admin,model_wt_weighing_production_report,group_admin,1,1,1,1

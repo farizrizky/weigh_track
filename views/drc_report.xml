@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_drc_report" model="report.paperformat">
+        <field name="name">Laporan DRC A3 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A3</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">9</field>
+        <field name="margin_bottom">9</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_drc_pdf" model="ir.actions.report">
+        <field name="name">Laporan DRC</field>
+        <field name="model">wt.drc.report</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">weightrack.report_drc_document</field>
+        <field name="report_file">weightrack.report_drc_document</field>
+        <field name="paperformat_id" ref="paperformat_drc_report"/>
+        <field name="print_report_name">'Laporan DRC - %s - %s' % (object.date_start, object.date_end)</field>
+    </record>
+
+    <template id="report_drc_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-foreach="doc.get_date_chunks()" t-as="date_chunk">
+                    <div class="page wt-drc-report">
+                        <style>
+                            .wt-drc-report {
+                                color: #111827;
+                                font-family: "Lato", sans-serif;
+                                font-size: 8px;
+                                line-height: 1.3;
+                            }
+                            .wt-drc-report .header-table {
+                                border-collapse: collapse;
+                                margin-bottom: 12px;
+                                width: 100%;
+                            }
+                            .wt-drc-report .header-table td {
+                                border: 0;
+                                vertical-align: middle;
+                            }
+                            .wt-drc-report .logo {
+                                max-height: 55px;
+                                max-width: 200px;
+                            }
+                            .wt-drc-report .company-name {
+                                font-size: 15px;
+                                font-weight: 700;
+                                text-align: right;
+                            }
+                            .wt-drc-report .report-title {
+                                text-align: center;
+                                font-weight: 700;
+                                font-size: 13px;
+                                margin-bottom: 2px;
+                                text-transform: uppercase;
+                            }
+                            .wt-drc-report .report-subtitle {
+                                text-align: center;
+                                font-size: 10px;
+                                font-weight: 600;
+                                margin-bottom: 10px;
+                            }
+                            .wt-drc-report .info-table {
+                                border-collapse: collapse;
+                                margin-bottom: 10px;
+                                width: 100%;
+                            }
+                            .wt-drc-report .info-table td {
+                                border: 1px solid #CBD5E1;
+                                padding: 4px 6px !important;
+                                font-size: 8px;
+                                vertical-align: middle;
+                            }
+                            .wt-drc-report .info-label {
+                                background: #F3F4F6;
+                                font-weight: 700;
+                                width: 12%;
+                            }
+                            .wt-drc-report .info-value {
+                                width: 21%;
+                            }
+                            .wt-drc-report .data-table {
+                                border-collapse: collapse;
+                                table-layout: fixed;
+                                width: 100%;
+                            }
+                            .wt-drc-report .data-table th,
+                            .wt-drc-report .data-table td {
+                                border: 1px solid #9CA3AF;
+                                font-size: 7px;
+                                line-height: 1.2;
+                                padding: 3px 2px !important;
+                                vertical-align: middle;
+                            }
+                            .wt-drc-report .data-table th {
+                                background: #C6EFCE;
+                                font-weight: 700;
+                                text-align: center;
+                            }
+                            .wt-drc-report .text-center { text-align: center; }
+                            .wt-drc-report .text-right  { text-align: right; white-space: nowrap; }
+                            .wt-drc-report .text-left   { text-align: left; }
+                            .wt-drc-report .total-row td {
+                                background: #F8FAFC;
+                                font-weight: 700;
+                            }
+                            .wt-drc-report .col-no    { width: 2%; }
+                            .wt-drc-report .col-id    { width: 6%; }
+                            .wt-drc-report .col-nik   { width: 8%; }
+                            .wt-drc-report .col-name  { width: 11%; }
+                            .wt-drc-report .col-foreman { width: 9%; }
+                            .wt-drc-report .col-div   { width: 4%; }
+                            .wt-drc-report .col-job   { width: 5%; }
+                        </style>
+
+                        <!-- Header Table -->
+                        <table class="header-table">
+                            <tr>
+                                <td style="width:30%;">
+                                    <t t-if="doc.company_id.logo">
+                                        <img class="logo"
+                                             t-att-src="image_data_uri(doc.company_id.logo)"
+                                             alt="Logo"/>
+                                    </t>
+                                </td>
+                                <td style="width:70%;">
+                                    <div class="company-name" t-esc="doc.company_id.name"/>
+                                    <div class="report-title">DAFTAR PEMBAYARAN KARYAWAN TAPPER</div>
+                                    <div class="report-subtitle">
+                                        BULAN <t t-esc="doc.date_start.strftime('%B %Y').upper()"/>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Filter Info -->
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Rentang Tanggal</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.date_start.strftime('%d/%m/%Y')"/>
+                                    <span> - </span>
+                                    <span t-esc="doc.date_end.strftime('%d/%m/%Y')"/>
+                                </td>
+                                <td class="info-label">Divisi</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.division_id.display_name if doc.division_id else 'Semua'"/>
+                                </td>
+                                <td class="info-label">Tapper</td>
+                                <td class="info-value">
+                                    <span t-esc="doc.tapper_id.display_name if doc.tapper_id else 'Semua'"/>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" class="col-no">NO</th>
+                                    <th rowspan="2" class="col-id">ID</th>
+                                    <th rowspan="2" class="col-nik">NIK</th>
+                                    <th rowspan="2" class="col-name">NAMA KARYAWAN</th>
+                                    <th rowspan="2" class="col-foreman">NAMA MANDOR</th>
+                                    <th rowspan="2" class="col-div">DIVISI</th>
+                                    <th rowspan="2" class="col-job">PEKERJAAN</th>
+                                    <t t-foreach="date_chunk" t-as="dc">
+                                        <th colspan="3">
+                                            <t t-esc="dc.production_date.strftime('%d/%m/%Y')"/>
+                                        </th>
+                                    </t>
+                                    <th colspan="2">PENERIMAAN KEBUN</th>
+                                    <th rowspan="2">RATA-RATA<br/>DRC (%)</th>
+                                    <th rowspan="2">PENERIMAAN<br/>GUDANG</th>
+                                </tr>
+                                <tr>
+                                    <t t-foreach="date_chunk" t-as="dc">
+                                         <th>LP</th>
+                                         <th>DRC</th>
+                                         <th>GD</th>
+                                    </t>
+                                    <th>HK</th>
+                                    <th>KG</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-if="doc.line_ids">
+                                    <t t-foreach="doc.line_ids" t-as="line">
+                                        <tr>
+                                            <td class="text-center"><t t-esc="line.sequence"/></td>
+                                            <td class="text-left"><t t-esc="line.badge_number"/></td>
+                                            <td class="text-left"><t t-esc="line.nik"/></td>
+                                            <td class="text-left"><t t-esc="line.tapper_name"/></td>
+                                            <td class="text-left"><t t-esc="line.foreman_name"/></td>
+                                            <td class="text-center"><t t-esc="line.division_name"/></td>
+                                            <td class="text-center"><t t-esc="line.job_title or 'TAPPER'"/></td>
+                                            <t t-foreach="date_chunk" t-as="dc">
+                                                <t t-set="lp_drc_gd" t-value="line.get_daily_lp_drc_gd(dc.production_date)"/>
+                                                <td class="text-right">
+                                                    <t t-if="lp_drc_gd[0]"><t t-esc="'%.1f' % lp_drc_gd[0]"/></t>
+                                                </td>
+                                                <td class="text-right">
+                                                    <t t-if="lp_drc_gd[0]"><t t-esc="'%.1f' % lp_drc_gd[1]"/></t>
+                                                </td>
+                                                <td class="text-right">
+                                                    <t t-if="lp_drc_gd[0]"><t t-esc="'%.1f' % lp_drc_gd[2]"/></t>
+                                                </td>
+                                            </t>
+                                            <t t-if="line.total_hk">
+                                                <td class="text-center"><t t-esc="line.total_hk"/></td>
+                                                <td class="text-right"><t t-esc="'%.1f' % line.total_lp"/></td>
+                                                <td class="text-right"><t t-esc="'%.1f' % line.avg_drc"/></td>
+                                                <td class="text-right"><t t-esc="'%.1f' % line.total_gd"/></td>
+                                            </t>
+                                            <t t-else="">
+                                                <td class="text-center">-</td>
+                                                <td class="text-center">-</td>
+                                                <td class="text-center">-</td>
+                                                <td class="text-center">-</td>
+                                            </t>
+                                        </tr>
+                                    </t>
+                                </t>
+                                <t t-else="">
+                                    <tr>
+                                        <td t-att-colspan="7 + len(date_chunk) * 3 + 4"
+                                            class="text-center">Tidak ada data.</td>
+                                    </tr>
+                                </t>
+                                <!-- Total row -->
+                                <tr class="total-row">
+                                    <td colspan="7" class="text-right">TOTAL</td>
+                                    <t t-foreach="date_chunk" t-as="dc">
+                                        <t t-if="dc.total_lp">
+                                            <td class="text-right"><t t-esc="'%.1f' % dc.total_lp"/></td>
+                                            <td class="text-right"><t t-esc="'%.1f' % dc.avg_drc"/></td>
+                                            <td class="text-right"><t t-esc="'%.1f' % dc.total_gd"/></td>
+                                        </t>
+                                        <t t-else="">
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                        </t>
+                                    </t>
+                                    <td class="text-center"><t t-esc="doc.total_hk"/></td>
+                                    <td class="text-right"><t t-esc="'%.1f' % doc.total_lp"/></td>
+                                    <td class="text-right"><t t-esc="'%.1f' % doc.avg_drc"/></td>
+                                    <td class="text-right"><t t-esc="'%.1f' % doc.total_gd"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

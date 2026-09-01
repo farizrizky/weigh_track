@@ -42,6 +42,7 @@
                 <menuitem id="menu_wt_delivery_shrinkage_report" name="Laporan Susut Pengiriman" parent="menu_wt_report_group" action="action_wt_delivery_shrinkage_report" sequence="105" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
                 <menuitem id="menu_wt_daily_stock_report" name="Laporan Stock Harian" parent="menu_wt_report_group" action="action_wt_daily_stock_report" sequence="110" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
                 <menuitem id="menu_wt_field_production_report" name="Laporan Produksi Field" parent="menu_wt_report_group" action="action_wt_field_production_report" sequence="115" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_drc_report" name="Laporan DRC" parent="menu_wt_report_group" action="action_wt_drc_report" sequence="120" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
             <menuitem id="menu_wt_reports_analytics" name="Analytics" parent="menu_wt_reports" sequence="20" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
                 <menuitem id="menu_wt_daily_stock_analysis" name="Data Analitik Stock Harian" parent="menu_wt_reports_analytics" action="action_wt_daily_stock_analysis" sequence="10" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
             <menuitem id="menu_wt_reports_log" name="Logs" parent="menu_wt_reports" sequence="30" groups="weightrack.group_admin"/>

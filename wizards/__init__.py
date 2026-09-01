@@ -23,3 +23,4 @@ from . import daily_stock_report_wizard
 from . import daily_stock_analysis_refresh_wizard
 from . import field_production_import_wizard
 from . import field_production_report_wizard
+from . import drc_report_wizard
