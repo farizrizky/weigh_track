@@ -403,7 +403,7 @@
                                                          <field name="wt_qty_on_hand" readonly="1" string="Physical Stock (kg)"/>
                                                          <field name="wt_qty_reserved" readonly="1" string="Reserved (kg)"/>
                                                          <field name="qty_available" readonly="1" string="Available Stock (kg)"/>
-                                                         <field name="qty" string="Demand (kg)" readonly="wt_is_pulled or wt_is_cancelled"/>
+                                                         <field name="qty" string="Demand (kg)" readonly="picking_state == 'done' or wt_is_cancelled"/>
                                                          <field name="wt_demand_coverage"
                                                                  string="Cakupan"
                                                                  readonly="1"

@@ -498,6 +498,16 @@ class DeliveryDoLineLot(models.Model):
         return records
 
     def write(self, vals):
+        if "qty" in vals:
+            validated_lines = self.filtered(
+                lambda rec: rec.do_line_id
+                and rec.do_line_id.picking_id
+                and rec.do_line_id.picking_id.state == "done"
+            )
+            if validated_lines:
+                raise ValidationError(_(
+                    "Demand lot tidak dapat diubah karena Rencana DO sudah selesai divalidasi."
+                ))
         if "do_line_id" in vals and not vals["do_line_id"]:
             for rec in self:
                 if rec._has_weighing_input():
