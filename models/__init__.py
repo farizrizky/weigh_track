@@ -7,6 +7,7 @@ from . import customer
 from . import shrinkage_tolerance
 from . import shrinkage_tolerance_override
 from . import stock_warehouse
+from . import stock_move
 from . import stock_picking
 from . import stock_return_picking
 from . import receipt_rule

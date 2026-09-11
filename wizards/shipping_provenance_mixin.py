@@ -19,6 +19,7 @@ class ShippingProvenanceMixin(models.AbstractModel):
         domain = [
             ("company_id", "=", self.company_id.id),
             ("move_id.state", "=", "done"),
+            ("move_id.wt_exclude_from_weightrack_reports", "=", False),
             ("picking_id.wt_delivery_id", "!=", False),
             ("picking_id.wt_delivery_id.state", "in", ("done", "returned")),
             ("move_id.date", ">=", start_dt),

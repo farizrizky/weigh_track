@@ -627,6 +627,7 @@ class StorageShrinkageReportWizard(models.TransientModel):
             [
                 ("lot_id", "in", lot_ids),
                 ("move_id.state", "=", "done"),
+                ("move_id.wt_exclude_from_weightrack_reports", "=", False),
                 ("location_dest_id.usage", "=", "internal"),
                 ("location_id.usage", "!=", "internal"),
                 ("quantity", ">", 0),
@@ -660,6 +661,7 @@ class StorageShrinkageReportWizard(models.TransientModel):
         domain = [
             ("company_id", "=", self.company_id.id),
             ("move_id.state", "=", "done"),
+            ("move_id.wt_exclude_from_weightrack_reports", "=", False),
             ("move_id.date", ">=", fields.Datetime.to_string(start_dt)),
             ("move_id.date", "<=", fields.Datetime.to_string(end_dt)),
             ("location_id.usage", "=", "internal"),

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_delivery_cancel_wizard_form" model="ir.ui.view">
+        <field name="name">wt.delivery.cancel.wizard.form</field>
+        <field name="model">wt.delivery.cancel.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Batalkan Tugas Pengiriman dan Pulihkan Stok">
+                <sheet>
+                    <div class="alert alert-warning" role="alert">
+                        Semua pergerakan stok dari tugas pengiriman ini akan dibalik secara utuh.
+                        Proses akan dihentikan tanpa perubahan apabila stok tidak tersedia untuk rollback.
+                    </div>
+                    <group>
+                        <field name="delivery_id"/>
+                        <field name="reason"
+                               placeholder="Jelaskan alasan pembatalan..."
+                               required="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm"
+                            type="object"
+                            string="Batalkan dan Pulihkan Stok"
+                            class="btn-danger"
+                            confirm="Lanjutkan pembatalan dan rollback seluruh pergerakan stok?"/>
+                    <button string="Tutup" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

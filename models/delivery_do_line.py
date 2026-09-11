@@ -1124,6 +1124,8 @@ class DeliveryDoLine(models.Model):
                     "location_dest_id": location_dest.id,
                     "company_id": line.company_id.id,
                     "origin": self.delivery_id.name,
+                    "wt_delivery_id": self.delivery_id.id,
+                    "wt_delivery_do_line_id": self.id,
                     "move_line_ids": [(0, 0, {
                         "product_id": line.product_id.id,
                         "product_uom_id": line.product_id.uom_id.id,
@@ -1270,6 +1272,10 @@ class DeliveryDoLine(models.Model):
             "origin": delivery.name,
             "company_id": delivery.company_id.id,
             "move_ids": [(0, 0, val) for val in move_vals],
+        })
+        picking.move_ids.write({
+            "wt_delivery_id": delivery.id,
+            "wt_delivery_do_line_id": self.id,
         })
 
         # Konfirmasi picking
@@ -1635,6 +1641,8 @@ class DeliveryDoLine(models.Model):
     def action_print_despatch_slip(self):
         """Print DESPACT SLIP untuk baris Rencana DO yang sudah valid."""
         self.ensure_one()
+        if self.delivery_id.state == "cancelled":
+            raise ValidationError(_("Dokumen pengiriman yang dibatalkan tidak dapat dicetak."))
         if self.picking_state != "done":
             raise ValidationError(_("Despatch Slip hanya bisa dicetak setelah Rencana DO divalidasi."))
         return self.env.ref("weightrack.action_report_despatch_slip").report_action(self)
@@ -1642,6 +1650,8 @@ class DeliveryDoLine(models.Model):
     def action_print_handover_report(self):
         """Print Berita Acara Serah Terima Barang untuk baris Rencana DO."""
         self.ensure_one()
+        if self.delivery_id.state == "cancelled":
+            raise ValidationError(_("Dokumen pengiriman yang dibatalkan tidak dapat dicetak."))
         if self.picking_state != "done":
             raise ValidationError(_("Berita Acara hanya bisa dicetak setelah Rencana DO divalidasi."))
         return self.env.ref("weightrack.action_report_delivery_handover").report_action(self)
@@ -1649,6 +1659,8 @@ class DeliveryDoLine(models.Model):
     def action_print_seal_layout(self):
         """Print denah penyegelan untuk baris Rencana DO."""
         self.ensure_one()
+        if self.delivery_id.state == "cancelled":
+            raise ValidationError(_("Dokumen pengiriman yang dibatalkan tidak dapat dicetak."))
         if self.picking_state != "done":
             raise ValidationError(_("Denah Penyegelan hanya bisa dicetak setelah Rencana DO divalidasi."))
         return self.env.ref("weightrack.action_report_seal_layout").report_action(self)
@@ -1656,6 +1668,8 @@ class DeliveryDoLine(models.Model):
     def action_print_surat_jalan(self):
         """Print Surat Jalan untuk baris Rencana DO."""
         self.ensure_one()
+        if self.delivery_id.state == "cancelled":
+            raise ValidationError(_("Dokumen pengiriman yang dibatalkan tidak dapat dicetak."))
         if self.picking_state != "done":
             raise ValidationError(_("Surat Jalan hanya bisa dicetak setelah Rencana DO divalidasi."))
         return self.env.ref("weightrack.action_report_surat_jalan_line").report_action(self)

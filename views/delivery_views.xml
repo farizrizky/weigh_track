@@ -86,8 +86,8 @@
                              string="Cancel"
                              type="object"
                              class="btn-danger"
-                             invisible="state in ('delivered','done','returned','cancelled')"
-                             confirm="Are you sure you want to cancel this delivery task?"/>
+                             groups="weightrack.group_admin"
+                             invisible="state in ('returned','cancelled')"/>
                     <button name="action_open_manual_weighing"
                             string="Input Manual Weighing"
                             type="object"
@@ -97,7 +97,7 @@
                     <button name="action_draft"
                             string="Reset to Draft"
                             type="object"
-                            invisible="state != 'cancelled'"/>
+                            invisible="state != 'cancelled' or stock_rollback_done"/>
                     <button name="action_return_delivery"
                             string="Return Delivery"
                             type="object"
@@ -129,13 +129,16 @@
                             groups="weightrack.group_admin"
                             invisible="state not in ('done', 'returned')"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,in_progress,delivered,done,returned"/>
+                           statusbar_visible="draft,confirmed,in_progress,delivered,done,returned,cancelled"/>
                 </header>
                 <sheet>
                     <field name="wt_is_returned" invisible="1"/>
+                    <field name="stock_rollback_done" invisible="1"/>
                     <field name="is_backdated" invisible="1"/>
                     <widget name="web_ribbon" title="Returned" bg_color="bg-danger"
                             invisible="not wt_is_returned"/>
+                    <widget name="web_ribbon" title="Cancelled" bg_color="bg-danger"
+                            invisible="state != 'cancelled'"/>
                     <widget name="web_ribbon" title="Backdated" bg_color="bg-warning"
                             invisible="not is_backdated"/>
                     <!-- Smart Buttons -->
@@ -147,6 +150,15 @@
                                 icon="fa-truck"
                                 invisible="picking_count == 0">
                             <field name="picking_count" widget="statinfo" string="Created DO"/>
+                        </button>
+                        <button name="action_view_rollback_pickings"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-undo"
+                                invisible="rollback_picking_count == 0">
+                            <field name="rollback_picking_count"
+                                   widget="statinfo"
+                                   string="Stock Rollbacks"/>
                         </button>
                     </div>
 
@@ -213,6 +225,18 @@
                             <strong>This delivery has been returned for the following reason:</strong>
                             <br/>
                             <field name="wt_return_reason" readonly="1" class="font-weight-bold"/>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-danger d-flex align-items-center" role="alert"
+                         invisible="state != 'cancelled'">
+                        <i class="fa fa-ban me-2"
+                           title="Cancelled"
+                           style="font-size: 1.5em;"/>
+                        <div>
+                            <strong>Tugas pengiriman dibatalkan.</strong>
+                            <br/>
+                            <field name="cancel_reason" readonly="1" class="font-weight-bold"/>
                         </div>
                     </div>
 
@@ -661,6 +685,13 @@
                     <group string="Validation Information" invisible="state not in ('done', 'returned')">
                         <field name="validated_at" readonly="1"/>
                         <field name="validated_by_id" readonly="1"/>
+                    </group>
+                    <group string="Cancellation and Stock Rollback"
+                           invisible="state != 'cancelled'">
+                        <field name="stock_rollback_done" readonly="1"/>
+                        <field name="cancelled_at" readonly="1"/>
+                        <field name="cancelled_by_id" readonly="1"/>
+                        <field name="cancel_reason" readonly="1"/>
                     </group>
                     <group string="Backdate Audit" invisible="not is_backdated or state == 'draft'">
                         <field name="backdate_effective_at" readonly="1"/>

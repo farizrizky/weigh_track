@@ -14,6 +14,7 @@ class StockPeriodBasisMixin(models.AbstractModel):
             [
                 ("company_id", "=", self.company_id.id),
                 ("move_id.state", "=", "done"),
+                ("move_id.wt_exclude_from_weightrack_reports", "=", False),
                 ("move_id.date", "<=", fields.Datetime.to_string(end_dt)),
                 ("quantity", ">", 0.0),
                 ("lot_id", "!=", False),

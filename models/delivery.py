@@ -5,7 +5,7 @@ from datetime import datetime, time
 from pytz import UTC, timezone
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from markupsafe import Markup
 
 
@@ -151,6 +151,17 @@ class Delivery(models.Model):
         string="DO Count",
         compute="_compute_picking_count",
     )
+    rollback_picking_ids = fields.One2many(
+        "stock.picking",
+        "wt_rollback_delivery_id",
+        string="Stock Rollback Transfers",
+        copy=False,
+        readonly=True,
+    )
+    rollback_picking_count = fields.Integer(
+        string="Rollback Transfer Count",
+        compute="_compute_picking_count",
+    )
 
     # â”€â”€ Detail timbang (backward compat untuk alur lama) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     wt_has_unpulled_lines = fields.Boolean(
@@ -258,6 +269,32 @@ class Delivery(models.Model):
         string="Return Reason",
         readonly=True,
         copy=False,
+    )
+    stock_rollback_done = fields.Boolean(
+        string="Stock Rollback Completed",
+        default=False,
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    cancel_reason = fields.Text(
+        string="Cancel Reason",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    cancelled_at = fields.Datetime(
+        string="Cancelled At",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    cancelled_by_id = fields.Many2one(
+        "res.users",
+        string="Cancelled By",
+        readonly=True,
+        copy=False,
+        tracking=True,
     )
 
     # ── Proporsi Susut Transit ─────────────────────────────────────────────────
@@ -606,6 +643,7 @@ class Delivery(models.Model):
     def _compute_picking_count(self):
         for rec in self:
             rec.picking_count = len(rec.picking_ids)
+            rec.rollback_picking_count = len(rec.rollback_picking_ids)
 
     def _compute_step_count(self):
         for rec in self:
@@ -922,6 +960,8 @@ class Delivery(models.Model):
     def action_print_surat_jalan(self):
         """Backward-compatible entry point; Surat Jalan is printed per route line."""
         self.ensure_one()
+        if self.state == "cancelled":
+            raise ValidationError(_("Dokumen pengiriman yang dibatalkan tidak dapat dicetak."))
         line = self._get_surat_jalan_document_line()
         if not line:
             raise ValidationError(_("Tidak ada baris Rencana DO yang dapat dicetak sebagai Surat Jalan."))
@@ -1093,6 +1133,7 @@ class Delivery(models.Model):
                     "location_dest_id": location_dest.id,
                     "company_id": company.id,
                     "origin": self.name,
+                    "wt_delivery_id": self.id,
                     "move_line_ids": [(0, 0, {
                         "product_id": line.product_id.id,
                         "product_uom_id": line.product_id.uom_id.id,
@@ -1593,33 +1634,422 @@ class Delivery(models.Model):
         )))
 
     def action_cancel(self):
+        self.ensure_one()
+        if not self.env.user.has_group("weightrack.group_admin"):
+            raise AccessError(_("Hanya Administrator WeighTrack yang dapat membatalkan pengiriman."))
+        if self.state == "cancelled":
+            return False
+        if self.state == "returned" or self.wt_is_returned:
+            raise ValidationError(_(
+                "Tugas pengiriman yang sudah diretur tidak dapat dibatalkan karena "
+                "akan menyebabkan pembalikan stok ganda."
+            ))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Batalkan Tugas Pengiriman dan Pulihkan Stok"),
+            "res_model": "wt.delivery.cancel.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_delivery_id": self.id},
+        }
+
+    def action_view_rollback_pickings(self):
+        """Buka dokumen audit Inventory yang dibuat oleh rollback delivery."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Delivery Stock Rollbacks"),
+            "res_model": "stock.picking",
+            "view_mode": "list,form",
+            "domain": [("wt_rollback_delivery_id", "=", self.id)],
+            "context": {
+                "default_wt_rollback_delivery_id": self.id,
+                "default_company_id": self.company_id.id,
+            },
+        }
+
+    def action_confirm_cancel(self, reason):
+        if not self.env.user.has_group("weightrack.group_admin"):
+            raise AccessError(_("Hanya Administrator WeighTrack yang dapat membatalkan pengiriman."))
+        reason = (reason or "").strip()
+        if not reason:
+            raise ValidationError(_("Alasan pembatalan wajib diisi."))
         for delivery in self:
-            if delivery.state in ("delivered", "done", "returned"):
+            if delivery.state == "cancelled":
+                continue
+            if delivery.state == "returned" or delivery.wt_is_returned:
                 raise ValidationError(_(
-                    "Dokumen yang sudah terkirim, selesai, atau diretur tidak dapat dibatalkan."
+                    "Tugas pengiriman yang sudah diretur tidak dapat dibatalkan karena "
+                    "akan menyebabkan pembalikan stok ganda."
                 ))
-            done_pickings = delivery.picking_ids.filtered(lambda p: p.state == "done")
-            if done_pickings:
+            if delivery.stock_rollback_done or delivery.rollback_picking_ids.filtered(
+                lambda picking: picking.state != "cancel"
+            ):
                 raise ValidationError(_(
-                    "Tugas pengiriman ini sudah memiliki DO yang selesai dan tidak dapat "
-                    "dibatalkan biasa. Gunakan proses Retur Pengiriman jika stok perlu "
-                    "dikembalikan."
+                    "Rollback stok untuk tugas pengiriman ini sudah pernah diproses."
                 ))
-            # Cancel semua DO yang terhubung dan belum selesai/dibatalkan
-            pickings_to_cancel = delivery.picking_ids.filtered(
-                lambda p: p.state not in ("done", "cancel")
+
+            rollback_result = delivery._rollback_stock_movements()
+            delivery.write({
+                "state": "cancelled",
+                "stock_rollback_done": rollback_result["has_stock_effect"],
+                "cancel_reason": reason,
+                "cancelled_at": fields.Datetime.now(),
+                "cancelled_by_id": self.env.user.id,
+            })
+            delivery._refresh_stock_analysis_after_rollback(
+                rollback_result["earliest_date"]
             )
-            if pickings_to_cancel:
-                pickings_to_cancel.action_cancel()
-            delivery.write({"state": "cancelled"})
+            delivery.message_post(body=Markup(_(
+                "<b>Tugas Pengiriman Dibatalkan</b> oleh %(user)s.<br/>"
+                "Alasan: %(reason)s<br/>"
+                "Dokumen rollback inventory: %(picking_count)d | "
+                "Movement penyesuaian yang dibalik: %(adjustment_count)d.<br/>"
+                "Movement asli dan rollback dikecualikan dari laporan operasional WeighTrack."
+            ) % {
+                "user": self.env.user.name,
+                "reason": reason,
+                "picking_count": rollback_result["picking_count"],
+                "adjustment_count": rollback_result["adjustment_count"],
+            }))
+        return True
+
+    def _get_delivery_stock_effects(self):
+        self.ensure_one()
+        original_pickings = self.picking_ids.filtered(lambda picking: picking.state == "done")
+        move_model = self.env["stock.move"].sudo().with_company(self.company_id)
+        linked_adjustments = move_model.search([
+            ("wt_delivery_id", "=", self.id),
+            ("wt_is_delivery_rollback", "=", False),
+            ("picking_id", "=", False),
+            ("state", "=", "done"),
+        ])
+        legacy_adjustments = move_model.search([
+            ("wt_delivery_id", "=", False),
+            ("origin", "=", self.name),
+            ("is_inventory", "=", True),
+            ("picking_id", "=", False),
+            ("state", "=", "done"),
+        ])
+        return original_pickings, linked_adjustments | legacy_adjustments
+
+    def _rollback_stock_movements(self):
+        self.ensure_one()
+        original_pickings, adjustment_moves = self._get_delivery_stock_effects()
+        pending_pickings = self.picking_ids.filtered(
+            lambda picking: picking.state not in ("done", "cancel")
+        )
+        original_moves = original_pickings.move_ids | adjustment_moves
+        has_stock_effect = bool(original_moves)
+        earliest_date = min(
+            (fields.Datetime.to_datetime(move.date).date() for move in original_moves if move.date),
+            default=False,
+        )
+
+        operations = self._prepare_stock_rollback_operations(
+            original_pickings,
+            adjustment_moves,
+        )
+        self._check_stock_rollback_availability(operations)
+
+        rollback_pickings = self.env["stock.picking"]
+        for picking in self._ordered_pickings_for_rollback(original_pickings):
+            for move in picking.move_ids.filtered(
+                lambda stock_move: stock_move.state == "done"
+            ).sorted("id", reverse=True):
+                rollback_pickings |= self._create_rollback_picking_for_move(
+                    picking,
+                    move,
+                )
+
+        reversed_adjustment_count = 0
+        for move in adjustment_moves.sorted("id", reverse=True):
+            self._create_rollback_adjustment_move(move)
+            reversed_adjustment_count += 1
+
+        if original_moves:
+            original_moves.write({
+                "wt_delivery_id": self.id,
+                "wt_exclude_from_weightrack_reports": True,
+            })
+        if pending_pickings:
+            pending_pickings.action_cancel()
+
+        transit_lots = self.do_line_ids.mapped("generated_transit_lot_id")
+        if transit_lots:
+            transit_lots.write({"wt_transit_state": "closed"})
+
+        return {
+            "has_stock_effect": has_stock_effect,
+            "earliest_date": earliest_date,
+            "picking_count": len(rollback_pickings),
+            "adjustment_count": reversed_adjustment_count,
+        }
+
+    def _ordered_pickings_for_rollback(self, pickings):
+        self.ensure_one()
+
+        def sort_key(picking):
+            do_line = self.do_line_ids.filtered(
+                lambda line: line.picking_id == picking
+            )[:1]
+            step = self.warehouse_step_ids.filtered(
+                lambda line: line.picking_id == picking
+            )[:1]
+            sequence = do_line.sequence if do_line else (step.sequence if step else 0)
+            return (sequence or 0, picking.id)
+
+        return sorted(pickings, key=sort_key, reverse=True)
+
+    def _prepare_stock_rollback_operations(self, pickings, adjustment_moves):
+        self.ensure_one()
+        operations = []
+        for picking in self._ordered_pickings_for_rollback(pickings):
+            moves = picking.move_ids.filtered(
+                lambda move: move.state == "done"
+            ).sorted("id", reverse=True)
+            for move in moves:
+                for line in move.move_line_ids.filtered(
+                    lambda move_line: move_line.state == "done" and move_line.quantity > 0.0
+                ).sorted("id", reverse=True):
+                    operations.append(self._stock_rollback_operation(line))
+        for move in adjustment_moves.sorted("id", reverse=True):
+            for line in move.move_line_ids.filtered(
+                lambda move_line: move_line.state == "done" and move_line.quantity > 0.0
+            ).sorted("id", reverse=True):
+                operations.append(self._stock_rollback_operation(line))
+        return operations
+
+    def _stock_rollback_operation(self, line):
+        quantity = line.product_uom_id._compute_quantity(
+            line.quantity,
+            line.product_id.uom_id,
+            round=False,
+        )
+        return {
+            "product": line.product_id,
+            "lot": line.lot_id,
+            "source": line.location_dest_id,
+            "destination": line.location_id,
+            "quantity": quantity,
+        }
+
+    def _check_stock_rollback_availability(self, operations):
+        self.ensure_one()
+        quant_model = self.env["stock.quant"].sudo().with_company(self.company_id)
+        simulated = {}
+        for operation in operations:
+            product = operation["product"]
+            lot = operation["lot"]
+            source = operation["source"]
+            destination = operation["destination"]
+            source_key = (product.id, lot.id or 0, source.id)
+            destination_key = (product.id, lot.id or 0, destination.id)
+            if source_key not in simulated:
+                simulated[source_key] = quant_model._get_available_quantity(
+                    product,
+                    source,
+                    lot_id=lot,
+                    strict=True,
+                )
+            if destination_key not in simulated:
+                simulated[destination_key] = quant_model._get_available_quantity(
+                    product,
+                    destination,
+                    lot_id=lot,
+                    strict=True,
+                )
+            required = operation["quantity"]
+            available = simulated[source_key]
+            if product.uom_id.compare(available, required) < 0:
+                raise ValidationError(_(
+                    "Rollback stok tidak dapat dilakukan. Lot '%(lot)s' hanya memiliki "
+                    "%(available).4f %(uom)s yang tersedia di '%(location)s', sedangkan "
+                    "%(required).4f %(uom)s diperlukan. Kemungkinan stok sudah dipakai "
+                    "oleh transaksi lain."
+                ) % {
+                    "lot": lot.display_name if lot else _("Tanpa Lot"),
+                    "available": available,
+                    "required": required,
+                    "uom": product.uom_id.display_name,
+                    "location": source.display_name,
+                })
+            simulated[source_key] -= required
+            simulated[destination_key] += required
+
+    def _create_rollback_picking_for_move(self, original_picking, original_move):
+        self.ensure_one()
+        original_lines = original_move.move_line_ids.filtered(
+            lambda line: line.state == "done" and line.quantity > 0.0
+        )
+        if not original_lines:
+            return self.env["stock.picking"]
+
+        picking_type = (
+            original_picking.picking_type_id.return_picking_type_id
+            or original_picking.picking_type_id
+        )
+        rollback = self.env["stock.picking"].sudo().with_company(self.company_id).create({
+            "picking_type_id": picking_type.id,
+            "partner_id": original_picking.partner_id.id or False,
+            "location_id": original_move.location_dest_id.id,
+            "location_dest_id": original_move.location_id.id,
+            "origin": _("Cancel %(delivery)s / Rollback of %(picking)s") % {
+                "delivery": self.name,
+                "picking": original_picking.name,
+            },
+            "return_id": original_picking.id,
+            "wt_rollback_delivery_id": self.id,
+            "wt_rollback_of_picking_id": original_picking.id,
+            "wt_is_delivery_rollback": True,
+            "company_id": self.company_id.id,
+            "move_ids": [(0, 0, {
+                "description_picking": _("Rollback: %s") % (
+                    original_move.description_picking or original_move.product_id.display_name
+                ),
+                "inventory_name": _("Rollback Pengiriman"),
+                "product_id": original_move.product_id.id,
+                "product_uom": original_move.product_uom.id,
+                "product_uom_qty": sum(
+                    line.product_uom_id._compute_quantity(
+                        line.quantity,
+                        original_move.product_uom,
+                        round=False,
+                    )
+                    for line in original_lines
+                ),
+                "location_id": original_move.location_dest_id.id,
+                "location_dest_id": original_move.location_id.id,
+                "company_id": self.company_id.id,
+                "origin": self.name,
+                "wt_delivery_id": self.id,
+                "wt_delivery_do_line_id": original_move.wt_delivery_do_line_id.id or False,
+                "wt_is_delivery_rollback": True,
+                "wt_reversal_of_move_id": original_move.id,
+                "wt_exclude_from_weightrack_reports": True,
+                "origin_returned_move_id": original_move.id,
+            })],
+        })
+        rollback.action_confirm()
+        rollback.move_line_ids.filtered(
+            lambda line: line.state not in ("done", "cancel")
+        ).unlink()
+        reverse_move = rollback.move_ids[:1]
+        move_line_model = self.env["stock.move.line"].sudo().with_company(self.company_id)
+        quantity_field = "quantity" if "quantity" in move_line_model._fields else "qty_done"
+        for original_line in original_lines:
+            values = {
+                "picking_id": rollback.id,
+                "move_id": reverse_move.id,
+                "company_id": self.company_id.id,
+                "product_id": original_line.product_id.id,
+                "product_uom_id": original_line.product_uom_id.id,
+                "location_id": original_line.location_dest_id.id,
+                "location_dest_id": original_line.location_id.id,
+                "lot_id": original_line.lot_id.id or False,
+                quantity_field: original_line.quantity,
+            }
+            if "picked" in move_line_model._fields:
+                values["picked"] = True
+            move_line_model.create(values)
+        rollback.with_context(
+            skip_backorder=True,
+            no_backorder=True,
+            skip_immediate=True,
+            wt_force_validate=True,
+        ).button_validate()
+        if rollback.state != "done":
+            raise ValidationError(_(
+                "Dokumen rollback '%s' tidak dapat divalidasi otomatis."
+            ) % rollback.display_name)
+        return rollback
+
+    def _create_rollback_adjustment_move(self, original_move):
+        self.ensure_one()
+        original_lines = original_move.move_line_ids.filtered(
+            lambda line: line.state == "done" and line.quantity > 0.0
+        )
+        if not original_lines:
+            return self.env["stock.move"]
+        move_line_commands = []
+        for line in original_lines:
+            move_line_commands.append((0, 0, {
+                "product_id": line.product_id.id,
+                "product_uom_id": line.product_uom_id.id,
+                "quantity": line.quantity,
+                "lot_id": line.lot_id.id or False,
+                "location_id": line.location_dest_id.id,
+                "location_dest_id": line.location_id.id,
+                "company_id": self.company_id.id,
+            }))
+        rollback_move = self.env["stock.move"].sudo().with_company(self.company_id).create({
+            "inventory_name": _("Rollback Pengiriman"),
+            "description_picking": _("Rollback: %s") % (
+                original_move.description_picking or original_move.product_id.display_name
+            ),
+            "state": "confirmed",
+            "picked": True,
+            "is_inventory": True,
+            "product_id": original_move.product_id.id,
+            "product_uom": original_move.product_uom.id,
+            "product_uom_qty": sum(
+                line.product_uom_id._compute_quantity(
+                    line.quantity,
+                    original_move.product_uom,
+                    round=False,
+                )
+                for line in original_lines
+            ),
+            "location_id": original_move.location_dest_id.id,
+            "location_dest_id": original_move.location_id.id,
+            "company_id": self.company_id.id,
+            "origin": self.name,
+            "wt_delivery_id": self.id,
+            "wt_delivery_do_line_id": original_move.wt_delivery_do_line_id.id or False,
+            "wt_is_delivery_rollback": True,
+            "wt_reversal_of_move_id": original_move.id,
+            "wt_exclude_from_weightrack_reports": True,
+            "origin_returned_move_id": original_move.id,
+            "move_line_ids": move_line_commands,
+        })
+        rollback_move.with_context(
+            inventory_mode=False,
+            tracking_disable=True,
+            mail_notrack=True,
+            no_recompute=True,
+            ignore_dest_packages=True,
+        )._action_done()
+        return rollback_move
+
+    def _refresh_stock_analysis_after_rollback(self, earliest_date):
+        self.ensure_one()
+        if not earliest_date:
+            return
+        analysis_model = self.env["wt.daily.stock.analysis"].sudo()
+        existing_dates = analysis_model.search([
+            ("company_id", "=", self.company_id.id),
+            ("report_date", ">=", earliest_date),
+        ]).mapped("report_date")
+        today = fields.Date.context_today(self)
+        refresh_dates = sorted(set(existing_dates) | {today})
+        service = self.env["wt.daily.stock.analysis.service"].sudo()
+        for report_date in refresh_dates:
+            service.refresh_range(self.company_id, report_date, report_date)
 
     def action_draft(self):
         for delivery in self:
             if delivery.state != "cancelled":
                 raise ValidationError(_("Hanya yang dibatalkan yang bisa dikembalikan ke Draft."))
-            if delivery.picking_ids.filtered(lambda p: p.state == "done"):
+            if delivery.stock_rollback_done:
                 raise ValidationError(_(
-                    "Tugas pengiriman yang sudah memiliki DO selesai tidak dapat dikembalikan ke Draft."
+                    "Tugas pengiriman yang sudah menjalani rollback stok tidak dapat "
+                    "dikembalikan ke Draft. Buat Tugas Pengiriman baru jika pengiriman "
+                    "perlu diproses ulang."
                 ))
-            delivery.write({"state": "draft"})
+            delivery.write({
+                "state": "draft",
+                "cancel_reason": False,
+                "cancelled_at": False,
+                "cancelled_by_id": False,
+            })
 

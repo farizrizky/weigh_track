@@ -33,6 +33,27 @@ class StockPicking(models.Model):
         copy=False,
         help="Waktu operator menyelesaikan push data timbang.",
     )
+    wt_rollback_delivery_id = fields.Many2one(
+        "wt.delivery",
+        string="Delivery Rollback",
+        index=True,
+        copy=False,
+        ondelete="set null",
+        help="Tugas Pengiriman yang dibalik oleh dokumen inventory ini.",
+    )
+    wt_rollback_of_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Rollback of Transfer",
+        index=True,
+        copy=False,
+        ondelete="restrict",
+    )
+    wt_is_delivery_rollback = fields.Boolean(
+        string="Delivery Rollback Transfer",
+        default=False,
+        index=True,
+        copy=False,
+    )
 
     # ── Alokasi Selisih (via move lines) ─────────────────────────────────────
     def button_validate(self):

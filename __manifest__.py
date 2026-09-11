@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "WeighTrack",
-    "version": "19.0.1.4.2",
+    "version": "19.0.1.4.3",
     "category": "Operations/Inventory",
     "summary": "Weighing management for estate operations",
     "author": "PT. Hanara Prima Solusindo",
@@ -49,6 +49,7 @@
         "views/daily_stock_analysis_views.xml",
         "views/production_slip_report.xml",
         "views/production_receipt_cancel_wizard_views.xml",
+        "views/delivery_cancel_wizard_views.xml",
         "views/shrinkage_tolerance_override_views.xml",
         "views/production_receipt_views.xml",
         "views/estate_views.xml",

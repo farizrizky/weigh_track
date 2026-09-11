@@ -234,6 +234,7 @@ class DeliveryStep(models.Model):
 
         # Link picking ke delivery header via wt_delivery_id
         picking.write({"wt_delivery_id": self.delivery_id.id})
+        picking.move_ids.write({"wt_delivery_id": self.delivery_id.id})
 
         # Jika ini step terakhir, set delivery ke done
         if self.is_last_step:
