@@ -414,7 +414,9 @@ class ManualWeighingReportWizard(models.TransientModel):
     def _prepare_line_values(self, record, sequence):
         self.ensure_one()
         if self.location_type == "warehouse":
-            device = record.device_record_id
+            # Report viewers may read weighing records, but device administration
+            # remains restricted because the model also stores authentication data.
+            device = record.device_record_id.sudo()
             event_date = record.weighing_date
             operator_name = record.operator_employee_id.name or ""
             device_name = device.name or ""
@@ -422,7 +424,7 @@ class ManualWeighingReportWizard(models.TransientModel):
             location_name = record.weighing_location_id.display_name or ""
             manual_reason = record.manual_weighing_reason or ""
         else:
-            device = record.initial_device_id
+            device = record.initial_device_id.sudo()
             event_date = record.initial_weighing_date
             operator_name = (
                 record.initial_device_employee_name
