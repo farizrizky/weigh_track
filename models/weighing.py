@@ -336,6 +336,7 @@ class Weighing(models.Model):
         related="tapper_employee_id.barcode",
         store=True,
         readonly=True,
+        groups=False,
     )
 
     total_bag = fields.Integer(
