@@ -1364,7 +1364,8 @@ class DeliveryDoLine(models.Model):
         else:
             move = picking.move_ids[:1]
             if self.lot_line_ids:
-                for lot_line in self.lot_line_ids:
+                # Keep stock details consistent with the active-lot totals above.
+                for lot_line in active_lot_lines:
                     qty_done = lot_line.wt_physical_qty if lot_line.wt_weighing_source else lot_line.qty
                     if qty_done <= 0.0:
                         continue
