@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_kpi_foreman_budget_validation_wizard_form" model="ir.ui.view">
+        <field name="name">wt.kpi.foreman.budget.validation.wizard.form</field>
+        <field name="model">wt.kpi.foreman.budget.validation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Konfirmasi Validasi">
+                <group>
+                    <field name="budget_mandor_id" invisible="1"/>
+                    <field name="warning_text" nolabel="1" readonly="1"/>
+                </group>
+                <footer>
+                    <button string="Kembali Periksa" special="cancel"
+                        class="btn-secondary"/>
+                    <button name="action_confirm_validation"
+                        string="Tetap Validasi" type="object"
+                        class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

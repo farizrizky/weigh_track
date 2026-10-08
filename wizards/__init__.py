@@ -25,3 +25,6 @@ from . import daily_stock_analysis_refresh_wizard
 from . import field_production_import_wizard
 from . import field_production_report_wizard
 from . import drc_report_wizard
+from . import kpi_foreman_budget_validation_wizard
+from . import kpi_budget_target_report_wizard
+from . import kpi_foreman_budget_target_report_wizard

@@ -34,6 +34,17 @@ class DeliveryReceivedQtyCorrectionWizard(models.TransientModel):
         required=True,
         digits="Product Unit of Measure",
     )
+    current_factory_dry_qty = fields.Float(
+        string="Berat Kering Pabrik Saat Ini (kg)",
+        related="delivery_id.factory_dry_qty",
+        readonly=True,
+        digits="Product Unit of Measure",
+    )
+    new_factory_dry_qty = fields.Float(
+        string="Berat Kering Pabrik Baru (kg)",
+        required=True,
+        digits="Product Unit of Measure",
+    )
     reason = fields.Text(
         string="Alasan Koreksi",
         required=True,
@@ -48,6 +59,9 @@ class DeliveryReceivedQtyCorrectionWizard(models.TransientModel):
         if delivery_id:
             delivery = self.env["wt.delivery"].browse(delivery_id)
             values.setdefault("new_received_qty", delivery.received_qty or 0.0)
+            values.setdefault(
+                "new_factory_dry_qty", delivery.factory_dry_qty or 0.0
+            )
         return values
 
     def action_apply(self):
@@ -63,26 +77,39 @@ class DeliveryReceivedQtyCorrectionWizard(models.TransientModel):
             raise ValidationError(_(
                 "Berat diterima tidak boleh bernilai negatif."
             ))
+        if self.new_factory_dry_qty < 0:
+            raise ValidationError(_(
+                "Berat kering pabrik tidak boleh bernilai negatif."
+            ))
 
         if not (self.reason or "").strip():
             raise ValidationError(_("Alasan Koreksi wajib diisi."))
 
         old_qty = delivery.received_qty or 0.0
         new_qty = self.new_received_qty
+        old_factory_dry_qty = delivery.factory_dry_qty or 0.0
+        new_factory_dry_qty = self.new_factory_dry_qty
 
         delivery.with_context(tracking_disable=False).write({
             "received_qty": new_qty,
+            "factory_dry_qty": new_factory_dry_qty,
         })
 
         # Catat di chatter
         delivery.message_post(body=Markup(
             "Berat diterima customer dikoreksi dari <b>%(old).2f kg</b> menjadi <b>%(new).2f kg</b> "
-            "(selisih: <b>%(diff).2f kg</b>) oleh %(user)s.<br/>"
+            "(selisih: <b>%(diff).2f kg</b>).<br/>"
+            "Berat kering pabrik dikoreksi dari <b>%(old_dry).2f kg</b> menjadi "
+            "<b>%(new_dry).2f kg</b> (selisih: <b>%(dry_diff).2f kg</b>) "
+            "oleh %(user)s.<br/>"
             "Alasan: %(reason)s"
         ) % {
             "old": old_qty,
             "new": new_qty,
             "diff": new_qty - old_qty,
+            "old_dry": old_factory_dry_qty,
+            "new_dry": new_factory_dry_qty,
+            "dry_diff": new_factory_dry_qty - old_factory_dry_qty,
             "user": self.env.user.display_name,
             "reason": self.reason.strip(),
         })

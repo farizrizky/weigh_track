@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_wt_kpi_budget_target_company" model="ir.rule">
+        <field name="name">KPI Budget Target: perusahaan yang diizinkan</field>
+        <field name="model_id" ref="model_wt_kpi_budget_target"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_admin')), (4, ref('group_report_viewer'))]"/>
+    </record>
+
+    <record id="rule_wt_kpi_budget_target_division_line_company" model="ir.rule">
+        <field name="name">KPI Budget Target Division Line: perusahaan yang diizinkan</field>
+        <field name="model_id" ref="model_wt_kpi_budget_target_division_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_admin')), (4, ref('group_report_viewer'))]"/>
+    </record>
+
+    <record id="rule_wt_kpi_budget_target_monthly_line_company" model="ir.rule">
+        <field name="name">KPI Budget Target Monthly Line: perusahaan yang diizinkan</field>
+        <field name="model_id" ref="model_wt_kpi_budget_target_monthly_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_admin')), (4, ref('group_report_viewer'))]"/>
+    </record>
+
+    <record id="rule_wt_kpi_foreman_budget_target_company" model="ir.rule">
+        <field name="name">KPI Budget Target Mandor: perusahaan yang diizinkan</field>
+        <field name="model_id" ref="model_wt_kpi_foreman_budget_target"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_admin')), (4, ref('group_report_viewer'))]"/>
+    </record>
+
+    <record id="rule_wt_kpi_foreman_budget_target_line_company" model="ir.rule">
+        <field name="name">KPI Budget Target Mandor Line: perusahaan yang diizinkan</field>
+        <field name="model_id" ref="model_wt_kpi_foreman_budget_target_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_admin')), (4, ref('group_report_viewer'))]"/>
+    </record>
+
+    <record id="rule_wt_kpi_foreman_budget_control_line_company" model="ir.rule">
+        <field name="name">KPI Budget Target Mandor Control: perusahaan yang diizinkan</field>
+        <field name="model_id" ref="model_wt_kpi_foreman_budget_control_line"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+        <field name="groups" eval="[(4, ref('group_admin')), (4, ref('group_report_viewer'))]"/>
+    </record>
+</odoo>

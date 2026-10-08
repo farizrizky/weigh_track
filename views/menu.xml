@@ -43,12 +43,14 @@
                 <menuitem id="menu_wt_daily_stock_report" name="Laporan Stock Harian" parent="menu_wt_report_group" action="action_wt_daily_stock_report" sequence="110" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
                 <menuitem id="menu_wt_field_production_report" name="Laporan Produksi Field" parent="menu_wt_report_group" action="action_wt_field_production_report" sequence="115" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
                 <menuitem id="menu_wt_drc_report" name="Laporan DRC" parent="menu_wt_report_group" action="action_wt_drc_report" sequence="120" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_kpi_budget_target_report" name="Laporan Budget Target" parent="menu_wt_report_group" action="action_wt_kpi_budget_target_report" sequence="125" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
+                <menuitem id="menu_wt_kpi_foreman_budget_target_report" name="Laporan Budget Target Mandor" parent="menu_wt_report_group" action="action_wt_kpi_foreman_budget_target_report" sequence="130" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
             <menuitem id="menu_wt_reports_analytics" name="Analytics" parent="menu_wt_reports" sequence="20" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
                 <menuitem id="menu_wt_daily_stock_analysis" name="Data Analitik Stock Harian" parent="menu_wt_reports_analytics" action="action_wt_daily_stock_analysis" sequence="10" groups="weightrack.group_admin,weightrack.group_report_viewer"/>
             <menuitem id="menu_wt_reports_log" name="Logs" parent="menu_wt_reports" sequence="30" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_api_request_log" name="Log Request API" parent="menu_wt_reports_log" action="action_wt_api_request_log" sequence="10" groups="weightrack.group_admin"/>
                 <menuitem id="menu_wt_weighing_manual_log" name="Timbang Manual Log" parent="menu_wt_reports_log" action="action_wt_weighing_manual_log" sequence="20" groups="weightrack.group_admin"/>
-        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="14" groups="weightrack.group_admin"/>
+        <menuitem id="menu_wt_configuration" name="Configuration" parent="menu_wt_root" sequence="15" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_api" name="API" parent="menu_wt_configuration" action="action_wt_api" sequence="10" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_employee_role" name="Employee Roles" parent="menu_wt_configuration" action="action_wt_employee_role" sequence="20" groups="weightrack.group_admin"/>
             <menuitem id="menu_wt_product" name="Product" parent="menu_wt_configuration" action="action_wt_product" sequence="30" groups="weightrack.group_admin"/>

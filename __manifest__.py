@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "WeighTrack",
-    "version": "19.0.1.4.3",
+    "version": "19.0.1.11.0",
     "category": "Operations/Inventory",
     "summary": "Weighing management for estate operations",
     "author": "PT. Hanara Prima Solusindo",
@@ -9,6 +9,7 @@
     "depends": ["base", "mail", "stock", "hr", "product"],
     "data": [
         "security/access_groups.xml",
+        "security/kpi_security.xml",
         "security/ir.model.access.csv",
         "data/weightrack_sequence.xml",
         "data/stock_opname_difference_reason_data.xml",
@@ -88,15 +89,22 @@
         "views/delivery_step_views.xml",
         "views/delivery_views.xml",
         "views/delivery_report.xml",
+        "views/kpi_budget_target_views.xml",
+        "views/kpi_foreman_budget_target_views.xml",
+        "views/kpi_foreman_budget_validation_wizard_views.xml",
+        "views/kpi_budget_target_report_views.xml",
+        "views/kpi_foreman_budget_target_report_views.xml",
         "views/stock_picking_views.xml",
 
         "views/menu.xml",
+        "views/kpi_menu.xml",
     ],
     "assets": {
         "web.assets_backend": [
             "weightrack/static/src/css/delivery.css",
             "weightrack/static/src/js/delivery_auto_save.js",
             "weightrack/static/src/js/do_lot_cancel_live.js",
+            "weightrack/static/src/js/kpi_year_autosave.js",
         ],
     },
     "application": True,

@@ -81,5 +81,27 @@
             <field name="implementation">standard</field>
             <field name="company_id" eval="False"/>
         </record>
+        <record id="sequence_wt_kpi_budget_target" model="ir.sequence">
+            <field name="name">KPI Budget Target</field>
+            <field name="code">wt.kpi.budget.target</field>
+            <field name="prefix">BT/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="use_date_range" eval="True"/>
+            <field name="company_id" eval="False"/>
+        </record>
+        <record id="sequence_wt_kpi_foreman_budget_target" model="ir.sequence">
+            <field name="name">KPI Budget Target Mandor</field>
+            <field name="code">wt.kpi.foreman.budget.target</field>
+            <field name="prefix">BTM/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="number_next">1</field>
+            <field name="number_increment">1</field>
+            <field name="implementation">standard</field>
+            <field name="use_date_range" eval="True"/>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>

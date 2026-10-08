@@ -337,6 +337,12 @@ class Delivery(models.Model):
         tracking=True,
         copy=False,
     )
+    factory_dry_qty = fields.Float(
+        string="Berat Kering Pabrik (kg)",
+        digits="Product Unit of Measure",
+        tracking=True,
+        copy=False,
+    )
     received_difference_qty = fields.Float(
         string="Selisih Pengiriman (kg)",
         compute="_compute_received_difference_qty",
@@ -1370,7 +1376,7 @@ class Delivery(models.Model):
         }
 
     def action_mark_done(self):
-        """Selesaikan pengiriman dari status Terkirim setelah berat diterima diinput."""
+        """Selesaikan pengiriman setelah berat basah dan kering diinput."""
         for delivery in self:
             if delivery.state != "delivered":
                 raise ValidationError(_(
@@ -1379,6 +1385,10 @@ class Delivery(models.Model):
             if not delivery.received_qty or delivery.received_qty <= 0:
                 raise ValidationError(_(
                     "Berat Diterima Customer (kg) wajib diisi sebelum menyelesaikan pengiriman."
+                ))
+            if not delivery.factory_dry_qty or delivery.factory_dry_qty <= 0:
+                raise ValidationError(_(
+                    "Berat Kering Pabrik (kg) wajib diisi sebelum menyelesaikan pengiriman."
                 ))
             # Validasi proporsi susut transit wajib disimpan sebelum selesai
             if (
@@ -1398,10 +1408,12 @@ class Delivery(models.Model):
             })
             delivery.message_post(body=Markup(_(
                 "<b>Pengiriman Selesai</b> dikonfirmasi oleh %s.<br/>"
-                "Berat Diterima Customer: %s kg | Selisih Pengiriman: %s kg"
+                "Berat Diterima Customer: %s kg | Berat Kering Pabrik: %s kg | "
+                "Selisih Pengiriman: %s kg"
             ) % (
                 self.env.user.name,
                 delivery.received_qty,
+                delivery.factory_dry_qty,
                 delivery.received_difference_qty,
             )))
 

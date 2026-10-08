@@ -18,6 +18,10 @@ from . import weather
 from . import weather_data
 from . import daily_stock_analysis
 from . import division
+from . import kpi_budget_target
+from . import kpi_budget_target_division_line
+from . import kpi_budget_target_monthly_line
+from . import kpi_foreman_budget_target
 from . import drc
 from . import field
 from . import field_production

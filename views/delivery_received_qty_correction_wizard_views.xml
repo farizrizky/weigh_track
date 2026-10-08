@@ -13,13 +13,20 @@
                         <field name="new_received_qty"
                                string="Berat Diterima Baru (kg)"
                                placeholder="Masukkan berat yang benar..."/>
+                        <field name="current_factory_dry_qty"
+                               readonly="1"
+                               string="Berat Kering Pabrik Saat Ini (kg)"/>
+                        <field name="new_factory_dry_qty"
+                               string="Berat Kering Pabrik Baru (kg)"
+                               placeholder="Masukkan berat kering yang benar..."/>
                         <field name="reason"
                                string="Alasan Koreksi"
-                               placeholder="Jelaskan alasan koreksi berat diterima..."/>
+                               placeholder="Jelaskan alasan koreksi berat..."/>
                     </group>
                     <div class="alert alert-warning" role="alert">
                         <strong>Perhatian:</strong> Koreksi ini akan memperbarui nilai
-                        <strong>Berat Diterima Customer</strong> dan otomatis menghitung ulang
+                        <strong>Berat Diterima Customer</strong> dan
+                        <strong>Berat Kering Pabrik</strong>, serta otomatis menghitung ulang
                         <strong>Selisih Pengiriman</strong>. Perubahan akan dicatat di log aktivitas.
                     </div>
                 </sheet>

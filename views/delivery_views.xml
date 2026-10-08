@@ -211,6 +211,9 @@
                             <field name="received_qty"
                                    readonly="state != 'delivered'"
                                    invisible="state not in ('delivered', 'done', 'returned')"/>
+                            <field name="factory_dry_qty"
+                                   readonly="state != 'delivered'"
+                                   invisible="state not in ('delivered', 'done', 'returned')"/>
                             <field name="shipping_weighing_difference_qty"
                                    readonly="1"
                                    invisible="state not in ('delivered', 'done', 'returned')"/>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_wt_kpi" name="KPI" parent="menu_wt_root"
+        sequence="14" groups="weightrack.group_admin"/>
+    <menuitem id="menu_wt_kpi_budget_target" name="Budget Target"
+        parent="menu_wt_kpi" action="action_wt_kpi_budget_target"
+        sequence="10" groups="weightrack.group_admin"/>
+    <menuitem id="menu_wt_kpi_foreman_budget_target" name="Budget Target Mandor"
+        parent="menu_wt_kpi" action="action_wt_kpi_foreman_budget_target"
+        sequence="20" groups="weightrack.group_admin"/>
+</odoo>
