@@ -563,11 +563,21 @@ class WeighingProductionDetailReportWizard(models.TransientModel):
             shrink_pct = record.shrinkage_tolerance_percentage or 0.0
             shrink_w = record.shrinkage_tolerance_weight or 0.0
 
-            badge_no = record.tapper_barcode or (record.tapper_id.employee_id.barcode if record.tapper_id else "") or "-"
+            tapper_badge = (
+                record.tapper_id.employee_id.sudo().barcode
+                if record.tapper_id and record.tapper_id.employee_id
+                else ""
+            )
+            badge_no = record.tapper_barcode or tapper_badge or "-"
             tapper_nm = record.tapper_name or (record.tapper_id.name if record.tapper_id else "") or "-"
             div_nm = record.division_id.name or "-"
             loc_nm = record.weighing_location_id.name or "-"
-            dev_id = record.device_id or (record.device_record_id.device_id if record.device_record_id else "") or "-"
+            fallback_device_id = (
+                record.device_record_id.sudo().device_id
+                if record.device_record_id
+                else ""
+            )
+            dev_id = record.device_id or fallback_device_id or "-"
             op_nm = record.operator_name or (record.operator_employee_id.name if record.operator_employee_id else "") or "-"
             foreman_nm = record.foreman_name or (record.foreman_id.name if record.foreman_id else "") or "-"
             clerk_nm = record.clerk_name or (record.clerk_employee_id.name if record.clerk_employee_id else "") or "-"

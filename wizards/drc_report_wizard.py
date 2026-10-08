@@ -556,13 +556,16 @@ class DrcReportWizard(models.TransientModel):
                 raw_drc_pct = 0.0
                 gd = lp  # Jika tidak ada data DRC, GD full sesuai LP (100%)
 
-            group_key = (div_id, rec.foreman_employee_id.id or 0, rec.tapper_employee_id.id or 0)
+            tapper_employee = rec.tapper_employee_id
+            group_key = (div_id, rec.foreman_employee_id.id or 0, tapper_employee.id or 0)
             row = grouped.setdefault(
                 group_key,
                 {
                     "badge_number": rec.tapper_barcode or "",
-                    "nik": rec.tapper_employee_id.identification_id or "",
-                    "tapper_name": rec.tapper_employee_id.name or "",
+                    # NIK is intentionally part of this report. Keep the HR field
+                    # restricted globally and elevate only this report projection.
+                    "nik": tapper_employee.sudo().identification_id or "",
+                    "tapper_name": tapper_employee.name or "",
                     "foreman_name": rec.foreman_employee_id.name or "",
                     "division_name": rec.division_id.name or "",
                     "division_code": rec.division_id.code or "",

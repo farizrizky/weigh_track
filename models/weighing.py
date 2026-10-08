@@ -265,6 +265,7 @@ class Weighing(models.Model):
         related="operator_employee_id.barcode",
         store=True,
         readonly=True,
+        groups=False,
     )
     clerk_employee_id = fields.Many2one(
         "hr.employee",
@@ -284,6 +285,7 @@ class Weighing(models.Model):
         related="clerk_employee_id.barcode",
         store=True,
         readonly=True,
+        groups=False,
     )
     foreman_id = fields.Many2one(
         "wt.foreman",
@@ -310,6 +312,7 @@ class Weighing(models.Model):
         related="foreman_employee_id.barcode",
         store=True,
         readonly=True,
+        groups=False,
     )
     tapper_id = fields.Many2one(
         "wt.tapper",
@@ -487,6 +490,7 @@ class Weighing(models.Model):
         related="initial_device_employee_id.barcode",
         store=True,
         readonly=True,
+        groups=False,
     )
     initial_weight = fields.Float(
         string="Initial Weight",
