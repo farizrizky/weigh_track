@@ -1927,3 +1927,13 @@ Translation:
 ```text
 i18n/id_ID.po
 ```
+
+## Budget Target Mandor: penugasan dan penggantian
+
+- `wt.kpi.foreman.budget.target.line` unik berdasarkan dokumen, employee, dan divisi. Employee yang sama dapat memiliki target berbeda pada beberapa divisi.
+- `Sync Mandor` menambahkan pasangan employee-divisi aktif yang belum tersedia. Target existing dan snapshot nama/divisi tidak diubah otomatis saat master mandor berubah atau dihapus.
+- Pada dokumen Draft, baris target dapat dihapus atau seluruh target Januari-Desember dinolkan. Dokumen Valid harus di-reset ke Draft terlebih dahulu.
+- `wt.kpi.foreman.budget.replacement.wizard` mengalihkan target mulai bulan yang dipilih sampai Desember kepada mandor aktif lain pada divisi dan perusahaan yang sama. Jika target pengganti sudah tersedia, nilai pengalihan ditambahkan ke target existing.
+- Target bulan sebelum pergantian tetap pada mandor lama. Wizard menolak penghapusan baris lama jika masih ada target pada bulan sebelumnya atau penugasan lama masih aktif. Pengalihan, pemeriksaan batas budget, dan pembaruan kontrol dilakukan dalam satu transaksi.
+- Menghapus baris Budget Mandor menghilangkan baris target dan realisasi employee-divisi tersebut dari laporan Budget Mandor; data `wt.weighing` tetap tersimpan. Pengalihan, penetapan target nol, dan penghapusan baris dicatat di chatter budget.
+- Upgrade modul mengganti constraint lama `UNIQUE(budget_mandor_id, employee_id)` dengan `UNIQUE(budget_mandor_id, employee_id, division_id)` tanpa mereset angka target existing.

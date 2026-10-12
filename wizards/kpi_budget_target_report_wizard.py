@@ -141,7 +141,7 @@ class KpiBudgetTargetReport(models.TransientModel):
         for record in records:
             if record.production_date and record.division_id.id in values:
                 values[record.division_id.id][record.production_date.month - 1] += (
-                    record.production_weight or 0.0
+                    record.net_weight or 0.0
                 )
         return values
 
@@ -590,6 +590,15 @@ class KpiBudgetTargetReport(models.TransientModel):
                 },
             ]
         )
+        for row in rows:
+            if "values" in row:
+                row["achievement_values"] = self._ratio_values(
+                    row["actual_values"], row["values"]
+                )
+                row["achievement_total"] = (
+                    row["actual_total"] / row["total"] * 100.0
+                    if row["total"] else 0.0
+                )
         return rows
 
     @staticmethod
@@ -609,7 +618,7 @@ class KpiBudgetTargetReport(models.TransientModel):
         rows = self._get_report_rows()
         parts = [
             '<div style="overflow-x:auto;width:100%;">',
-            '<table style="border-collapse:collapse;min-width:4300px;width:100%;">',
+            '<table style="border-collapse:collapse;min-width:5600px;width:100%;">',
             "<thead><tr>",
         ]
         for header in (_("No"), _("Uraian"), _("Norma"), _("Satuan")):
@@ -620,18 +629,18 @@ class KpiBudgetTargetReport(models.TransientModel):
             )
         for _field_name, month_label in MONTH_FIELDS:
             parts.append(
-                '<th colspan="3" style="background:#a9d18e;border:1px solid #475569;'
+                '<th colspan="4" style="background:#a9d18e;border:1px solid #475569;'
                 'padding:6px;text-align:center;white-space:nowrap;">%s</th>'
                 % escape(month_label.upper())
             )
         parts.append(
-            '<th colspan="3" style="background:#a9d18e;border:1px solid #475569;'
+            '<th colspan="4" style="background:#a9d18e;border:1px solid #475569;'
             'padding:6px;text-align:center;white-space:nowrap;">%s</th>'
             % escape(_("JUMLAH"))
         )
         parts.append("</tr><tr>")
         for _index in range(13):
-            for header in (_("Budget"), _("Realisasi"), _("Selisih")):
+            for header in (_("Budget"), _("Realisasi"), _("Selisih"), _("Ketercapaian (%)")):
                 parts.append(
                     '<th style="background:#d9ead3;border:1px solid #475569;'
                     'padding:5px;text-align:center;white-space:nowrap;">%s</th>'
@@ -658,7 +667,7 @@ class KpiBudgetTargetReport(models.TransientModel):
                     'text-align:center;%s">%s</td>' % (style, escape(row["no"]))
                 )
                 parts.append(
-                    '<td colspan="42" style="border:1px solid #94a3b8;'
+                    '<td colspan="55" style="border:1px solid #94a3b8;'
                     'padding:5px;%s">%s</td>' % (style, escape(row["label"]))
                 )
                 parts.append("</tr>")
@@ -681,10 +690,11 @@ class KpiBudgetTargetReport(models.TransientModel):
                 'white-space:nowrap;%s">%s</td>' % (style, escape(row["unit"]))
             )
             percentage = row.get("percentage", False)
-            for budget_value, actual_value, variance_value in zip(
+            for budget_value, actual_value, variance_value, achievement_value in zip(
                 row["values"],
                 row["actual_values"],
                 row["variance_values"],
+                row["achievement_values"],
             ):
                 for value, variance_style in (
                     (budget_value, ""),
@@ -700,6 +710,11 @@ class KpiBudgetTargetReport(models.TransientModel):
                             self._format_number(value, percentage),
                         )
                     )
+                parts.append(
+                    '<td style="border:1px solid #94a3b8;padding:5px;'
+                    'text-align:right;white-space:nowrap;%s">%s%%</td>'
+                    % (style, self._format_number(achievement_value))
+                )
             for value, variance_style in (
                 (row["total"], ""),
                 (row["actual_total"], ""),
@@ -714,6 +729,11 @@ class KpiBudgetTargetReport(models.TransientModel):
                         self._format_number(value, percentage),
                     )
                 )
+            parts.append(
+                '<td style="border:1px solid #94a3b8;padding:5px;'
+                'text-align:right;white-space:nowrap;%s">%s%%</td>'
+                % (style, self._format_number(row["achievement_total"]))
+            )
             parts.append("</tr>")
         parts.append("</tbody></table></div>")
         return Markup("".join(parts))
@@ -817,14 +837,25 @@ class KpiBudgetTargetReport(models.TransientModel):
         negative_variance_format = workbook.add_format(
             {"font_color": "#DC2626"}
         )
+        achievement_formats = {
+            kind: workbook.add_format({
+                **base_font, "border": 1, "num_format": "0.00%", **style
+            })
+            for kind, style in (
+                ("default", {}),
+                ("subtotal", {"bold": True, "bg_color": "#FFF200"}),
+                ("grand_total", {"bold": True, "bg_color": "#A9D18E"}),
+                ("metric", {"bold": True}),
+            )
+        }
 
         sheet.set_column("A:A", 5)
         sheet.set_column("B:B", 38)
         sheet.set_column("C:C", 10)
         sheet.set_column("D:D", 12)
-        sheet.set_column(4, 42, 13)
+        sheet.set_column(4, 55, 13)
 
-        last_column = 42
+        last_column = 55
         sheet.merge_range(0, 0, 0, last_column, self.company_id.name or "", title_format)
         sheet.merge_range(1, 0, 1, last_column, _("BUDGET TARGET"), title_format)
         sheet.merge_range(
@@ -833,20 +864,20 @@ class KpiBudgetTargetReport(models.TransientModel):
         for column, header in enumerate((_("NO"), _("URAIAN"), _("NORMA"), _("SATUAN"))):
             sheet.merge_range(4, column, 5, column, header, header_format)
         for month_index, (_field_name, month_label) in enumerate(MONTH_FIELDS):
-            start_column = 4 + (month_index * 3)
+            start_column = 4 + (month_index * 4)
             sheet.merge_range(
                 4,
                 start_column,
                 4,
-                start_column + 2,
+                start_column + 3,
                 month_label.upper(),
                 header_format,
             )
             for offset, header in enumerate(
-                (_("BUDGET"), _("REALISASI"), _("SELISIH"))
+                (_("BUDGET"), _("REALISASI"), _("SELISIH"), _("KETERCAPAIAN (%)"))
             ):
                 sheet.write(5, start_column + offset, header, subheader_format)
-        total_start_column = 40
+        total_start_column = 52
         sheet.merge_range(
             4,
             total_start_column,
@@ -856,7 +887,7 @@ class KpiBudgetTargetReport(models.TransientModel):
             header_format,
         )
         for offset, header in enumerate(
-            (_("BUDGET"), _("REALISASI"), _("SELISIH"))
+            (_("BUDGET"), _("REALISASI"), _("SELISIH"), _("KETERCAPAIAN (%)"))
         ):
             sheet.write(5, total_start_column + offset, header, subheader_format)
 
@@ -898,17 +929,21 @@ class KpiBudgetTargetReport(models.TransientModel):
             sheet.write(row_index, 1, row["label"], text_cell_format)
             sheet.write(row_index, 2, "", text_cell_format)
             sheet.write(row_index, 3, row["unit"], text_cell_format)
+            achievement_format = achievement_formats.get(kind, achievement_formats["default"])
             current_column = 4
-            for budget_value, actual_value, variance_value in zip(
+            for budget_value, actual_value, variance_value, achievement_value in zip(
                 row["values"],
                 row["actual_values"],
                 row["variance_values"],
+                row["achievement_values"],
             ):
                 for value in (budget_value, actual_value, variance_value):
                     sheet.write_number(
                         row_index, current_column, value, value_cell_format
                     )
                     current_column += 1
+                sheet.write_number(row_index, current_column, achievement_value / 100.0, achievement_format)
+                current_column += 1
             for value in (
                 row["total"],
                 row["actual_total"],
@@ -918,10 +953,11 @@ class KpiBudgetTargetReport(models.TransientModel):
                     row_index, current_column, value, value_cell_format
                 )
                 current_column += 1
+            sheet.write_number(row_index, current_column, row["achievement_total"] / 100.0, achievement_format)
             row_index += 1
 
-        variance_columns = [4 + (month_index * 3) + 2 for month_index in range(12)]
-        variance_columns.append(last_column)
+        variance_columns = [4 + (month_index * 4) + 2 for month_index in range(12)]
+        variance_columns.append(total_start_column + 2)
         for column in variance_columns:
             sheet.conditional_format(
                 6,

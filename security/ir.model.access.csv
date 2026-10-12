@@ -3,6 +3,7 @@ access_wt_kpi_foreman_budget_target_admin,access.wt.kpi.foreman.budget.target.ad
 access_wt_kpi_foreman_budget_target_line_admin,access.wt.kpi.foreman.budget.target.line.admin,model_wt_kpi_foreman_budget_target_line,group_admin,1,1,1,1
 access_wt_kpi_foreman_budget_control_line_admin,access.wt.kpi.foreman.budget.control.line.admin,model_wt_kpi_foreman_budget_control_line,group_admin,1,1,1,1
 access_wt_kpi_foreman_budget_validation_wizard_admin,access.wt.kpi.foreman.budget.validation.wizard.admin,model_wt_kpi_foreman_budget_validation_wizard,group_admin,1,1,1,1
+access_wt_kpi_foreman_budget_replacement_wizard_admin,access.wt.kpi.foreman.budget.replacement.wizard.admin,model_wt_kpi_foreman_budget_replacement_wizard,group_admin,1,1,1,1
 access_wt_kpi_foreman_budget_target_report_viewer,access.wt.kpi.foreman.budget.target.report.viewer,model_wt_kpi_foreman_budget_target,group_report_viewer,1,0,0,0
 access_wt_kpi_foreman_budget_target_line_report_viewer,access.wt.kpi.foreman.budget.target.line.report.viewer,model_wt_kpi_foreman_budget_target_line,group_report_viewer,1,0,0,0
 access_wt_kpi_foreman_budget_control_line_report_viewer,access.wt.kpi.foreman.budget.control.line.report.viewer,model_wt_kpi_foreman_budget_control_line,group_report_viewer,1,0,0,0

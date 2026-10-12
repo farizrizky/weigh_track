@@ -245,9 +245,10 @@ class KpiForemanBudgetTarget(models.Model):
         line_model = self.env["wt.kpi.foreman.budget.target.line"]
         created_count = 0
         for budget in self:
-            existing_employee_ids = set(
-                budget.foreman_line_ids.mapped("employee_id").ids
-            )
+            existing_keys = {
+                (line.employee_id.id, line.division_id.id)
+                for line in budget.foreman_line_ids
+            }
             values = [
                 {
                     "budget_mandor_id": budget.id,
@@ -256,7 +257,7 @@ class KpiForemanBudgetTarget(models.Model):
                     "division_id": foreman.division_id.id,
                 }
                 for foreman in budget._active_foremen()
-                if foreman.employee_id.id not in existing_employee_ids
+                if (foreman.employee_id.id, foreman.division_id.id) not in existing_keys
             ]
             if values:
                 line_model.create(values)
@@ -401,15 +402,19 @@ class KpiForemanBudgetTarget(models.Model):
 
     def _check_all_active_foremen_present(self):
         for budget in self:
-            missing = budget._active_foremen().mapped(
-                "employee_id"
-            ) - budget.foreman_line_ids.mapped(
-                "employee_id"
-            )
+            expected_keys = {
+                (foreman.employee_id.id, foreman.division_id.id)
+                for foreman in budget._active_foremen()
+            }
+            existing_keys = {
+                (line.employee_id.id, line.division_id.id)
+                for line in budget.foreman_line_ids
+            }
+            missing = expected_keys - existing_keys
             if missing:
                 raise ValidationError(
                     _(
-                        "Masih ada Mandor aktif yang belum masuk ke dokumen. "
+                        "Masih ada penugasan Mandor aktif per Divisi yang belum masuk ke dokumen. "
                         "Klik Sync Mandor sebelum validasi."
                     )
                 )
@@ -557,9 +562,9 @@ class KpiForemanBudgetTargetLine(models.Model):
     november = fields.Float(string="November", default=0.0, digits=(16, 2))
     december = fields.Float(string="Desember", default=0.0, digits=(16, 2))
 
-    _budget_employee_uniq = models.Constraint(
-        "unique(budget_mandor_id, employee_id)",
-        "Mandor hanya boleh muncul satu kali dalam satu Budget Target Mandor.",
+    _budget_employee_division_uniq = models.Constraint(
+        "unique(budget_mandor_id, employee_id, division_id)",
+        "Mandor hanya boleh muncul satu kali per Divisi dalam satu Budget Target Mandor.",
     )
     _monthly_values_non_negative = models.Constraint(
         "CHECK(january >= 0 AND february >= 0 AND march >= 0 AND april >= 0 "
@@ -579,6 +584,13 @@ class KpiForemanBudgetTargetLine(models.Model):
             ALTER TABLE wt_kpi_foreman_budget_target_line
             DROP CONSTRAINT IF EXISTS
                 wt_kpi_foreman_budget_target_line_budget_foreman_uniq
+            """
+        )
+        self.env.cr.execute(
+            """
+            ALTER TABLE wt_kpi_foreman_budget_target_line
+            DROP CONSTRAINT IF EXISTS
+                wt_kpi_foreman_budget_target_line_budget_employee_uniq
             """
         )
 
@@ -608,12 +620,16 @@ class KpiForemanBudgetTargetLine(models.Model):
                 raise ValidationError(_("Employee Mandor wajib tersedia."))
             vals["foreman_name"] = vals.get("foreman_name") or employee.name
             vals["uom_name"] = "Kg Basah"
-            key = (vals.get("budget_mandor_id"), vals.get("employee_id"))
+            key = (
+                vals.get("budget_mandor_id"),
+                vals.get("employee_id"),
+                vals.get("division_id"),
+            )
             if all(key):
                 keys.append(key)
         if len(keys) != len(set(keys)):
             raise ValidationError(
-                _("Mandor hanya boleh muncul satu kali dalam satu dokumen.")
+                _("Mandor hanya boleh muncul satu kali per Divisi dalam satu dokumen.")
             )
         if keys:
             existing_keys = set(
@@ -621,14 +637,17 @@ class KpiForemanBudgetTargetLine(models.Model):
                     [
                         ("budget_mandor_id", "in", list({key[0] for key in keys})),
                         ("employee_id", "in", list({key[1] for key in keys})),
+                        ("division_id", "in", list({key[2] for key in keys})),
                     ]
                 ).mapped(
-                    lambda line: (line.budget_mandor_id.id, line.employee_id.id)
+                    lambda line: (
+                        line.budget_mandor_id.id, line.employee_id.id, line.division_id.id
+                    )
                 )
             )
             if existing_keys.intersection(keys):
                 raise ValidationError(
-                    _("Mandor hanya boleh muncul satu kali dalam satu dokumen.")
+                    _("Mandor hanya boleh muncul satu kali per Divisi dalam satu dokumen.")
                 )
         lines = super().create(vals_list)
         lines._check_snapshot_company()
@@ -665,10 +684,50 @@ class KpiForemanBudgetTargetLine(models.Model):
             raise ValidationError(
                 _("Baris Mandor pada dokumen Valid tidak dapat dihapus.")
             )
+        self.check_access("unlink")
+        deleted_targets = [
+            (line.budget_mandor_id, line.foreman_name, line.division_id.display_name,
+             "; ".join(
+                 "%s: %s kg" % (label, formatLang(self.env, line[field_name], digits=2))
+                 for field_name, _month, label in MONTH_FIELDS
+             ))
+            for line in self
+        ]
         budgets = self.mapped("budget_mandor_id")
         result = super().unlink()
         budgets._refresh_control_lines()
+        for budget, foreman_name, division_name, targets in deleted_targets:
+            budget.message_post(body=_(
+                "Baris target Mandor %(foreman)s pada Divisi %(division)s dihapus. "
+                "Target sebelum penghapusan: %(targets)s.",
+                foreman=foreman_name, division=division_name, targets=targets,
+            ))
         return result
+
+    def action_zero_targets(self):
+        self.ensure_one()
+        self.write({field_name: 0.0 for field_name, _month, _label in MONTH_FIELDS})
+        self.budget_mandor_id.message_post(
+            body=_(
+                "Target Januari–Desember Mandor %(foreman)s pada Divisi %(division)s ditetapkan menjadi 0.",
+                foreman=self.foreman_name,
+                division=self.division_id.display_name,
+            )
+        )
+        return True
+
+    def action_open_replacement(self):
+        self.ensure_one()
+        if self.budget_mandor_id.state != "draft":
+            raise ValidationError(_("Pengalihan target hanya dapat dilakukan pada dokumen Draft."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Alihkan Target Mandor"),
+            "res_model": "wt.kpi.foreman.budget.replacement.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_line_id": self.id},
+        }
 
     @api.constrains(*(field_name for field_name, _month, _label in MONTH_FIELDS))
     def _check_non_negative_values(self):

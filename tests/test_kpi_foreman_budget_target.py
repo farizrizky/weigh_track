@@ -1,6 +1,9 @@
 import base64
 import io
 import zipfile
+import xml.etree.ElementTree as ET
+
+from lxml import html
 
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
@@ -257,6 +260,12 @@ class TestKpiForemanBudgetTarget(TransactionCase):
         foreman_budget.action_sync_foremen()
 
         self.assertEqual(historical_line.division_id, self.division)
+        current_line = foreman_budget.foreman_line_ids.filtered(
+            lambda line: line.employee_id == self.employee_1
+            and line.division_id == new_division
+        )
+        self.assertEqual(len(current_line), 1)
+        self.assertNotEqual(current_line, historical_line)
 
     def test_deleting_master_foreman_keeps_target_and_prevents_resync_duplicate(self):
         self._create_valid_main_budget()
@@ -326,6 +335,179 @@ class TestKpiForemanBudgetTarget(TransactionCase):
         self.assertEqual(len(duplicate.foreman_line_ids), 2)
         self.assertIn(30, duplicate.foreman_line_ids.mapped("january"))
 
+    def _create_replacement_foreman(self, division=None):
+        employee = self.env["hr.employee"].create({
+            "name": "KPI Replacement Foreman", "company_id": self.company.id,
+            "job_id": self.foreman_job.id,
+        })
+        return self.env["wt.foreman"].create({
+            "employee_id": employee.id, "division_id": (division or self.division).id,
+        })
+
+    def _replacement_wizard(self, line, replacement, month="07", old_action="zero"):
+        return self.env["wt.kpi.foreman.budget.replacement.wizard"].create({
+            "line_id": line.id, "new_foreman_id": replacement.id,
+            "start_month": month, "old_line_action": old_action,
+        })
+
+    def test_same_employee_has_independent_division_targets_and_sync(self):
+        second_division = self.env["wt.division"].create({
+            "name": "KPI Second Assignment", "code": "KPI-SECOND-ASSIGN",
+            "estate_id": self.estate.id,
+        })
+        self._create_valid_main_budget()
+        budget = self._create_foreman_budget()
+        second_assignment = self.env["wt.foreman"].create({
+            "employee_id": self.employee_1.id, "division_id": second_division.id,
+        })
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            budget.action_validate()
+        budget.action_sync_foremen()
+        old_line = budget.foreman_line_ids.filtered(
+            lambda line: line.employee_id == self.employee_1 and line.division_id == self.division
+        )
+        second_line = budget.foreman_line_ids.filtered(
+            lambda line: line.employee_id == self.employee_1 and line.division_id == second_division
+        )
+        self.assertEqual(second_line.foreman_id, second_assignment)
+        old_line.january = 25
+        second_line.january = 30
+        january = {row["division_id"]: row for row in budget._comparison_rows() if row["month"] == "01"}
+        self.assertEqual(january[self.division.id]["total_foreman"], 25)
+        self.assertEqual(january[second_division.id]["total_foreman"], 30)
+        self.env["wt.weighing"].create([
+            {
+                "company_id": self.company.id, "estate_id": self.estate.id,
+                "division_id": division.id, "foreman_employee_id": self.employee_1.id,
+                "production_date": "%s-01-15" % self.TEST_YEAR,
+                "weighing_date": "%s-01-15 08:00:00" % self.TEST_YEAR,
+                "production_weight": net_weight + 5, "reject_weight": 5,
+                "net_weight": net_weight,
+            }
+            for division, net_weight in ((self.division, 10), (second_division, 20))
+        ])
+        report = self.env["wt.kpi.foreman.budget.target.report"].new({
+            "company_id": self.company.id, "year": self.TEST_YEAR,
+            "budget_mandor_id": budget.id,
+        })
+        actuals = {
+            row["division"]: row["actual_values"][0]
+            for row in report._get_report_rows()
+            if row["kind"] == "foreman" and row["foreman"] == self.employee_1.name
+        }
+        self.assertEqual(actuals, {self.division.code: 10, second_division.code: 20})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            second_line.january = 101
+        self.assertEqual(old_line.january, 25)
+        self.assertEqual(second_line.january, 30)
+        budget.action_sync_foremen()
+        self.assertEqual(len(budget.foreman_line_ids), 3)
+
+    def test_replacement_preserves_previous_months_and_division_allocation(self):
+        self._create_valid_main_budget()
+        budget = self._create_foreman_budget()
+        old_line = budget.foreman_line_ids.filtered(lambda line: line.employee_id == self.employee_1)
+        other_line = budget.foreman_line_ids - old_line
+        old_line.write({field: 60 for field in MONTH_FIELDS})
+        other_line.write({field: 40 for field in MONTH_FIELDS})
+        self.foreman_1.active = False
+        replacement = self._create_replacement_foreman()
+        wizard = self._replacement_wizard(old_line, replacement)
+        self.assertEqual(wizard.transfer_total, 360)
+        wizard.action_apply()
+        new_line = budget.foreman_line_ids.filtered(lambda line: line.employee_id == replacement.employee_id)
+        self.assertEqual(old_line.june, 60)
+        self.assertEqual(old_line.july, 0)
+        self.assertEqual(old_line.december, 0)
+        self.assertEqual(new_line.june, 0)
+        self.assertEqual(new_line.july, 60)
+        self.assertEqual(new_line.december, 60)
+        self.assertTrue(all(row["total_foreman"] == 100 for row in budget._comparison_rows()))
+        budget.action_validate()
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            old_line.action_zero_targets()
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            old_line.action_open_replacement()
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            old_line.unlink()
+
+    def test_replacement_adds_to_existing_target_without_changing_other_division(self):
+        second_division = self.env["wt.division"].create({
+            "name": "KPI Replacement Other Division", "code": "KPI-REPLACE-OTHER",
+            "estate_id": self.estate.id,
+        })
+        replacement = self._create_replacement_foreman()
+        self.env["wt.foreman"].create({
+            "employee_id": replacement.employee_id.id, "division_id": second_division.id,
+        })
+        self._create_valid_main_budget()
+        budget = self._create_foreman_budget()
+        old_line = budget.foreman_line_ids.filtered(lambda line: line.employee_id == self.employee_1)
+        new_line = budget.foreman_line_ids.filtered(
+            lambda line: line.employee_id == replacement.employee_id and line.division_id == self.division
+        )
+        other_division_line = budget.foreman_line_ids.filtered(
+            lambda line: line.employee_id == replacement.employee_id and line.division_id == second_division
+        )
+        old_line.write({field: 60 for field in MONTH_FIELDS})
+        new_line.write({field: 10 for field in MONTH_FIELDS})
+        other_division_line.write({field: 75 for field in MONTH_FIELDS})
+        self.foreman_1.active = False
+        self._replacement_wizard(old_line, replacement).action_apply()
+        self.assertEqual(new_line.june, 10)
+        self.assertEqual(new_line.july, 70)
+        self.assertEqual(other_division_line.july, 75)
+        self.assertEqual(len(budget.foreman_line_ids), 4)
+
+    def test_deleted_master_can_transfer_target_and_remove_old_budget_line(self):
+        self._create_valid_main_budget()
+        budget = self._create_foreman_budget()
+        old_line = budget.foreman_line_ids.filtered(lambda line: line.employee_id == self.employee_1)
+        old_line.write({field: 60 for field in MONTH_FIELDS[6:]})
+        self.foreman_1.unlink()
+        replacement = self._create_replacement_foreman()
+        wizard = self._replacement_wizard(old_line, replacement, old_action="delete")
+        wizard.action_apply()
+        self.assertFalse(old_line.exists())
+        new_line = budget.foreman_line_ids.filtered(lambda line: line.employee_id == replacement.employee_id)
+        self.assertEqual(new_line.june, 0)
+        self.assertEqual(new_line.july, 60)
+        budget.action_sync_foremen()
+        self.assertEqual(len(budget.foreman_line_ids), 2)
+
+    def test_replacement_rejects_deleting_previous_months_and_invalid_assignment(self):
+        second_division = self.env["wt.division"].create({
+            "name": "KPI Invalid Replacement Division", "code": "KPI-INVALID-REPLACE",
+            "estate_id": self.estate.id,
+        })
+        self._create_valid_main_budget()
+        budget = self._create_foreman_budget()
+        old_line = budget.foreman_line_ids.filtered(lambda line: line.employee_id == self.employee_1)
+        old_line.write({field: 60 for field in MONTH_FIELDS})
+        self.foreman_1.active = False
+        wrong_division_foreman = self._create_replacement_foreman(second_division)
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            self._replacement_wizard(old_line, wrong_division_foreman).action_apply()
+        replacement = self._create_replacement_foreman()
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            self._replacement_wizard(old_line, replacement, old_action="delete").action_apply()
+        self.assertEqual(old_line.january, 60)
+        self.assertEqual(old_line.july, 60)
+        self.assertEqual(len(budget.foreman_line_ids), 2)
+
+    def test_discontinued_line_can_be_zeroed_and_deleted_in_draft(self):
+        self._create_valid_main_budget()
+        budget = self._create_foreman_budget()
+        old_line = budget.foreman_line_ids.filtered(lambda line: line.employee_id == self.employee_1)
+        old_line.january = 60
+        self.foreman_1.active = False
+        old_line.action_zero_targets()
+        self.assertTrue(all(old_line[field] == 0 for field in MONTH_FIELDS))
+        self.assertTrue(all(row["total_foreman"] == 0 for row in budget._comparison_rows()))
+        old_line.unlink()
+        budget.action_sync_foremen()
+        self.assertEqual(len(budget.foreman_line_ids), 1)
+
     def test_report_groups_foremen_and_exports_excel(self):
         self._create_valid_main_budget()
         foreman_budget = self._create_foreman_budget()
@@ -340,7 +522,9 @@ class TestKpiForemanBudgetTarget(TransactionCase):
                     "estate_id": self.estate.id,
                     "division_id": self.division.id,
                     "foreman_employee_id": self.employee_1.id,
-                    "production_weight": 40.0,
+                    "production_weight": 50.0,
+                    "reject_weight": 10.0,
+                    "net_weight": 40.0,
                 },
                 {
                     "company_id": self.company.id,
@@ -349,7 +533,9 @@ class TestKpiForemanBudgetTarget(TransactionCase):
                     "estate_id": self.estate.id,
                     "division_id": self.division.id,
                     "foreman_employee_id": self.employee_2.id,
-                    "production_weight": 10.0,
+                    "production_weight": 15.0,
+                    "reject_weight": 5.0,
+                    "net_weight": 10.0,
                 },
             ]
         )
@@ -376,6 +562,13 @@ class TestKpiForemanBudgetTarget(TransactionCase):
         self.assertTrue(report.preview_html)
         self.assertIn("Realisasi", str(report.preview_html))
         self.assertIn("Selisih", str(report.preview_html))
+        self.assertIn("Ketercapaian (%)", str(report.preview_html))
+        preview = html.fromstring(str(report.preview_html))
+        self.assertEqual(
+            len(preview.xpath("//thead/tr[2]/th[text()='Ketercapaian (%)']")), 13
+        )
+        for row in preview.xpath("//tbody/tr"):
+            self.assertEqual(sum(int(cell.get("colspan", 1)) for cell in row), 56)
         self.assertIn("color:#15803d", str(report.preview_html))
         self.assertIn("color:#dc2626", str(report.preview_html))
         rows = report._get_report_rows()
@@ -395,6 +588,9 @@ class TestKpiForemanBudgetTarget(TransactionCase):
         self.assertEqual(actual_by_foreman[self.employee_2.name], 10.0)
         self.assertEqual(division_total["values"][0], 100)
         self.assertEqual(division_total["actual_values"][0], 50.0)
+        self.assertEqual(division_total["achievement_values"][0], 50.0)
+        self.assertAlmostEqual(division_total["achievement_total"], 50 / 1200 * 100)
+        self.assertEqual(report._ratio_values([50, 150, 10], [100, 100, 0]), [50, 150, 0])
         self.assertEqual(division_total["variance_values"][0], -50.0)
         self.assertEqual(
             division_total["variance_values"][0],
@@ -435,7 +631,24 @@ class TestKpiForemanBudgetTarget(TransactionCase):
             sheet_xml = workbook_archive.read("xl/worksheets/sheet1.xml")
             self.assertIn(b"REALISASI", shared_strings)
             self.assertIn(b"SELISIH", shared_strings)
+            self.assertIn(b"KETERCAPAIAN (%)", shared_strings)
             self.assertIn(b"conditionalFormatting", sheet_xml)
+            ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+            sheet = ET.fromstring(sheet_xml)
+            total_row_number = rows.index(division_total) + 7
+            monthly_cell = sheet.find(f".//s:c[@r='H{total_row_number}']", ns)
+            annual_cell = sheet.find(f".//s:c[@r='BD{total_row_number}']", ns)
+            self.assertAlmostEqual(float(monthly_cell.find("s:v", ns).text), 0.5)
+            self.assertAlmostEqual(float(annual_cell.find("s:v", ns).text), 50 / 1200)
+            styles = ET.fromstring(workbook_archive.read("xl/styles.xml"))
+            cell_style = list(styles.find("s:cellXfs", ns))[int(monthly_cell.get("s"))]
+            number_format = styles.find(
+                "s:numFmts/s:numFmt[@numFmtId='%s']" % cell_style.get("numFmtId"), ns
+            )
+            self.assertEqual(number_format.get("formatCode"), "0.00%")
+            variance_ranges = [cell.get("sqref") for cell in sheet.findall("s:conditionalFormatting", ns)]
+            self.assertTrue(any(value.startswith("BC") for value in variance_ranges))
+            self.assertFalse(any(value.startswith("BD") for value in variance_ranges))
 
     def test_report_without_estate_shows_every_estate_and_division(self):
         second_estate = self.env["wt.estate"].create(
@@ -555,3 +768,9 @@ class TestKpiForemanBudgetTarget(TransactionCase):
         foreman_budget.action_set_draft()
         with self.assertRaises(AccessError):
             foreman_budget.with_user(report_user).unlink()
+        with self.assertRaises(AccessError), self.env.cr.savepoint():
+            self.env["wt.kpi.foreman.budget.replacement.wizard"].with_user(report_user).create({
+                "line_id": foreman_budget.foreman_line_ids[0].id,
+                "new_foreman_id": self.foreman_2.id,
+                "start_month": "07",
+            })

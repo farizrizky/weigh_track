@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "WeighTrack",
-    "version": "19.0.1.11.0",
+    "version": "19.0.1.11.1",
     "category": "Operations/Inventory",
     "summary": "Weighing management for estate operations",
     "author": "PT. Hanara Prima Solusindo",
@@ -92,6 +92,7 @@
         "views/kpi_budget_target_views.xml",
         "views/kpi_foreman_budget_target_views.xml",
         "views/kpi_foreman_budget_validation_wizard_views.xml",
+        "views/kpi_foreman_budget_replacement_wizard_views.xml",
         "views/kpi_budget_target_report_views.xml",
         "views/kpi_foreman_budget_target_report_views.xml",
         "views/stock_picking_views.xml",

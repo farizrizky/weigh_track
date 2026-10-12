@@ -1,8 +1,11 @@
 import base64
 import io
 import zipfile
+import xml.etree.ElementTree as ET
 from datetime import date
 from unittest.mock import patch
+
+from lxml import html
 
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
@@ -329,6 +332,61 @@ class TestKpiBudgetTarget(TransactionCase):
         self.assertEqual(delivery.received_qty, 95.0)
         self.assertEqual(delivery.factory_dry_qty, 65.0)
 
+    def test_total_production_reports_use_net_weight(self):
+        foreman, tapper = self.env["hr.employee"].create(
+            [
+                {"name": "Net Weight Test Foreman", "company_id": self.company.id},
+                {"name": "Net Weight Test Tapper", "company_id": self.company.id},
+            ]
+        )
+        production_date = date(self.TEST_YEAR, 1, 15)
+        self.env["wt.weighing"].create(
+            [
+                {
+                    "company_id": self.company.id,
+                    "production_date": production_date,
+                    "weighing_date": "%s-01-15 08:00:00" % self.TEST_YEAR,
+                    "estate_id": self.estate.id,
+                    "division_id": self.division.id,
+                    "foreman_employee_id": foreman.id,
+                    "tapper_employee_id": tapper.id,
+                    "production_weight": production_weight,
+                    "reject_weight": reject_weight,
+                    "net_weight": net_weight,
+                }
+                for production_weight, reject_weight, net_weight in (
+                    (100.0, 15.0, 85.0),
+                    (20.0, 20.0, 0.0),
+                )
+            ]
+        )
+        values = {
+            "company_id": self.company.id,
+            "date_start": production_date,
+            "date_end": production_date,
+            "division_id": self.division.id,
+        }
+        wizards = [
+            self.env["wt.tapper.production.total.report.wizard"].new(values),
+            *[
+                self.env["wt.production.summary.report.wizard"].new(
+                    {**values, "report_level": level}
+                )
+                for level in ("division", "foreman")
+            ],
+        ]
+        for wizard in wizards:
+            with self.subTest(model=wizard._name, level=getattr(wizard, "report_level", "tapper")):
+                data = wizard._prepare_report_data()
+                self.assertEqual(data["total_production"], 85.0)
+                self.assertEqual(data["date_totals"][production_date.isoformat()], 85.0)
+                self.assertEqual(len(data["rows"]), 1)
+                self.assertEqual(data["rows"][0]["total_production"], 85.0)
+                self.assertEqual(
+                    data["rows"][0]["daily_production"][production_date.isoformat()],
+                    85.0,
+                )
+
     def test_budget_target_report_calculation_and_excel_export(self):
         budget = self._create_budget()
         month_values = {
@@ -362,7 +420,9 @@ class TestKpiBudgetTarget(TransactionCase):
                 "weighing_date": "%s-01-15 08:00:00" % self.TEST_YEAR,
                 "estate_id": self.estate.id,
                 "division_id": self.division.id,
-                "production_weight": 35.0,
+                "production_weight": 45.0,
+                "reject_weight": 10.0,
+                "net_weight": 35.0,
             }
         )
         delivery_model = self.env["wt.delivery"]
@@ -396,6 +456,13 @@ class TestKpiBudgetTarget(TransactionCase):
         self.assertTrue(report.preview_html)
         self.assertIn("Realisasi", str(report.preview_html))
         self.assertIn("Selisih", str(report.preview_html))
+        self.assertIn("Ketercapaian (%)", str(report.preview_html))
+        preview = html.fromstring(str(report.preview_html))
+        self.assertEqual(
+            len(preview.xpath("//thead/tr[2]/th[text()='Ketercapaian (%)']")), 13
+        )
+        for row in preview.xpath("//tbody/tr"):
+            self.assertEqual(sum(int(cell.get("colspan", 1)) for cell in row), 56)
         self.assertIn("color:#15803d", str(report.preview_html))
         self.assertIn("color:#dc2626", str(report.preview_html))
 
@@ -405,6 +472,13 @@ class TestKpiBudgetTarget(TransactionCase):
         self.assertEqual(grand_totals[0]["values"][0], division_count * 100.0)
         self.assertEqual(grand_totals[1]["values"][0], division_count * 80.0)
         self.assertEqual(grand_totals[0]["actual_values"][0], 35.0)
+        self.assertAlmostEqual(
+            grand_totals[0]["achievement_values"][0], 35.0 / (division_count * 100) * 100
+        )
+        self.assertAlmostEqual(
+            grand_totals[0]["achievement_total"], 35.0 / (division_count * 1200) * 100
+        )
+        self.assertEqual(report._ratio_values([50, 150, 10], [100, 100, 0]), [50, 150, 0])
         self.assertEqual(
             grand_totals[0]["variance_values"][0],
             35.0 - (division_count * 100.0),
@@ -434,7 +508,24 @@ class TestKpiBudgetTarget(TransactionCase):
             sheet_xml = workbook_archive.read("xl/worksheets/sheet1.xml")
             self.assertIn(b"REALISASI", shared_strings)
             self.assertIn(b"SELISIH", shared_strings)
+            self.assertIn(b"KETERCAPAIAN (%)", shared_strings)
             self.assertIn(b"conditionalFormatting", sheet_xml)
+            ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+            sheet = ET.fromstring(sheet_xml)
+            total_row_number = rows.index(grand_totals[0]) + 7
+            monthly_cell = sheet.find(f".//s:c[@r='H{total_row_number}']", ns)
+            annual_cell = sheet.find(f".//s:c[@r='BD{total_row_number}']", ns)
+            self.assertAlmostEqual(float(monthly_cell.find("s:v", ns).text), 35 / (division_count * 100))
+            self.assertAlmostEqual(float(annual_cell.find("s:v", ns).text), 35 / (division_count * 1200))
+            styles = ET.fromstring(workbook_archive.read("xl/styles.xml"))
+            cell_style = list(styles.find("s:cellXfs", ns))[int(monthly_cell.get("s"))]
+            number_format = styles.find(
+                "s:numFmts/s:numFmt[@numFmtId='%s']" % cell_style.get("numFmtId"), ns
+            )
+            self.assertEqual(number_format.get("formatCode"), "0.00%")
+            variance_ranges = [cell.get("sqref") for cell in sheet.findall("s:conditionalFormatting", ns)]
+            self.assertTrue(any(value.startswith("BC") for value in variance_ranges))
+            self.assertFalse(any(value.startswith("BD") for value in variance_ranges))
 
     def test_budget_target_report_orders_sebayur_before_gembung(self):
         estates = self.env["wt.estate"].create(

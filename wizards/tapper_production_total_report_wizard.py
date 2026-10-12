@@ -654,7 +654,7 @@ class TapperProductionTotalReportWizard(models.TransientModel):
 
         for record in records:
             production_date = record.production_date.isoformat()
-            production_weight = record.production_weight or 0.0
+            net_weight = record.net_weight or 0.0
             group_key = (
                 record.division_id.id or 0,
                 record.foreman_employee_id.id or 0,
@@ -674,9 +674,9 @@ class TapperProductionTotalReportWizard(models.TransientModel):
                     "total_production": 0.0,
                 },
             )
-            row["daily_production"][production_date] += production_weight
-            row["total_production"] += production_weight
-            date_totals[production_date] += production_weight
+            row["daily_production"][production_date] += net_weight
+            row["total_production"] += net_weight
+            date_totals[production_date] += net_weight
 
         rows = sorted(
             grouped.values(),

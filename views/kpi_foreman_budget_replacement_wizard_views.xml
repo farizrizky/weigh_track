@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wt_kpi_foreman_budget_replacement_wizard_form" model="ir.ui.view">
+        <field name="name">wt.kpi.foreman.budget.replacement.wizard.form</field>
+        <field name="model">wt.kpi.foreman.budget.replacement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Alihkan Target Mandor">
+                <sheet>
+                    <field name="line_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <field name="old_employee_id" invisible="1"/>
+                    <group>
+                        <field name="budget_mandor_id" readonly="1"/>
+                        <field name="division_id" readonly="1"/>
+                        <field name="old_foreman_name" readonly="1"/>
+                        <field name="new_foreman_id" options="{'no_create': True}"/>
+                        <field name="start_month"/>
+                        <field name="transfer_total" readonly="1"/>
+                        <field name="old_line_action"/>
+                    </group>
+                    <div class="alert alert-info" role="status">
+                        Target mulai bulan yang dipilih sampai Desember ditambahkan ke target pengganti
+                        pada divisi ini. Target mandor yang sama pada divisi lain tetap terpisah.
+                    </div>
+                    <div class="alert alert-warning" role="status"
+                        invisible="old_line_action != 'delete'">
+                        Menghapus baris lama juga menghilangkan target bulan sebelumnya dan realisasi
+                        mandor lama dari laporan Budget Mandor. Data timbang tetap tersimpan.
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_apply" string="Alihkan Target" type="object" class="btn-primary"/>
+                    <button string="Batal" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
