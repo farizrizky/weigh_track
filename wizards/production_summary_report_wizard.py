@@ -587,7 +587,7 @@ class ProductionSummaryReportWizard(models.TransientModel):
 
         grouped = {}
         date_totals = {date_value.isoformat(): 0.0 for date_value in date_values}
-        records = self.env["wt.weighing"].search(self._get_domain())
+        records = self.env["wt.weighing"]._search_stock_received_for_report(self._get_domain())
         for record in records:
             production_date = record.production_date.isoformat()
             net_weight = record.net_weight or 0.0

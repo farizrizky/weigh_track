@@ -462,6 +462,11 @@ class DailyStockReportWizard(models.TransientModel):
             balance_warning = _(
                 "Ada selisih rekonsiliasi %.2f kg. Periksa pergerakan stok di luar alur WeighTrack."
             ) % balance_difference
+        pending_shrinkage = data.get("pending_transit_shrinkage", 0.0)
+        if abs(pending_shrinkage) > 0.01:
+            balance_warning += " | " + _(
+                "Susut transit %.2f kg belum memiliki proporsi DO tersimpan yang sesuai."
+            ) % pending_shrinkage
 
         report = self.report_id
         report.write(
@@ -513,6 +518,7 @@ class DailyStockReportWizard(models.TransientModel):
         )
         month_start = self.report_date.replace(day=1)
         mtd_start, mtd_end = self._get_utc_bounds(month_start, self.report_date)
+        transit_scope = self._prepare_transit_scope(product, day_end, warehouses)
 
         weighing_day = self._aggregate_weighings(
             self.report_date,
@@ -524,6 +530,7 @@ class DailyStockReportWizard(models.TransientModel):
             product,
             mtd_start,
             warehouses,
+            transit_scope,
         )
         day_opening = (
             month_opening
@@ -532,12 +539,14 @@ class DailyStockReportWizard(models.TransientModel):
                 product,
                 day_start,
                 warehouses,
+                transit_scope,
             )
         )
         closing = self._build_stock_snapshot(
             product,
             day_end,
             warehouses,
+            transit_scope,
         )
         stock_day = self._aggregate_stock_events(
             product,
@@ -546,6 +555,7 @@ class DailyStockReportWizard(models.TransientModel):
             warehouses,
             start_date=self.report_date,
             end_date=self.report_date,
+            transit_scope=transit_scope,
         )
         stock_mtd = self._aggregate_stock_events(
             product,
@@ -554,6 +564,7 @@ class DailyStockReportWizard(models.TransientModel):
             warehouses,
             start_date=month_start,
             end_date=self.report_date,
+            transit_scope=transit_scope,
         )
 
         opening_total = month_opening["all"].get("total", 0.0)
@@ -561,7 +572,7 @@ class DailyStockReportWizard(models.TransientModel):
         production_in_total = stock_mtd["production_in"].get("total", 0.0)
         shrink_total = self._sum_values(
             stock_mtd["storage_shrinkage"],
-            stock_mtd.get("transit_proportions", {}),
+            stock_mtd["transfer_shrinkage"],
         ).get("total", 0.0)
         shipping_total = stock_mtd["shipping_source_out"].get("total", 0.0)
         balance_difference = (
@@ -592,7 +603,7 @@ class DailyStockReportWizard(models.TransientModel):
                 "sales_qty": stock_day["shipping_source_out"],
                 "storage_shrinkage_qty": self._sum_values(
                     stock_day["storage_shrinkage"],
-                    stock_day.get("transit_proportions", {}),
+                    stock_day["transfer_shrinkage"],
                 ),
                 "transfer_shrinkage_qty": {},
                 "closing_stock": closing["all"],
@@ -603,6 +614,7 @@ class DailyStockReportWizard(models.TransientModel):
             "total_shrinkage": shrink_total,
             "closing_stock": closing_total,
             "balance_difference": balance_difference,
+            "pending_transit_shrinkage": stock_mtd["pending_transit_shrinkage"].get("total", 0.0),
         }
 
     def _estate_report_sort_key(self, estate):
@@ -656,11 +668,11 @@ class DailyStockReportWizard(models.TransientModel):
         )
         stock_shrink_day = self._sum_values(
             stock_day["storage_shrinkage"],
-            stock_day.get("transit_proportions", {}),
+            stock_day["transfer_shrinkage"],
         )
         stock_shrink_mtd = self._sum_values(
             stock_mtd["storage_shrinkage"],
-            stock_mtd.get("transit_proportions", {}),
+            stock_mtd["transfer_shrinkage"],
         )
         stock_out_day = stock_day["shipping_source_out"]
         stock_out_mtd = stock_mtd["shipping_source_out"]
@@ -769,6 +781,14 @@ class DailyStockReportWizard(models.TransientModel):
                     _("Penyesuaian Susut Produksi"),
                     stock_shrink_mtd,
                 ),
+                *([
+                    self._data_row(
+                        _("Dari Total Susut: Transit Belum Diproporsikan"),
+                        stock_mtd["pending_transit_shrinkage"],
+                    ),
+                ] if self._has_values(stock_mtd["pending_transit_shrinkage"]) else []),
+                self._data_row(_("Stok di Gudang"), closing["internal"]),
+                self._data_row(_("Stok dalam Transit"), closing["in_transit"]),
                 self._data_row(
                     _("Saldo Akhir"),
                     closing["all"],
@@ -830,11 +850,158 @@ class DailyStockReportWizard(models.TransientModel):
             )
         return {key: dict(values) for key, values in result.items()}
 
-    def _build_stock_snapshot(self, product, cutoff, warehouses):
+    def _prepare_transit_scope(self, product, cutoff, warehouses):
+        """Trace reporting contributions through transit without changing Inventory.
+
+        Saved DO proportions govern loss attribution. Replaying movements keeps
+        the remaining source contributions consistent for partial shipments,
+        returns, and subsequent transit merges.
+        """
+        domain = [
+            ("company_id", "=", self.company_id.id), ("product_id", "=", product.id),
+            ("move_id.state", "=", "done"),
+            ("move_id.wt_exclude_from_weightrack_reports", "=", False),
+            ("lot_id", "!=", False), ("quantity", ">", 0),
+        ]
+        loss_location = self._get_shrinkage_location()
+        loss_ids = set(self.env["stock.location"].search([
+            ("id", "child_of", loss_location.id),
+        ]).ids) if loss_location else set()
+        loss_lines = self.env["stock.move.line"].search(domain + [
+            ("lot_id.wt_lot_type", "=", "transit"),
+            ("location_id.usage", "in", ("internal", "transit")),
+            ("location_dest_id", "in", list(loss_ids)),
+        ])
+        loss_lines = loss_lines.filtered(lambda line: not self._is_transit_merge_move_line(line))
+        actual_by_delivery = defaultdict(float)
+        for line in loss_lines:
+            delivery = line.move_id.wt_delivery_id or line.picking_id.wt_delivery_id
+            if delivery:
+                actual_by_delivery[delivery.id] += self._line_quantity_in_product_uom(line)
+        proportions = self.env["wt.delivery.transit.shrinkage.proportion"].search([
+            ("delivery_id", "in", list(actual_by_delivery)),
+            ("delivery_id.transit_shrinkage_proportion_saved", "=", True),
+        ])
+        by_delivery = {}
+        for prop in proportions:
+            if prop.do_lot_line_id.wt_is_cancelled or prop.lot_id.wt_lot_type == "transit":
+                continue
+            by_delivery.setdefault(prop.delivery_id.id, []).append({
+                "lot": prop.lot_id, "division": prop.lot_id.division_id,
+                "warehouse": self._resolve_warehouse(prop.do_line_id.location_id, warehouses),
+                "quantity": prop.proportion_qty,
+            })
+        by_delivery = {
+            delivery_id: sources for delivery_id, sources in by_delivery.items()
+            if abs(sum(source["quantity"] for source in sources) - actual_by_delivery[delivery_id]) <= 0.001
+            and all(source["quantity"] >= 0 for source in sources)
+        }
+        manual = {}
+        reserved_losses = {}
+        metadata = {}
+        for line in loss_lines:
+            delivery = line.move_id.wt_delivery_id or line.picking_id.wt_delivery_id
+            sources = by_delivery.get(delivery.id, [])
+            total = sum(source["quantity"] for source in sources)
+            if not total:
+                continue
+            quantity = self._line_quantity_in_product_uom(line)
+            weights = defaultdict(float)
+            for source in sources:
+                key = source["lot"].id
+                metadata[key] = source
+                weights[key] += quantity * source["quantity"] / total
+            manual[line.id] = dict(weights)
+            reserved = reserved_losses.setdefault(line.lot_id.id, defaultdict(float))
+            for key, value in weights.items():
+                reserved[key] += value
+
+        states = {}
+        merge_sources = {}
+        provenance_cache = {}
+        result = {"movement": {}, "shrinkage": {}}
+        stock_usages = ("internal", "transit")
+
+        def split(weights, quantity):
+            total = sum(weights.values())
+            if abs(total) <= 0.000001:
+                return {}
+            items = list(weights.items())
+            remaining = quantity
+            allocated = {}
+            for index, (key, weight) in enumerate(items):
+                value = remaining if index == len(items) - 1 else quantity * weight / total
+                allocated[key] = value
+                remaining -= value
+            return allocated
+
+        move_lines = self.env["stock.move.line"].search(domain + [
+            ("move_id.date", "<", fields.Datetime.to_string(cutoff)),
+        ])
+        for line in move_lines.sorted(key=lambda item: (item.move_id.date, item.move_id.id, item.id)):
+            lot = line.lot_id
+            quantity = self._line_quantity_in_product_uom(line)
+            consume = self._is_transit_merge_consume(line)
+            if lot.wt_lot_type != "transit":
+                if consume:
+                    metadata[lot.id] = {
+                        "lot": lot, "division": lot.division_id,
+                        "warehouse": self._resolve_warehouse(line.location_id, warehouses),
+                    }
+                    pool = merge_sources.setdefault(line.picking_id.id, defaultdict(float))
+                    pool[lot.id] += quantity
+                continue
+            source_state = states.setdefault((lot.id, line.location_id.id), defaultdict(float))
+            destination_state = states.setdefault((lot.id, line.location_dest_id.id), defaultdict(float))
+            weights = dict(source_state)
+            if (line.move_id.description_picking or "").startswith("Produce new merged lot for transit"):
+                weights = merge_sources.get(line.picking_id.id, {})
+            is_loss = line.location_id.usage in stock_usages and line.location_dest_id.id in loss_ids and not consume
+            is_loss_return = line.location_id.id in loss_ids and line.location_dest_id.usage in stock_usages
+            if is_loss and line.id in manual:
+                allocated = manual[line.id]
+                for key, value in allocated.items():
+                    reserved_losses[lot.id][key] -= value
+            else:
+                if line.location_dest_id.usage == "customer":
+                    # Keep contributions reserved for an approved loss which
+                    # occurs later than a partial shipment in a historical view.
+                    weights = {key: value - reserved_losses.get(lot.id, {}).get(key, 0)
+                               for key, value in weights.items()}
+                if abs(sum(weights.values())) <= 0.000001:
+                    sources = self._get_transit_provenance(lot, warehouses, provenance_cache)
+                    weights = {}
+                    for source in sources:
+                        metadata[source["lot"].id] = source
+                        weights[source["lot"].id] = weights.get(source["lot"].id, 0) + source["quantity"]
+                    if not weights:
+                        metadata[lot.id] = {"lot": lot, "division": self.env["wt.division"],
+                                            "warehouse": self._resolve_warehouse(line.location_id, warehouses)}
+                        weights[lot.id] = quantity
+                allocated = split(weights, quantity)
+            for key, value in allocated.items():
+                if line.location_id.usage in stock_usages or abs(sum(source_state.values())) > 0.000001:
+                    source_state[key] -= value
+                destination_state[key] += value
+            sources = [{**metadata[key], "quantity": value} for key, value in allocated.items()]
+            result["movement"][line.id] = sources
+            if consume:
+                pool = merge_sources.setdefault(line.picking_id.id, defaultdict(float))
+                for key, value in allocated.items():
+                    pool[key] += value
+            elif is_loss or is_loss_return:
+                delivery = line.move_id.wt_delivery_id or line.picking_id.wt_delivery_id
+                if delivery.id in by_delivery:
+                    result["shrinkage"][line.id] = sources
+        return result
+
+    def _build_stock_snapshot(self, product, cutoff, warehouses, transit_scope=None):
         result = {
             "all": defaultdict(float),
             "production": defaultdict(float),
             "transit": defaultdict(float),
+            "internal": defaultdict(float),
+            "in_transit": defaultdict(float),
             "warehouse_lot_type": {},
         }
         domain = [
@@ -847,55 +1014,59 @@ class DailyStockReportWizard(models.TransientModel):
             ("lot_id.wt_lot_type", "in", list(LOT_TYPE_LABELS)),
         ]
         move_lines = self.env["stock.move.line"].search(domain, order="id")
+        provenance_cache = {"scope": transit_scope or self._prepare_transit_scope(product, cutoff, warehouses)}
         for line in move_lines:
             quantity = self._line_quantity_in_product_uom(line)
-            if line.location_id.usage == "internal":
+            if line.location_id.usage in ("internal", "transit"):
                 self._apply_snapshot_side(
                     result,
                     line,
                     line.location_id,
                     warehouses,
                     -quantity,
+                    provenance_cache,
                 )
-            if line.location_dest_id.usage == "internal":
+            if line.location_dest_id.usage in ("internal", "transit"):
                 self._apply_snapshot_side(
                     result,
                     line,
                     line.location_dest_id,
                     warehouses,
                     quantity,
+                    provenance_cache,
                 )
-        result["all"] = self._clean_values(result["all"])
-        result["production"] = self._clean_values(result["production"])
-        result["transit"] = self._clean_values(result["transit"])
+        for key in ("all", "production", "transit", "internal", "in_transit"):
+            result[key] = self._clean_values(result[key])
         result["warehouse_lot_type"] = {
             key: self._clean_values(values)
             for key, values in result["warehouse_lot_type"].items()
         }
         return result
 
-    def _apply_snapshot_side(self, result, line, location, warehouses, quantity):
+    def _apply_snapshot_side(
+        self, result, line, location, warehouses, quantity, provenance_cache
+    ):
         lot = line.lot_id
         lot_type = lot.wt_lot_type or "production"
         warehouse = self._resolve_warehouse(location, warehouses)
-        division = lot.division_id if lot_type == "production" else self.env["wt.division"]
-        estate = (
-            division.estate_id
-            if division
-            else (warehouse.estate_id if warehouse else self.env["wt.estate"])
-        )
-        self._add_scope_value(result["all"], quantity, division, estate)
+        buckets = [result["all"]]
+        location_key = "in_transit" if location.usage == "transit" else "internal"
+        buckets.append(result[location_key])
         if lot_type == "production":
-            self._add_scope_value(result["production"], quantity, division, estate)
+            buckets.append(result["production"])
         elif lot_type == "transit":
-            self._add_scope_value(result["transit"], quantity, False, estate)
+            buckets.append(result["transit"])
 
         warehouse_key = (warehouse.id or 0, lot_type)
         values = result["warehouse_lot_type"].setdefault(
             warehouse_key,
             defaultdict(float),
         )
-        self._add_scope_value(values, quantity, division, estate)
+        buckets.append(values)
+        for bucket in buckets:
+            self._add_event_value(
+                bucket, line, location, warehouses, quantity, provenance_cache
+            )
 
     def _aggregate_stock_events(
         self,
@@ -905,6 +1076,7 @@ class DailyStockReportWizard(models.TransientModel):
         warehouses,
         start_date=None,
         end_date=None,
+        transit_scope=None,
     ):
         result = {
             "production_in": defaultdict(float),
@@ -912,6 +1084,7 @@ class DailyStockReportWizard(models.TransientModel):
             "shipping_source_out": defaultdict(float),
             "storage_shrinkage": defaultdict(float),
             "transfer_shrinkage": defaultdict(float),
+            "pending_transit_shrinkage": defaultdict(float),
         }
         shrinkage_location = self._get_shrinkage_location()
         shrinkage_location_ids = set()
@@ -932,6 +1105,7 @@ class DailyStockReportWizard(models.TransientModel):
             ("lot_id.wt_lot_type", "in", list(LOT_TYPE_LABELS)),
         ]
         move_lines = self.env["stock.move.line"].search(domain, order="id")
+        provenance_cache = {"scope": transit_scope or self._prepare_transit_scope(product, end_dt, warehouses)}
         for line in move_lines:
             quantity = self._line_quantity_in_product_uom(line)
             if quantity <= 0.0:
@@ -956,20 +1130,27 @@ class DailyStockReportWizard(models.TransientModel):
                         location,
                         warehouses,
                         quantity * sign,
+                        provenance_cache,
                     )
 
-            delivery = picking.wt_delivery_id
-            return_picking = getattr(picking, "return_id", self.env["stock.picking"])
-            if not delivery and return_picking:
-                delivery = return_picking.wt_delivery_id
-            if delivery and delivery.state == "done":
-                if source_usage == "customer" and destination_usage == "internal":
+            # Stock leaves/returns when Inventory is done, independently of the
+            # commercial Delivery state. A transfer stays inside company stock.
+            shipping_sign = 0.0
+            stock_location = line.location_id
+            if source_usage in ("internal", "transit") and destination_usage == "customer":
+                shipping_sign = 1.0
+            elif source_usage == "customer" and destination_usage in ("internal", "transit"):
+                shipping_sign = -1.0
+                stock_location = line.location_dest_id
+            if shipping_sign:
+                for category in ("shipping", "shipping_source_out"):
                     self._add_event_value(
-                        result["shipping"],
+                        result[category],
                         line,
-                        line.location_dest_id,
+                        stock_location,
                         warehouses,
-                        -quantity,
+                        quantity * shipping_sign,
+                        provenance_cache,
                     )
 
             if self._is_transit_merge_move_line(line):
@@ -990,181 +1171,26 @@ class DailyStockReportWizard(models.TransientModel):
                     if line.lot_id.wt_lot_type == "transit"
                     else "storage_shrinkage"
                 )
-                self._add_event_value(
-                    result[category],
-                    line,
-                    stock_location,
-                    warehouses,
-                    quantity * shrinkage_sign,
-                )
-        source_lot_sales = self._aggregate_delivery_source_lot_sales(
-            product,
-            start_dt,
-            end_dt,
-            warehouses,
-        )
-        for key, value in source_lot_sales.items():
-            result["shipping"][key] += value
-        if start_date and end_date:
-            source_lot_sales_out = self._aggregate_delivery_source_lot_sales_by_lot(
-                product,
-                start_dt,
-                end_dt,
-                warehouses,
-                transit_quantity_basis="source",
-            )
-            transit_props_by_lot = self._aggregate_transit_proportions_by_lot(
-                start_date,
-                end_date,
-                warehouses,
-            )
-            result["transit_proportions"] = self._source_lot_values_to_scope(
-                transit_props_by_lot
-            )
-            for key, source in source_lot_sales_out.items():
-                prop_qty = (
-                    transit_props_by_lot.get(key, {}).get("quantity", 0.0)
-                )
-                self._add_source_scope_value(
-                    result["shipping_source_out"],
-                    max(0.0, source["quantity"] - prop_qty),
-                    source,
-                )
-        else:
-            source_lot_sales_out = self._aggregate_delivery_source_lot_sales(
-                product,
-                start_dt,
-                end_dt,
-                warehouses,
-                transit_quantity_basis="source",
-            )
-            for key, value in source_lot_sales_out.items():
-                result["shipping_source_out"][key] += value
+                if line.lot_id.wt_lot_type == "transit":
+                    allocations = provenance_cache["scope"]["shrinkage"].get(line.id)
+                    if allocations is not None:
+                        for source in allocations:
+                            self._add_source_scope_value(result[category], source["quantity"] * shrinkage_sign, source)
+                    else:
+                        warehouse = self._resolve_warehouse(stock_location, warehouses)
+                        estate = warehouse.estate_id if warehouse else self.env["wt.estate"]
+                        for bucket in (result[category], result["pending_transit_shrinkage"]):
+                            self._add_scope_value(bucket, quantity * shrinkage_sign, estate=estate)
+                else:
+                    self._add_event_value(
+                        result[category], line, stock_location, warehouses,
+                        quantity * shrinkage_sign, provenance_cache,
+                    )
 
         return {
             key: self._clean_values(values)
             for key, values in result.items()
         }
-
-    def _aggregate_transit_proportions_by_lot(self, start_date, end_date, warehouses):
-        values = {}
-        deliveries = self.env["wt.delivery"].search([
-            ("company_id", "=", self.company_id.id),
-            ("state", "in", ["delivered", "done"]),
-            ("transit_shrinkage_proportion_saved", "=", True),
-        ])
-        matched_deliveries = deliveries.filtered(
-            lambda d: start_date <= (d.backdate_effective_at.date() if d.backdate_effective_at else d.date) <= end_date
-        )
-        if not matched_deliveries:
-            return values
-        proportions = self.env["wt.delivery.transit.shrinkage.proportion"].search([
-            ("delivery_id", "in", matched_deliveries.ids),
-            ("proportion_qty", ">", 0),
-        ])
-        for prop in proportions:
-            lot = prop.lot_id
-            if not lot:
-                continue
-            warehouse = self._resolve_warehouse(prop.do_line_id.location_id, warehouses)
-            self._add_source_lot_value(
-                values,
-                prop.proportion_qty or 0.0,
-                lot.division_id,
-                lot,
-                warehouse,
-            )
-        return values
-
-    def _aggregate_transit_proportions(self, start_date, end_date, warehouses):
-        return self._source_lot_values_to_scope(
-            self._aggregate_transit_proportions_by_lot(
-                start_date,
-                end_date,
-                warehouses,
-            )
-        )
-
-    def _aggregate_delivery_source_lot_sales(
-        self,
-        product,
-        start_dt,
-        end_dt,
-        warehouses,
-        transit_quantity_basis="customer",
-    ):
-        values = defaultdict(float)
-        for source_event in self._iter_delivery_shipping_source_events(
-            fields.Datetime.to_string(start_dt),
-            fields.Datetime.to_string(end_dt),
-            warehouses,
-            end_operator="<",
-            product=product,
-            transit_quantity_basis=transit_quantity_basis,
-        ):
-            division = source_event["division"]
-            warehouse = source_event["warehouse"]
-            estate = (
-                division.estate_id
-                if division
-                else (
-                    warehouse.estate_id
-                    if warehouse
-                    else self.env["wt.estate"]
-                )
-            )
-            self._add_scope_value(
-                values,
-                source_event["quantity"],
-                division,
-                estate,
-            )
-        return self._clean_values(values)
-
-    def _aggregate_delivery_source_lot_sales_by_lot(
-        self,
-        product,
-        start_dt,
-        end_dt,
-        warehouses,
-        transit_quantity_basis="customer",
-    ):
-        values = {}
-        for source_event in self._iter_delivery_shipping_source_events(
-            fields.Datetime.to_string(start_dt),
-            fields.Datetime.to_string(end_dt),
-            warehouses,
-            end_operator="<",
-            product=product,
-            transit_quantity_basis=transit_quantity_basis,
-        ):
-            self._add_source_lot_value(
-                values,
-                source_event["quantity"],
-                source_event["division"],
-                source_event["lot"],
-                source_event["warehouse"],
-            )
-        return values
-
-    def _add_source_lot_value(self, values, quantity, division, lot, warehouse=False):
-        if abs(quantity or 0.0) <= 0.000001 or not lot:
-            return
-        key = (division.id or 0, lot.id)
-        if key not in values:
-            values[key] = {
-                "division": division,
-                "lot": lot,
-                "warehouse": warehouse or self.env["stock.warehouse"],
-                "quantity": 0.0,
-            }
-        values[key]["quantity"] += quantity or 0.0
-
-    def _source_lot_values_to_scope(self, values):
-        result = defaultdict(float)
-        for source in (values or {}).values():
-            self._add_source_scope_value(result, source["quantity"], source)
-        return self._clean_values(result)
 
     def _add_source_scope_value(self, values, quantity, source):
         if abs(quantity or 0.0) <= 0.000001:
@@ -1178,8 +1204,33 @@ class DailyStockReportWizard(models.TransientModel):
         )
         self._add_scope_value(values, quantity, division, estate)
 
-    def _add_event_value(self, values, line, location, warehouses, quantity):
+    def _add_event_value(
+        self, values, line, location, warehouses, quantity, provenance_cache
+    ):
         lot = line.lot_id
+        if lot.wt_lot_type == "transit":
+            scope = provenance_cache.get("scope", {})
+            allocations = scope.get("movement", {}).get(line.id)
+            if allocations is not None:
+                factor = quantity / self._line_quantity_in_product_uom(line)
+                for source in allocations:
+                    self._add_source_scope_value(values, source["quantity"] * factor, source)
+                return
+            sources = self._get_transit_provenance(lot, warehouses, provenance_cache)
+            source_total = sum(source["quantity"] for source in sources)
+            if source_total:
+                # Allocate the actual movement, never the full original lot on
+                # each shipment. Keep the remainder to avoid rounding drift.
+                remaining = quantity
+                for index, source in enumerate(sources):
+                    allocated = (
+                        remaining
+                        if index == len(sources) - 1
+                        else quantity * source["quantity"] / source_total
+                    )
+                    remaining -= allocated
+                    self._add_source_scope_value(values, allocated, source)
+                return
         warehouse = self._resolve_warehouse(location, warehouses)
         division = (
             lot.division_id

@@ -1636,6 +1636,7 @@ class Delivery(models.Model):
                 "Harap sesuaikan proporsi sebelum menyimpan."
             ) % (proportioned, allocatable))
         self.write({"transit_shrinkage_proportion_saved": True})
+        self._refresh_stock_analysis_after_transit_proportion()
         self.message_post(body=Markup(_(
             "<b>Proporsi Susut Transit</b> disimpan oleh %s.<br/>"
             "Total susut: %.4f kg | Proporsi tersimpan untuk %d lot."
@@ -1644,6 +1645,22 @@ class Delivery(models.Model):
             proportioned,
             len(self.transit_shrinkage_proportion_ids),
         )))
+
+    def _refresh_stock_analysis_after_transit_proportion(self):
+        """Recalculate existing daily snapshots affected by DO attribution."""
+        for delivery in self:
+            moves = self.env["stock.move"].search([
+                ("company_id", "=", delivery.company_id.id),
+                ("state", "=", "done"),
+                ("wt_exclude_from_weightrack_reports", "=", False),
+                "|", ("wt_delivery_id", "=", delivery.id),
+                ("picking_id.wt_delivery_id", "=", delivery.id),
+            ])
+            if moves:
+                # The existing refresh routine covers affected stored dates and
+                # today, including opening balances after the movement date.
+                earliest = min(fields.Datetime.to_datetime(move.date).date() for move in moves)
+                delivery._refresh_stock_analysis_after_rollback(earliest)
 
     def action_cancel(self):
         self.ensure_one()

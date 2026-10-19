@@ -10,6 +10,8 @@ from lxml import html
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
+from .production_receipt_helpers import configure_report_receipts, make_report_receipt
+
 
 @tagged("post_install", "-at_install")
 class TestKpiBudgetTarget(TransactionCase):
@@ -340,7 +342,7 @@ class TestKpiBudgetTarget(TransactionCase):
             ]
         )
         production_date = date(self.TEST_YEAR, 1, 15)
-        self.env["wt.weighing"].create(
+        weighings = self.env["wt.weighing"].create(
             [
                 {
                     "company_id": self.company.id,
@@ -360,6 +362,8 @@ class TestKpiBudgetTarget(TransactionCase):
                 )
             ]
         )
+        setup = configure_report_receipts(self.env, self.company, self.estate, self.division)
+        make_report_receipt(self.env, weighings.filtered(lambda weighing: weighing.net_weight > 0), setup)
         values = {
             "company_id": self.company.id,
             "date_start": production_date,

@@ -1119,6 +1119,25 @@ Informasi dokumen berada pada Rencana DO dan bersifat optional:
 - Jika `production_date` kosong, lot diletakkan setelah lot yang memiliki tanggal produksi.
 - Urutan berikutnya memakai `create_date`, nama lot, dan lokasi fisik.
 - Stock Opname juga mengurutkan lot berdasarkan `production_date` agar pemeriksaan mengikuti umur produksi.
+## Laporan Total Produksi Tapper, Mandor, dan Divisi
+
+- Total memakai `net_weight` penimbangan yang berstatus `receipt_validated`, terhubung ke Production Receipt saat ini yang `validated`, dan baris penerimaannya memiliki Inventory Receipt `done` milik dokumen tersebut.
+- Penimbangan belum diterima, penerimaan draft/processed, penerimaan dibatalkan, dan picking penerimaan yang belum selesai tidak ikut dihitung.
+- Pemeriksaan dilakukan per baris penimbangan agar satu penerimaan dengan beberapa picking tidak memasukkan baris yang stoknya belum diterima.
+- Filter periode tetap memakai tanggal produksi penimbangan. Preview, PDF, dan Excel memakai hasil perhitungan yang sama.
+
+## Laporan Stock Harian
+
+- Saldo awal/akhir perusahaan mencakup lokasi `internal` dan `transit`, berdasarkan pergerakan Inventory `done` sampai batas tanggal laporan.
+- Transfer antara lokasi internal/transit hanya memindahkan posisi stok. Matriks menampilkan `Stok di Gudang`, `Stok dalam Transit`, dan total `Saldo Akhir`.
+- Pengiriman keluar dan retur memakai quantity aktual pergerakan ke/dari customer, tanpa menunggu status komersial Delivery selesai.
+- Susut memakai pergerakan aktual ke/dari lokasi Susut pada tanggal pergerakannya. Proporsi susut dokumen tidak ditambahkan lagi sebagai pergerakan stok kedua.
+- Susut lot transit dibebankan ke lot/divisi menurut `Proporsi Susut Transit` DO yang sudah disimpan dan totalnya cocok dengan susut Inventory. Susut tanpa proporsi valid tetap masuk total perusahaan sebagai belum diproporsikan, tanpa pembagian otomatis ke divisi.
+- Saldo dan pengiriman mengikuti sisa kontribusi lot asal setelah pembebanan susut DO, termasuk pengiriman parsial, retur, dan transit lanjutan. Penyimpanan proporsi hanya mengubah pembagian laporan, bukan pergerakan Inventory.
+- Menyimpan proporsi atau mengedit proporsi yang sebelumnya tersimpan otomatis menghitung ulang analitik sejak pergerakan DO terkait.
+- Pergerakan dengan `wt_exclude_from_weightrack_reports` tetap dikecualikan dari saldo dan aktivitas laporan.
+- Perubahan kalkulasi berlaku juga pada Data Analitik Stock Harian setelah rentang tanggal terkait dihitung ulang.
+
 ## Localization Notes
 
 File translasi:

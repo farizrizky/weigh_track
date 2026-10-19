@@ -96,4 +96,5 @@ class DeliveryTransitShrinkageProportion(models.Model):
             deliveries = self.mapped("delivery_id").filtered("transit_shrinkage_proportion_saved")
             if deliveries:
                 deliveries.sudo().write({"transit_shrinkage_proportion_saved": False})
+                deliveries._refresh_stock_analysis_after_transit_proportion()
         return res

@@ -1014,6 +1014,28 @@ class Weighing(models.Model):
                 }
             )
 
+    @api.model
+    def _search_stock_received_for_report(self, domain):
+        """Return weighings backed by their current validated stock receipt."""
+        weighings = self.search(domain + [
+            ("state", "=", "receipt_validated"),
+            ("production_receipt_id.state", "=", "validated"),
+        ])
+        if not weighings:
+            return weighings
+        receipt_lines = self.env["wt.production.receipt.line"].search([
+            ("weighing_id", "in", weighings.ids),
+            ("receipt_id.state", "=", "validated"),
+            ("stock_picking_id.state", "=", "done"),
+        ])
+        received_ids = {
+            line.weighing_id.id
+            for line in receipt_lines
+            if line.receipt_id == line.weighing_id.production_receipt_id
+            and line.stock_picking_id.production_receipt_id == line.receipt_id
+        }
+        return weighings.filtered(lambda weighing: weighing.id in received_ids)
+
     def action_validate(self):
         raise ValidationError(
             _("Weighing detail validation is handled from Production Receipt.")

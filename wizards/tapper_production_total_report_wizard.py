@@ -648,7 +648,7 @@ class TapperProductionTotalReportWizard(models.TransientModel):
             date_values.append(current_date)
             current_date += timedelta(days=1)
 
-        records = self.env["wt.weighing"].search(self._get_domain())
+        records = self.env["wt.weighing"]._search_stock_received_for_report(self._get_domain())
         grouped = {}
         date_totals = {date_value.isoformat(): 0.0 for date_value in date_values}
 
