@@ -4,7 +4,7 @@ from odoo.tests import TransactionCase, tagged
 
 
 @tagged("post_install", "-at_install")
-class TestDailyStockReport(TransactionCase):
+class DailyStockReportCase(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -142,6 +142,9 @@ class TestDailyStockReport(TransactionCase):
                 self.assertAlmostEqual(balance, 0)
         self.assertAlmostEqual(data["balance_difference"], 0)
 
+
+@tagged("post_install", "-at_install")
+class TestDailyStockReport(DailyStockReportCase):
     def test_pending_transit_remains_company_stock_by_source_division(self):
         self._transit()
         data = self._report(1)

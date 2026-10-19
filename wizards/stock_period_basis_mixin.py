@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from datetime import timedelta
+
 from odoo import fields, models
 
 
@@ -7,9 +9,104 @@ class StockPeriodBasisMixin(models.AbstractModel):
     _name = "wt.stock.period.basis.mixin"
     _description = "Stock Period Basis Mixin"
 
-    def _build_period_stock_basis(self, start_dt, end_dt, warehouses):
-        """Build opening, inbound, and closing stock per production lot."""
+    def _report_transit_scope(self, line, end_dt, warehouses, cache):
+        """Reuse Daily Stock's approved DO attribution for actual movements."""
+        product = line.product_id
+        if product.id not in cache:
+            calculator = self.env["wt.daily.stock.report.wizard"].new({
+                "company_id": self.company_id.id,
+            })
+            cache[product.id] = calculator._prepare_transit_scope(
+                product, end_dt + timedelta(microseconds=1), warehouses,
+            )
+        return cache[product.id]
+
+    def _get_actual_shrinkage_events(self, start_dt, end_dt, warehouses, cache=None):
+        """Signed Inventory losses; DO proportions only attribute transit loss.
+
+        Unsaved/invalid proportions retain the actual amount on the transit lot,
+        without assigning it automatically to a production division.
+        """
+        cache = cache if cache is not None else {}
+        calculator = self.env["wt.daily.stock.report.wizard"].new({
+            "company_id": self.company_id.id,
+        })
+        loss = calculator._get_shrinkage_location()
+        if not loss:
+            return []
+        loss_ids = set(self.env["stock.location"].search([
+            ("id", "child_of", loss.id),
+        ]).ids)
+        lines = self.env["stock.move.line"].search([
+            ("company_id", "=", self.company_id.id),
+            ("move_id.state", "=", "done"),
+            ("move_id.wt_exclude_from_weightrack_reports", "=", False),
+            ("move_id.date", ">=", fields.Datetime.to_string(start_dt)),
+            ("move_id.date", "<=", fields.Datetime.to_string(end_dt)),
+            ("quantity", ">", 0),
+            ("lot_id.wt_lot_type", "in", ["production", "transit"]),
+            "|", ("location_id", "in", list(loss_ids)),
+            ("location_dest_id", "in", list(loss_ids)),
+        ], order="id")
+        events = []
+        for line in lines:
+            if calculator._is_transit_merge_move_line(line):
+                continue
+            if line.location_dest_id.id in loss_ids and line.location_id.usage in ("internal", "transit"):
+                sign, location = 1, line.location_id
+            elif line.location_id.id in loss_ids and line.location_dest_id.usage in ("internal", "transit"):
+                sign, location = -1, line.location_dest_id
+            else:
+                continue
+            quantity = calculator._line_quantity_in_product_uom(line)
+            pending = False
+            if line.lot_id.wt_lot_type == "transit":
+                scope = self._report_transit_scope(line, end_dt, warehouses, cache)
+                sources = scope["shrinkage"].get(line.id)
+                # A linked correction restores exactly the original allocation,
+                # even when the return itself has no Delivery relation.
+                original = line.move_id.wt_reversal_of_move_id or line.move_id.origin_returned_move_id
+                if sign < 0 and original:
+                    original_sources = [
+                        source for original_line in original.move_line_ids
+                        if original_line.lot_id == line.lot_id
+                        for source in scope["shrinkage"].get(original_line.id, [])
+                    ]
+                    total = sum(source["quantity"] for source in original_sources)
+                    if total:
+                        sources = [{**source, "quantity": quantity * source["quantity"] / total}
+                                   for source in original_sources]
+                if not sources:
+                    pending = True
+                    sources = [{"lot": line.lot_id, "division": self.env["wt.division"],
+                                "warehouse": self._resolve_warehouse(location, warehouses),
+                                "quantity": quantity}]
+            else:
+                sources = [{"lot": line.lot_id, "division": line.lot_id.division_id,
+                            "warehouse": self._resolve_warehouse(location, warehouses),
+                            "quantity": quantity}]
+            for source in sources:
+                warehouse, division = source["warehouse"], source["division"]
+                if self.warehouse_id and warehouse != self.warehouse_id:
+                    continue
+                if self.division_id and division != self.division_id:
+                    continue
+                events.append({
+                    **source, "quantity": sign * source["quantity"], "line": line,
+                    "source_location": location, "pending_transit": pending,
+                })
+        return events
+
+    def _build_period_stock_basis(
+        self, start_dt, end_dt, warehouses, include_transit=False, transit_cache=None,
+    ):
+        """Build period stock, optionally including company stock in transit.
+
+        Transit-inclusive reports reuse the chronological allocations of Daily
+        Stock, so approved DO losses also govern each source lot's balance.
+        """
         self.ensure_one()
+        transit_cache = transit_cache if transit_cache is not None else {}
         move_lines = self.env["stock.move.line"].search(
             [
                 ("company_id", "=", self.company_id.id),
@@ -32,20 +129,26 @@ class StockPeriodBasisMixin(models.AbstractModel):
             source_in_scope = self._basis_location_in_scope(
                 line.location_id,
                 warehouses,
+                include_transit=include_transit,
             )
             destination_in_scope = self._basis_location_in_scope(
                 line.location_dest_id,
                 warehouses,
+                include_transit=include_transit,
             )
             if not source_in_scope and not destination_in_scope:
                 continue
 
-            sources = self._basis_production_sources(
-                line.lot_id,
-                line.quantity or 0.0,
-                warehouses,
-                provenance_cache,
-            )
+            if include_transit and line.lot_id.wt_lot_type == "transit":
+                scope = self._report_transit_scope(line, end_dt, warehouses, transit_cache)
+                sources = scope["movement"].get(line.id, [])
+            else:
+                quantity = line.quantity or 0.0
+                if include_transit:
+                    quantity = line.product_uom_id._compute_quantity(quantity, line.product_id.uom_id)
+                sources = self._basis_production_sources(
+                    line.lot_id, quantity, warehouses, provenance_cache,
+                )
             for source in sources:
                 row = self._basis_row(basis, source, division_warehouses)
                 quantity = source["quantity"]
@@ -132,8 +235,9 @@ class StockPeriodBasisMixin(models.AbstractModel):
             lot.id,
         )
 
-    def _basis_location_in_scope(self, location, warehouses):
-        if not location or location.usage != "internal":
+    def _basis_location_in_scope(self, location, warehouses, include_transit=False):
+        usages = ("internal", "transit") if include_transit else ("internal",)
+        if not location or location.usage not in usages:
             return False
         if location.company_id and location.company_id != self.company_id:
             return False

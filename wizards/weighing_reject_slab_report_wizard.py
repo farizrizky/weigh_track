@@ -390,13 +390,32 @@ class WeighingRejectSlabReportWizard(models.TransientModel):
             div_name = record.division_id.name or "-"
             foreman_name = record.foreman_name or (record.foreman_id.name if record.foreman_id else "") or "-"
             tapper_name = record.tapper_name or (record.tapper_id.name if record.tapper_id else "") or "-"
-            key = (est_name, div_name, foreman_name, tapper_name)
+            # Names are display labels; identity comes from the weighing's
+            # recorded assignments, including historical/archived tappers.
+            if record.tapper_id:
+                tapper_key = ("tapper", record.tapper_id.id)
+            elif record.tapper_employee_id:
+                tapper_key = ("employee", record.tapper_employee_id.id)
+            else:
+                tapper_key = ("weighing", record.id)
+            foreman_key = (
+                ("foreman", record.foreman_id.id) if record.foreman_id
+                else ("employee", record.foreman_employee_id.id or 0)
+            )
+            key = (record.estate_id.id, record.division_id.id, foreman_key, tapper_key)
             if key not in groups:
-                groups[key] = {"reject": 0.0, "slab": 0.0}
+                groups[key] = {
+                    "estate_name": est_name, "division_name": div_name,
+                    "foreman_name": foreman_name, "tapper_name": tapper_name,
+                    "reject": 0.0, "slab": 0.0,
+                }
             groups[key]["reject"] += record.reject_weight or 0.0
             groups[key]["slab"] += record.slab_weight or 0.0
 
-        sorted_keys = sorted(groups.keys(), key=lambda k: (k[0], k[1], k[2], k[3]))
+        sorted_keys = sorted(groups, key=lambda key: (
+            groups[key]["estate_name"], groups[key]["division_name"],
+            groups[key]["foreman_name"], groups[key]["tapper_name"], key,
+        ))
         rows = []
         for number, key in enumerate(sorted_keys, start=1):
             rej_w = groups[key]["reject"]
@@ -404,10 +423,10 @@ class WeighingRejectSlabReportWizard(models.TransientModel):
             rows.append(
                 {
                     "number": number,
-                    "estate_name": key[0],
-                    "division_name": key[1],
-                    "foreman_name": key[2],
-                    "tapper_name": key[3],
+                    "estate_name": groups[key]["estate_name"],
+                    "division_name": groups[key]["division_name"],
+                    "foreman_name": groups[key]["foreman_name"],
+                    "tapper_name": groups[key]["tapper_name"],
                     "total_reject": rej_w,
                     "total_slab": slab_w,
                 }

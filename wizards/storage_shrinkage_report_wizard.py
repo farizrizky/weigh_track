@@ -396,104 +396,33 @@ class StorageShrinkageReportWizard(models.TransientModel):
         return report._open_current_report_action()
 
     def _prepare_report_data(self):
-        move_lines = self._get_move_lines()
         warehouses = self.env["stock.warehouse"].search([("company_id", "=", self.company_id.id)])
         division_warehouses = self._basis_division_warehouse_map()
         start_dt, end_dt = self._get_utc_date_range()
-        rows = self._build_period_stock_basis(start_dt, end_dt, warehouses)
+        transit_cache = {}
+        rows = self._build_period_stock_basis(
+            start_dt, end_dt, warehouses, include_transit=True, transit_cache=transit_cache,
+        )
         if self.division_id:
-            rows = {
-                key: value
-                for key, value in rows.items()
-                if value["division"] == self.division_id
-            }
+            rows = {key: row for key, row in rows.items() if row["division"] == self.division_id}
         for row in rows.values():
-            row.update(quantity=0.0, movement_count=0, movement_date=False)
+            row.update(quantity=0.0, movement_count=0, movement_date=False, pending_transit=False)
 
-        for line in move_lines:
-            warehouse = self._resolve_warehouse(line.location_id, warehouses)
-            division = line.lot_id.division_id
-            if self.warehouse_id and warehouse != self.warehouse_id:
-                continue
-            if self.division_id and division != self.division_id:
-                continue
-
-            key = self._stock_basis_key(division, line.lot_id)
-            row = rows.setdefault(
-                key,
-                {
-                    "warehouse": (
-                        self.warehouse_id
-                        or warehouse
-                        or division_warehouses.get(division.id)
-                        or self.env["stock.warehouse"]
-                    ),
-                    "division": division,
-                    "lot": line.lot_id,
-                    "product": line.product_id,
-                    "uom": line.product_uom_id or line.product_id.uom_id,
-                    "opening_qty": 0.0,
-                    "stock_in_qty": 0.0,
-                    "closing_qty": 0.0,
-                    "quantity": 0.0,
-                    "movement_count": 0,
-                    "movement_date": False,
-                },
-            )
-            row["quantity"] += line.quantity or 0.0
+        for event in self._get_actual_shrinkage_events(start_dt, end_dt, warehouses, transit_cache):
+            lot, division, warehouse = event["lot"], event["division"], event["warehouse"]
+            row = rows.setdefault(self._stock_basis_key(division, lot), {
+                "warehouse": warehouse, "division": division, "lot": lot,
+                "product": lot.product_id, "uom": lot.product_id.uom_id,
+                "opening_qty": 0.0, "stock_in_qty": 0.0, "closing_qty": 0.0,
+                "quantity": 0.0, "movement_count": 0, "movement_date": False,
+                "pending_transit": False,
+            })
+            row["quantity"] += event["quantity"]
             row["movement_count"] += 1
-            if not row["movement_date"] or line.move_id.date > row["movement_date"]:
-                row["movement_date"] = line.move_id.date
-
-        proportions = self._get_transit_shrinkage_proportions()
-        for prop in proportions:
-            lot = prop.lot_id
-            if not lot:
-                continue
-            division = lot.division_id
-            warehouse = (
-                self._resolve_warehouse(prop.do_line_id.location_id, warehouses)
-                or division_warehouses.get(division.id)
-                or self.env["stock.warehouse"]
-            )
-            if self.warehouse_id and warehouse != self.warehouse_id:
-                continue
-            if self.division_id and division != self.division_id:
-                continue
-
-            key = self._stock_basis_key(division, lot)
-            row = rows.setdefault(
-                key,
-                {
-                    "warehouse": (
-                        self.warehouse_id
-                        or warehouse
-                        or division_warehouses.get(division.id)
-                        or self.env["stock.warehouse"]
-                    ),
-                    "division": division,
-                    "lot": lot,
-                    "product": lot.product_id,
-                    "uom": lot.product_id.uom_id,
-                    "opening_qty": 0.0,
-                    "stock_in_qty": 0.0,
-                    "closing_qty": 0.0,
-                    "quantity": 0.0,
-                    "movement_count": 0,
-                    "movement_date": False,
-                },
-            )
-            row["quantity"] += prop.proportion_qty or 0.0
-            delivery_dt = (
-                prop.delivery_id.backdate_effective_at
-                or (
-                    datetime.combine(prop.delivery_id.date, time.min)
-                    if prop.delivery_id.date
-                    else False
-                )
-            )
-            if delivery_dt and (not row["movement_date"] or delivery_dt > row["movement_date"]):
-                row["movement_date"] = delivery_dt
+            row["pending_transit"] |= event["pending_transit"]
+            movement_date = event["line"].move_id.date
+            if not row["movement_date"] or movement_date > row["movement_date"]:
+                row["movement_date"] = movement_date
 
         summary_map = {}
         detail_vals = []
@@ -528,6 +457,7 @@ class StorageShrinkageReportWizard(models.TransientModel):
                     "stock_qty": 0.0,
                     "quantity": 0.0,
                     "balance_qty": 0.0,
+                    "pending_transit": False,
                 },
             )
             summary["opening_qty"] += row["opening_qty"]
@@ -535,6 +465,7 @@ class StorageShrinkageReportWizard(models.TransientModel):
             summary["stock_qty"] += stock_qty
             summary["quantity"] += row["quantity"]
             summary["balance_qty"] += row["closing_qty"]
+            summary["pending_transit"] |= row["pending_transit"]
             detail_vals.append(
                 {
                     "report_id": self.report_id.id,
@@ -544,9 +475,9 @@ class StorageShrinkageReportWizard(models.TransientModel):
                     "warehouse_id": warehouse.id or False,
                     "warehouse_name": warehouse.display_name or "-",
                     "division_id": division.id or False,
-                    "division_name": division.display_name or "-",
+                    "division_name": division.display_name or (_("Transit belum diproporsikan") if row["pending_transit"] else "-"),
                     "lot_id": row["lot"].id,
-                    "lot_name": row["lot"].name or "",
+                    "lot_name": (row["lot"].name or "") + (_(" (belum diproporsikan)") if row["pending_transit"] else ""),
                     "product_id": row["product"].id,
                     "quantity": row["quantity"],
                     "stock_qty": stock_qty,
@@ -578,7 +509,7 @@ class StorageShrinkageReportWizard(models.TransientModel):
                     "warehouse_id": value["warehouse"].id or False,
                     "warehouse_name": value["warehouse"].display_name or "-",
                     "division_id": value["division"].id or False,
-                    "division_name": value["division"].display_name or "-",
+                    "division_name": value["division"].display_name or (_("Transit belum diproporsikan") if value["pending_transit"] else "-"),
                     "opening_qty": value["opening_qty"],
                     "stock_in_qty": value["stock_in_qty"],
                     "stock_qty": value["stock_qty"],
@@ -638,57 +569,6 @@ class StorageShrinkageReportWizard(models.TransientModel):
             lot_id = line.lot_id.id
             result[lot_id] = result.get(lot_id, 0.0) + (line.quantity or 0.0)
         return result
-
-    def _get_move_lines(self):
-        self.ensure_one()
-        shrinkage_location = self.env.ref(
-            "weightrack.stock_location_wt_inventory_loss_susut",
-            raise_if_not_found=False,
-        )
-        if not shrinkage_location:
-            shrinkage_location = self.env["stock.location"].search(
-                [
-                    ("name", "=", "Susut"),
-                    ("usage", "=", "inventory"),
-                    ("location_id.name", "=", "Inventory Loss"),
-                ],
-                limit=1,
-            )
-        if not shrinkage_location:
-            return self.env["stock.move.line"]
-
-        start_dt, end_dt = self._get_utc_date_range()
-        domain = [
-            ("company_id", "=", self.company_id.id),
-            ("move_id.state", "=", "done"),
-            ("move_id.wt_exclude_from_weightrack_reports", "=", False),
-            ("move_id.date", ">=", fields.Datetime.to_string(start_dt)),
-            ("move_id.date", "<=", fields.Datetime.to_string(end_dt)),
-            ("location_id.usage", "=", "internal"),
-            ("location_dest_id", "child_of", shrinkage_location.id),
-            ("quantity", ">", 0),
-            ("lot_id", "!=", False),
-            ("lot_id.wt_lot_type", "=", "production"),
-        ]
-        move_lines = self.env["stock.move.line"].search(domain, order="id")
-        return move_lines.filtered(lambda line: not self._is_transit_merge_move_line(line))
-
-    def _get_transit_shrinkage_proportions(self):
-        self.ensure_one()
-        deliveries = self.env["wt.delivery"].search([
-            ("company_id", "=", self.company_id.id),
-            ("state", "in", ["delivered", "done"]),
-            ("transit_shrinkage_proportion_saved", "=", True),
-        ])
-        matched_deliveries = deliveries.filtered(
-            lambda d: self.start_date <= (d.backdate_effective_at.date() if d.backdate_effective_at else d.date) <= self.end_date
-        )
-        if not matched_deliveries:
-            return self.env["wt.delivery.transit.shrinkage.proportion"]
-        return self.env["wt.delivery.transit.shrinkage.proportion"].search([
-            ("delivery_id", "in", matched_deliveries.ids),
-            ("proportion_qty", ">", 0),
-        ])
 
     def _get_utc_date_range(self):
         self.ensure_one()

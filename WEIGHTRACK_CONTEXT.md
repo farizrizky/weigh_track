@@ -1126,6 +1126,13 @@ Informasi dokumen berada pada Rencana DO dan bersifat optional:
 - Pemeriksaan dilakukan per baris penimbangan agar satu penerimaan dengan beberapa picking tidak memasukkan baris yang stoknya belum diterima.
 - Filter periode tetap memakai tanggal produksi penimbangan. Preview, PDF, dan Excel memakai hasil perhitungan yang sama.
 
+## Laporan Reject dan Slab
+
+- Kelompok memakai ID estate, divisi, mandor, dan `tapper_id` pada penimbangan; nama hanya menjadi label tampilan. Tapper berbeda dengan nama sama tetap menjadi baris terpisah.
+- Data lama tanpa `tapper_id` memakai `tapper_employee_id`; jika kedua identitas tidak tersedia, setiap penimbangan dipisahkan agar tidak tergabung hanya karena nama kosong.
+- Penimbangan berulang milik tapper yang sama dijumlahkan dalam konteks estate/divisi/mandor yang sama. Konteks historis tidak diganti dengan penugasan tapper saat ini.
+- Filter tanggal/status dan rumus total reject/slab tetap mengikuti laporan sebelumnya. Baris yang sama dipakai tampilan laporan, PDF, dan Excel.
+
 ## Laporan Stock Harian
 
 - Saldo awal/akhir perusahaan mencakup lokasi `internal` dan `transit`, berdasarkan pergerakan Inventory `done` sampai batas tanggal laporan.
@@ -1137,6 +1144,18 @@ Informasi dokumen berada pada Rencana DO dan bersifat optional:
 - Menyimpan proporsi atau mengedit proporsi yang sebelumnya tersimpan otomatis menghitung ulang analitik sejak pergerakan DO terkait.
 - Pergerakan dengan `wt_exclude_from_weightrack_reports` tetap dikecualikan dari saldo dan aktivitas laporan.
 - Perubahan kalkulasi berlaku juga pada Data Analitik Stock Harian setelah rentang tanggal terkait dihitung ulang.
+
+## Laporan Susut Penyimpanan, Stock Keluar, dan Pengiriman
+
+- Total susut memakai pergerakan Inventory `done` ke lokasi Susut, dikurangi pergerakan kembali ke lokasi `internal`/`transit`. Periode mengikuti `stock.move.date`, bukan tanggal DO atau tanggal penyimpanan proporsi.
+- Susut transit mengikuti proporsi DO yang tersimpan dan cocok dengan susut aktual, memakai kalkulator atribusi Stock Harian. Proporsi hanya menentukan lot/divisi; bukan tambahan quantity susut.
+- Proporsi belum disimpan/tidak cocok tetap ditampilkan sebagai `Transit belum diproporsikan` pada ringkasan, detail, PDF, dan Excel. Filter divisi tidak memasukkan bagian yang belum dialokasikan.
+- Pembalikan transit yang terhubung ke pergerakan asal memulihkan pembagian lot asal tersebut, termasuk pembalikan sebagian dan lintas bulan.
+- Stock Keluar dan Pengiriman memakai quantity aktual pengiriman transit yang diatribusikan ke sumbernya. Tidak mengurangi pengiriman dengan proporsi susut sekali lagi; total Stock Keluar adalah pengiriman aktual + susut bersih.
+- Pergerakan pembatalan DO bertanda `wt_exclude_from_weightrack_reports` serta konsumsi/pembentukan lot merge transit tetap dikecualikan dari susut.
+- Saldo awal/akhir Susut Penyimpanan, Stock Keluar, dan Pengiriman mencakup lokasi `internal` dan `transit`, memakai atribusi lot dari kalkulator Stock Harian agar sisa stok mengikuti susut manual DO.
+- Filter gudang membatasi saldo menurut lokasi fisik gudang/transit di bawah gudang tersebut; tanpa filter gudang, seluruh saldo perusahaan dalam cakupan laporan dihitung.
+- Pengiriman tetap memakai filter DO `done`/`returned` untuk quantity terkirim; saldo mengikuti seluruh mutasi Inventory yang masuk cakupan. Kalkulasi Budget Target terpisah dari perbaikan ketiga laporan ini.
 
 ## Localization Notes
 
