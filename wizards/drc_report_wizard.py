@@ -519,6 +519,7 @@ class DrcReportWizard(models.TransientModel):
             ("company_id", "=", self.company_id.id),
             ("production_date", ">=", self.date_start),
             ("production_date", "<=", self.date_end),
+            ("state", "=", "receipt_validated"),
         ]
         if self.division_id:
             domain.append(("division_id", "=", self.division_id.id))
@@ -546,7 +547,7 @@ class DrcReportWizard(models.TransientModel):
         for rec in records:
             prod_date = rec.production_date
             prod_iso = prod_date.isoformat()
-            lp = rec.production_weight or 0.0
+            lp = rec.net_weight or 0.0
             div_id = rec.division_id.id or 0
             raw_drc_pct = get_drc_pct(div_id, prod_date)
             if raw_drc_pct:

@@ -992,6 +992,18 @@ Validasi backend untuk Production Receipt:
 - Untuk API, initial device atau initial weighing location yang kosong/tidak ditemukan menjadi `missing_master` dan tidak menggagalkan create.
 - Jika initial manual weighing aktif, manual weighing reason wajib terisi.
 
+### Laporan DRC
+
+Laporan DRC mengambil data dari `wt.weighing` berdasarkan company, rentang `production_date`, serta filter division/tapper opsional. Hanya penimbangan dengan `state = receipt_validated` yang dihitung.
+
+Definisi nilai laporan:
+
+- `LP` berasal dari `wt.weighing.net_weight`, bukan `production_weight`.
+- LP harian tapper adalah total `net_weight` seluruh penimbangan tervalidasi untuk tapper pada tanggal tersebut.
+- Total LP per tapper dan total laporan adalah penjumlahan LP harian dalam rentang filter.
+- `GD` dihitung dari LP dikalikan persentase DRC division pada tanggal produksi.
+- Preview HTML, PDF, dan Excel memakai dataset hasil filter yang sama.
+
 ## Production Receipt
 
 Model teknis:
