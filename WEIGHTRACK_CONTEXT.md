@@ -239,6 +239,7 @@ Jika database lama masih menyimpan metadata rename teknis, alur paling bersih ad
   - `wt_transit_date`.
 - Lot genealogy khusus tidak dipakai. Trace lot transit cukup melalui dokumen Delivery, `generated_transit_lot_id` pada Rencana DO, stock move line, dan metadata `stock.lot`.
 - Form Foreman memakai add line natural Odoo pada `tapper_ids`. Jika `foreman_id` terisi, `division_id` Tapper otomatis mengikuti division Foreman.
+- Field Tapper (`employee_id`) hanya dapat dipilih saat pembuatan dan terkunci setelah disimpan, termasuk lewat impor/API. Division dan Foreman tetap dapat diubah. Master Tapper menyediakan aksi Archive/Unarchive pada form dan daftar, filter Archived, serta penanda arsip; untuk mengganti employee, arsipkan record lama lalu buat record baru.
 - Pengaturan divisi yang boleh menimbang hanya dilakukan dari `Weighing Location` melalui `allowed_division_ids`.
 - `Division` tidak perlu menampilkan atau mengatur relasi balik ke `Weighing Location`.
 - `wt.product` memetakan satu produk timbang aktif per company ke produk Odoo `product.product`.

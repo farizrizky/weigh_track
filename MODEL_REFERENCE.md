@@ -690,12 +690,12 @@ Field:
 | Field | Type | Required | Tracking | Keterangan |
 | --- | --- | --- | --- | --- |
 | `name` | `Char` | Otomatis | Tidak | Related dari `employee_id.name`, dipakai sebagai nama record. |
-| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Tapper. Domain berdasarkan employee role `tapper`. `ondelete="restrict"`. |
+| `employee_id` | `Many2one(hr.employee)` | Ya | Ya | Employee yang menjadi Tapper. Hanya dapat dipilih saat pembuatan; tidak dapat diganti setelah disimpan, termasuk lewat impor/API. Domain berdasarkan employee role `tapper`. `ondelete="restrict"`. |
 | `division_id` | `Many2one(wt.division)` | Ya | Ya | Division tempat Tapper berada. `ondelete="restrict"`. |
 | `foreman_id` | `Many2one(wt.foreman)` | Tidak | Ya | Foreman/Mandor yang membawahi Tapper. Difilter berdasarkan division. `ondelete="restrict"`. |
 | `company_id` | `Many2one(res.company)` | Otomatis | Tidak | Related dari `division_id.company_id`, `store=True`, readonly. |
 | `allowed_tapper_employee_ids` | `Many2many(hr.employee)` | Otomatis | Tidak | Computed helper untuk membatasi pilihan Tapper. |
-| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo. Tapper archived tidak dikirim pada pull master. |
+| `active` | `Boolean` | Tidak | Ya | Status archive standar Odoo melalui aksi Archive/Unarchive pada form dan daftar. Filter Archived menampilkan data arsip. Tapper archived tidak dikirim pada pull master. |
 
 Urutan data:
 
@@ -706,6 +706,7 @@ division_id, foreman_id, employee_id
 Validasi:
 
 - Satu Tapper employee hanya boleh dibuat satu kali untuk record aktif.
+- Employee Tapper tidak dapat diganti setelah record dibuat. Untuk mengganti employee, arsipkan record lama dan buat record baru. Division dan Foreman tetap dapat diubah.
 - Employee Tapper harus valid menurut employee role `tapper` pada company division.
 - Jika `foreman_id` diisi, Foreman harus berada pada division yang sama dengan Tapper.
 

@@ -63,6 +63,15 @@ class Tapper(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        if "employee_id" in vals and any(
+            tapper.employee_id.id != vals["employee_id"] for tapper in self
+        ):
+            raise ValidationError(
+                _(
+                    "The tapper cannot be changed after creation. "
+                    "Archive this record and create a new one instead."
+                )
+            )
         vals = dict(vals)
         self._set_division_from_foreman_vals(vals)
         return super().write(vals)

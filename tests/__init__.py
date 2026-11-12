@@ -5,3 +5,4 @@ from . import test_production_total_receipt
 from . import test_stock_shrinkage_reports
 from . import test_reject_slab_grouping
 from . import test_drc_report
+from . import test_tapper

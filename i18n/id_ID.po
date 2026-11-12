@@ -756,6 +756,12 @@ msgstr "Karyawan Mandor yang Diizinkan"
 msgid "Without Foreman"
 msgstr "Tanpa Mandor"
 
+#. module: weightrack
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_search
+#: model_terms:ir.ui.view,arch_db:weightrack.view_wt_tapper_form
+msgid "Archived"
+msgstr "Diarsipkan"
+
 # -----------------------------------------------------------------------------
 # Tapper
 # -----------------------------------------------------------------------------
@@ -1186,6 +1192,11 @@ msgstr "Karyawan mandor harus unik per divisi."
 #: model:ir.model.constraint,message:weightrack.constraint_wt_tapper_employee_uniq
 msgid "Tapper employee must be unique."
 msgstr "Karyawan tapper harus unik."
+
+#. module: weightrack
+#: code:addons/weightrack/models/tapper.py:0
+msgid "The tapper cannot be changed after creation. Archive this record and create a new one instead."
+msgstr "Tapper tidak dapat diubah setelah dibuat. Arsipkan data ini lalu buat data baru."
 
 #. module: weightrack
 #: code:addons/weightrack/models/tapper.py:0

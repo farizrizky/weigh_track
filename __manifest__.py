@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "WeighTrack",
-    "version": "19.0.1.11.1",
+    "version": "19.0.1.11.2",
     "category": "Operations/Inventory",
     "summary": "Weighing management for estate operations",
     "author": "PT. Hanara Prima Solusindo",
